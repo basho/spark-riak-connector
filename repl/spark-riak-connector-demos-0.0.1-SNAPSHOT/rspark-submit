@@ -1,0 +1,8 @@
+#!/bin/sh
+
+#	--properties-file ./simpledemo.properties \
+spark-submit --jars $(echo ./lib/*.jar | tr ' ' ',') \
+	--conf spark.riak.connection.host=127.0.0.1:10017 \
+	--class com.basho.spark.connector.demos.PrintFirstRiak2iDemo \
+	$@ \
+	$(echo ./demos-jar/*.jar | tr ' ' ',')

@@ -1,0 +1,11 @@
+#!/bin/sh
+
+#
+# Copyright 2015 Basho Technologies Inc
+#
+# Shell script for starting the Spark Shell REPL with Riak Spark Connector
+
+spark-shell --jars $(echo ./lib/*.jar | tr ' ' ',') \
+	--conf spark.riak.connection.host=127.0.0.1:10017 \
+	-i ./rspark-shell-defaults.scala \
+	$@
