@@ -1,6 +1,7 @@
 package com.basho.spark.connector.writer
 
-import com.basho.riak.client.core.util.BinaryValue
+import com.basho.riak.client.api.convert.JSONConverter
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
 
 import scala.collection._
 import com.basho.riak.client.api.RiakClient
@@ -9,7 +10,7 @@ import com.basho.riak.client.api.commands.kv.StoreValue
 import com.basho.spark.connector.rdd.{BucketDef, RiakConnector}
 import com.basho.spark.connector.util.{CountingIterator, Logging}
 import org.apache.spark.TaskContext
-import com.basho.riak.client.core.query.{RiakObject, Location, Namespace}
+import com.basho.riak.client.core.query.{Location, Namespace}
 
 
 class BucketWriter[T] private (
@@ -42,7 +43,7 @@ class BucketWriter[T] private (
   }
 
   private def storeObject(session: RiakClient, ns: Namespace, value: T): Unit ={
-    val obj:(BinaryValue, RiakObject)  = vw.mapValue(value)
+    val obj:(String, Any)  = vw.mapValue(value)
 
     val builder = new StoreValue.Builder(obj._2).withOption(StoreValue.Option.W, new Quorum(writeConf.writeQuorum))
 
@@ -60,6 +61,13 @@ class BucketWriter[T] private (
 }
 
 object BucketWriter {
+
+  /**
+   * Need to register Scala module for proper processing of Scala classes
+   */
+  {
+    JSONConverter.registerJacksonModule(DefaultScalaModule)
+  }
 
   def apply[T: ValueWriterFactory](
       connector: RiakConnector,
