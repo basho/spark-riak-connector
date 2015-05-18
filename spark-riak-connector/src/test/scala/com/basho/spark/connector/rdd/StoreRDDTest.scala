@@ -2,8 +2,9 @@ package com.basho.spark.connector.rdd
 
 import java.util.concurrent.atomic.AtomicLong
 
+import com.basho.riak.client.api.RiakClient
 import com.basho.riak.client.api.annotations.{RiakIndex, RiakKey}
-import com.basho.riak.client.core.query.RiakObject
+import com.basho.riak.client.core.query.{Namespace, Location, RiakObject}
 import com.basho.riak.client.core.query.indexes.LongIntIndex
 import com.basho.spark.connector.util.RiakObjectConversionUtil
 import com.basho.spark.connector.writer.{ValueWriter, ValueWriterFactory}
@@ -13,6 +14,8 @@ import org.junit.Test
 import scala.annotation.meta.field
 
 import com.basho.spark.connector._
+
+import org.junit.Assert._
 
 /**
  * Domain Object for ORM checks
@@ -128,5 +131,49 @@ class RDDStoreTest  extends AbstractRDDTest {
         "3," +
         "4" +
         "]", data)
+  }
+
+  @Test
+  def storeTuple2(): Unit = {
+    sc.parallelize(List("key1"->1, "key2"->2, "key3"->3), 1)
+      .saveToRiak(DEFAULT_NAMESPACE_4STORE)
+
+    // TODO: FIX proper content type handling - it must be 'text/plain'
+    verifyContentTypeEntireTheBucket("application/json")
+
+    val data = sc.riakBucket[Int](DEFAULT_NAMESPACE_4STORE)
+      .queryBucketKeys("key1", "key2", "key3")
+      .collect()
+
+    assertEquals(3, data.length)
+    assertEqualsUsingJSONIgnoreOrder("[1,2,3]", data)
+  }
+
+  @Test
+  def storeTuple3(): Unit = {
+    sc.parallelize(List(("key1",1,11), ("key2",2,22), ("key3",3,33)), 1)
+      .saveToRiak(DEFAULT_NAMESPACE_4STORE)
+
+    verifyContentTypeEntireTheBucket("application/json")
+
+    val data = sc.riakBucket[List[Int]](DEFAULT_NAMESPACE_4STORE)
+      .queryBucketKeys("key1", "key2", "key3")
+      .collect()
+
+    assertEqualsUsingJSONIgnoreOrder("[" +
+        "[1,11]," +
+        "[2,22]," +
+        "[3,33]" +
+      "]", data)
+  }
+
+  private def verifyContentTypeEntireTheBucket(exected: String, ns: Namespace = DEFAULT_NAMESPACE_4STORE): Unit = {
+    withRiakDo(session =>{
+      foreachKeyInBucket(session, ns, (client:RiakClient, l:Location) => {
+        val ro = readByLocation[RiakObject](session, l)
+        assertEquals(s"Unexpected RiakObject.contentType\nExpected\t:$exected\nActual\t:${ro.getContentType}", exected, ro.getContentType)
+        false
+      })
+    })
   }
 }
