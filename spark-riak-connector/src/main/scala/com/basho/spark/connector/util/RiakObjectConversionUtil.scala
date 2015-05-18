@@ -10,6 +10,7 @@ import scala.reflect.ClassTag
 
 object RiakObjectConversionUtil {
   private var mapper: ObjectMapper = null
+  private val classOfRiakObject = classOf[RiakObject]
 
   private def objectMapper():ObjectMapper ={
     if(mapper == null){
@@ -23,21 +24,24 @@ object RiakObjectConversionUtil {
     mapper
   }
 
-  private def getClassTag[T : ClassTag]: ClassTag[T] = implicitly[ClassTag[T]]
-
   def from[T: ClassTag](location: Location, ro: RiakObject ): T = {
-    val ct = getClassTag[T]
+    val ct = implicitly[ClassTag[T]]
 
-    ro.getContentType match {
-      case "application/json" if !ct.runtimeClass.equals(classOf[java.lang.String]) =>
-        // from https://gist.github.com/rinmalavi/6422520
-        objectMapper().readValue[T](ro.getValue.unsafeGetValue(), ct.runtimeClass.asInstanceOf[Class[T]])
+    if( ct.runtimeClass == classOfRiakObject){
+      // pass through conversion
+      ro.asInstanceOf[T]
+    } else {
+        ro.getContentType match {
+          case "application/json" if !ct.runtimeClass.equals(classOf[java.lang.String]) =>
+            // from https://gist.github.com/rinmalavi/6422520
+            objectMapper().readValue[T](ro.getValue.unsafeGetValue(), ct.runtimeClass.asInstanceOf[Class[T]])
 
-      case _ =>
-        if(ct.runtimeClass.equals(classOf[java.lang.String])){
-          ro.getValue.toStringUtf8.asInstanceOf[T]
-        } else {
-          ro.getValue.asInstanceOf[T]
+          case _ =>
+            if (ct.runtimeClass.equals(classOf[java.lang.String])) {
+              ro.getValue.toStringUtf8.asInstanceOf[T]
+            } else {
+              ro.getValue.asInstanceOf[T]
+            }
         }
     }
   }

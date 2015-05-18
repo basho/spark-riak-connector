@@ -52,20 +52,26 @@ abstract class AbstractRiakTest extends RiakFunctions{
     })
   }
 
-  protected def assertEqualsUsingJSON(jsonExpected: String, actual: AnyRef): Unit = {
+  protected def assertEqualsUsingJSON(jsonExpected: AnyRef, actual: AnyRef): Unit = {
     assertEqualsUsingJSONImpl(jsonExpected, actual, null)
   }
 
-  protected def assertEqualsUsingJSONIgnoreOrder(jsonExpected: String, actual: AnyRef): Unit = {
+  protected def assertEqualsUsingJSONIgnoreOrder(jsonExpected: AnyRef, actual: AnyRef): Unit = {
     assertEqualsUsingJSONImpl(jsonExpected, actual, JsonAssert.when(Option.IGNORING_ARRAY_ORDER))
   }
 
-  private def assertEqualsUsingJSONImpl(jsonExpected: String, actual: AnyRef, configuration: Configuration) {
+  private def assertEqualsUsingJSONImpl(jsonExpected: AnyRef, actual: AnyRef, configuration: Configuration) {
     var expected: Object  = null
-    try {
-      expected = tolerantMapper.readValue(jsonExpected, classOf[java.lang.Object])
-    } catch {
-      case ex: IOException => throw new RuntimeException(ex)
+
+    jsonExpected match {
+      case str: String =>
+        try {
+          expected = tolerantMapper.readValue(str, classOf[java.lang.Object])
+        } catch {
+          case ex: IOException => throw new RuntimeException(ex)
+        }
+      case _ =>
+        expected = jsonExpected
     }
 
     var strExpected: String = null
