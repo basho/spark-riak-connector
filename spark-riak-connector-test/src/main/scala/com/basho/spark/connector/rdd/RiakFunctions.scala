@@ -216,6 +216,16 @@ trait RiakFunctions{
     semaphore.acquire(numberOfParallelRequests)
     semaphore.release(numberOfParallelRequests)
 
+    // Let's wait until the bucket become really empty
+    var response: ListKeys.Response = null
+    withRiakDo(session=>{
+      do{
+        Thread.sleep(500)
+        val req = new ListKeys.Builder(ns).build()
+        response = session.execute(req)
+      }while(response.iterator().hasNext)
+    })
+
     val stats = counter.stats()
       .dump(s"Bucket '$ns' has been reset. All existed values were removed", logger)
   }
