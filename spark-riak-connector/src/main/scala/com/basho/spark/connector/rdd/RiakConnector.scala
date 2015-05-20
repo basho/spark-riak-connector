@@ -88,7 +88,6 @@ object RiakConnector extends Logging {
 
   Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {
     def run() {
-      logInfo(s"Shutdown")
       sessionCache.foreach( _._2.shutdown() )
     }
   }))
