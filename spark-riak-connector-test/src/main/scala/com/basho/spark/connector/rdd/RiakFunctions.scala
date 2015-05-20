@@ -261,8 +261,6 @@ trait RiakFunctions{
         nodes.toList
       ).build()
 
-
-      nodes foreach (n=> println(s"Node: ${n.getRemoteAddress}:${n.getPort}"))
       cluster.start()
 
       new RiakClient(cluster)
