@@ -21,7 +21,7 @@ class RiakRDD[R] private[connector] (
     val query: Query[_] = null,
     val readConf: ReadConf = ReadConf()
     )(
-      implicit ct : ClassTag[R])
+      implicit val ct : ClassTag[R])
   extends RDD[R](sc, Seq.empty) with Logging {
 
   /* Logging classes inheritance conflict fix. */

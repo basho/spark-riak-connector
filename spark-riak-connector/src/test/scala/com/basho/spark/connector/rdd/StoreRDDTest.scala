@@ -7,7 +7,7 @@ import com.basho.riak.client.api.annotations.{RiakIndex, RiakKey}
 import com.basho.riak.client.core.query.{Namespace, Location, RiakObject}
 import com.basho.riak.client.core.query.indexes.LongIntIndex
 import com.basho.spark.connector.util.RiakObjectConversionUtil
-import com.basho.spark.connector.writer.{ValueWriter, ValueWriterFactory}
+import com.basho.spark.connector.writer.{WriteDataMapper, WriteDataMapperFactory}
 import org.apache.spark.rdd.RDD
 import org.junit.Test
 
@@ -37,9 +37,9 @@ class RDDStoreTest  extends AbstractRDDTest {
     /**
      * Custom value writer factory which uses totals as a key.
      */
-    implicit val vwf = new ValueWriterFactory[(String,Int)]{
-      override def valueWriter(bucket: BucketDef): ValueWriter[(String, Int)] = {
-        new ValueWriter[(String, Int)] {
+    implicit val vwf = new WriteDataMapperFactory[(String,Int)]{
+      override def dataMapper(bucket: BucketDef): WriteDataMapper[(String, Int)] = {
+        new WriteDataMapper[(String, Int)] {
           override def mapValue(value: (String, Int)): (String, Any) = {
             (value._2.toString, RiakObjectConversionUtil.to(value._1))
           }
@@ -97,9 +97,9 @@ class RDDStoreTest  extends AbstractRDDTest {
     /**
      * ValueWriterFactory responsible for populating each stored object with the proper CREATION_INDEX value
      */
-    implicit val vwf = new ValueWriterFactory[Int] {
-      override def valueWriter(bucket: BucketDef): ValueWriter[Int] = {
-        new ValueWriter[Int] {
+    implicit val vwf = new WriteDataMapperFactory[Int] {
+      override def dataMapper(bucket: BucketDef): WriteDataMapper[Int] = {
+        new WriteDataMapper[Int] {
           /**
            * Save operation performed on each partition, therefore, for production usage
            * the following Atomic should be replaced by a distributed counter
@@ -131,6 +131,22 @@ class RDDStoreTest  extends AbstractRDDTest {
         "3," +
         "4" +
         "]", data)
+  }
+  @Test
+  def storeTuple1() = {
+    sc.parallelize(List(Tuple1("key1"), Tuple1("key2"), Tuple1("key3")), 1)
+      .saveToRiak(DEFAULT_NAMESPACE_4STORE)
+
+    val t1Data = fetchAllFromBucket(DEFAULT_NAMESPACE_4STORE)
+
+    // Keys should be generated on the Riak side, therefore they will be ignored
+    assertEqualsUsingJSONIgnoreOrder("[" +
+      "['${json-unit.ignore}', 'key1']," +
+      "['${json-unit.ignore}', 'key2']," +
+      "['${json-unit.ignore}', 'key3']" +
+      "]", t1Data)
+
+    verifyContentTypeEntireTheBucket("text/plain", DEFAULT_NAMESPACE_4STORE)
   }
 
   @Test
@@ -167,11 +183,28 @@ class RDDStoreTest  extends AbstractRDDTest {
       "]", data)
   }
 
-  private def verifyContentTypeEntireTheBucket(exected: String, ns: Namespace = DEFAULT_NAMESPACE_4STORE): Unit = {
+  @Test
+  def list_And_OtherProductDescendants_ShouldBe_StoredWithDefaultMapper() = {
+    sc.parallelize(List(List("key1",1), List("key2",2), List("key3",3)), 1)
+      .saveToRiak(DEFAULT_NAMESPACE_4STORE)
+
+    val lData = fetchAllFromBucket(DEFAULT_NAMESPACE_4STORE)
+
+    // Keys should be generated on the Riak side, therefore they will be ignored
+    assertEqualsUsingJSONIgnoreOrder("[" +
+        "['${json-unit.ignore}', '[\"key1\",1]']," +
+        "['${json-unit.ignore}', '[\"key2\",2]']," +
+        "['${json-unit.ignore}', '[\"key3\",3]']" +
+      "]", lData)
+
+    verifyContentTypeEntireTheBucket("application/json", DEFAULT_NAMESPACE_4STORE)
+  }
+
+  private def verifyContentTypeEntireTheBucket(expected: String, ns: Namespace = DEFAULT_NAMESPACE_4STORE): Unit = {
     withRiakDo(session =>{
       foreachKeyInBucket(session, ns, (client:RiakClient, l:Location) => {
         val ro = readByLocation[RiakObject](session, l)
-        assertEquals(s"Unexpected RiakObject.contentType\nExpected\t:$exected\nActual\t:${ro.getContentType}", exected, ro.getContentType)
+        assertEquals(s"Unexpected RiakObject.contentType\nExpected\t:$expected\nActual\t:${ro.getContentType}", expected, ro.getContentType)
         false
       })
     })
