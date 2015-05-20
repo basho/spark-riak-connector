@@ -16,10 +16,10 @@ import com.basho.riak.client.core.query.{Location, Namespace}
 class BucketWriter[T] private (
     connector: RiakConnector,
     bucketDef: BucketDef,
-    valueWriter: ValueWriter[T],
+    dataMapper: WriteDataMapper[T],
     writeConf: WriteConf) extends Serializable with Logging {
 
-  private val vw: ValueWriter[T] = valueWriter
+  private val vw: WriteDataMapper[T] = dataMapper
 
   /** Main entry point */
   def write(taskContext: TaskContext, data: Iterator[T]) {
@@ -69,24 +69,24 @@ object BucketWriter {
     JSONConverter.registerJacksonModule(DefaultScalaModule)
   }
 
-  def apply[T: ValueWriterFactory](
+  def apply[T: WriteDataMapperFactory](
       connector: RiakConnector,
       bucketType: String,
       bucketName: String,
       writeConf: WriteConf): BucketWriter[T] = {
 
     val bucketDef = new BucketDef(bucketType, bucketName)
-    val valueWriter = implicitly[ValueWriterFactory[T]].valueWriter(bucketDef)
+    val dataMapper = implicitly[WriteDataMapperFactory[T]].dataMapper(bucketDef)
 
-    new BucketWriter[T](connector, bucketDef, valueWriter, writeConf)
+    new BucketWriter[T](connector, bucketDef, dataMapper, writeConf)
   }
 
-  def apply[T: ValueWriterFactory](
+  def apply[T: WriteDataMapperFactory](
       connector: RiakConnector,
       bucketDef: BucketDef,
       writeConf: WriteConf): BucketWriter[T] = {
 
-    val valueWriter = implicitly[ValueWriterFactory[T]].valueWriter(bucketDef)
+    val valueWriter = implicitly[WriteDataMapperFactory[T]].dataMapper(bucketDef)
     new BucketWriter[T](connector, bucketDef, valueWriter, writeConf)
   }
 }
