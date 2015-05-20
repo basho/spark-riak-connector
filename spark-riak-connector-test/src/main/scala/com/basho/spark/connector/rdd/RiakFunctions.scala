@@ -40,7 +40,6 @@ trait RiakFunctions{
     .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false)
     .registerModule(DefaultScalaModule)
 
-
   def withRiakDo[T](code: RiakClient => T): T = {
     closeRiakSessionAfterUse(createRiakSession()) { session =>
       code(session)
@@ -197,6 +196,10 @@ trait RiakFunctions{
 
     val listener = new RiakFutureListener[Void, Location]{
       override def handle(f: RiakFuture[Void, Location]): Unit = {
+        if(!f.isSuccess){
+          logger.error(s"Can't delete value for location '${f.getQueryInfo}'", f.cause())
+        }
+
         counter.increment()
         semaphore.release()
       }
@@ -212,21 +215,31 @@ trait RiakFunctions{
 
     logger.trace("All operations were initiated, waiting for completion")
 
-    // wait until completion of all already started operations
+    // -- wait until completion of all already started operations
     semaphore.acquire(numberOfParallelRequests)
     semaphore.release(numberOfParallelRequests)
 
-    // Let's wait until the bucket become really empty
+    // -- waiting until the bucket become really empty
+    var attempts = 6
     var response: ListKeys.Response = null
-    withRiakDo(session=>{
-      do{
-        Thread.sleep(500)
-        val req = new ListKeys.Builder(ns).build()
-        response = session.execute(req)
-      }while(response.iterator().hasNext)
-    })
+      withRiakDo(session=>{
+        do {
+          Thread.sleep(500)
+          val req = new ListKeys.Builder(ns).build()
+          response = session.execute(req)
+          attempts -= 1
+        }while(attempts>0 && response.iterator().hasNext)
+      })
 
-    val stats = counter.stats()
+    response.iterator().toList match {
+      case Nil => //Nothing to do
+      case l:List[Any] => {
+        throw new IllegalStateException(s"Bucket '$ns' is not empty after truncation")
+      }
+    }
+
+    // --
+    counter.stats()
       .dump(s"Bucket '$ns' has been reset. All existed values were removed", logger)
   }
 
