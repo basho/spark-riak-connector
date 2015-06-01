@@ -6,6 +6,7 @@ import java.util.concurrent.Semaphore
 
 import com.basho.riak.client.api.RiakClient
 import com.basho.riak.client.api.cap.Quorum
+import com.basho.riak.client.api.commands.indexes.{IntIndexQuery, BinIndexQuery}
 import com.basho.riak.client.api.commands.kv.{DeleteValue, StoreValue, FetchValue, ListKeys}
 import com.basho.riak.client.core.RiakNode.Builder
 import com.basho.riak.client.core.query.indexes.{StringBinIndex, LongIntIndex}
@@ -26,6 +27,9 @@ import scala.reflect.ClassTag
 
 case class RiakObjectData( value: Object, key: String, indexes: mutable.Map[String, Object])
 
+/**
+ * INTENDED FOR TEST AND DEMO USAGE ONLY
+ */
 trait RiakFunctions{
   protected def riakHosts: Set[HostAndPort]
   protected def numberOfParallelRequests:Int
@@ -63,9 +67,6 @@ trait RiakFunctions{
         logger.info(s"Value [$i] was created: key: '$key', ${d.value}")
       }
     })
-
-    // Let's take a nap to be sure that test data was created properly
-    Thread.sleep(4000)
   }
 
   def createValueAsync(session: RiakClient, ns: Namespace, obj: AnyRef, key: String = null):RiakFuture[StoreValue.Response, Location] = {
@@ -86,7 +87,7 @@ trait RiakFunctions{
     session.executeAsync(store)
   }
 
-  def createValue(session: RiakClient, ns: Namespace, objectData: RiakObjectData):String = {
+  def createValue(session: RiakClient, ns: Namespace, objectData: RiakObjectData, checkCreation: Boolean = true):String = {
     val obj = new RiakObject()
 
     var v: String = null
@@ -107,6 +108,7 @@ trait RiakFunctions{
     }
 
     val builder = new StoreValue.Builder(obj)
+      .withOption(StoreValue.Option.PW, Quorum.allQuorum())
 
     // Use provided key, if any
     objectData.key match {
@@ -151,7 +153,67 @@ trait RiakFunctions{
     if(r.hasGeneratedKey) {
       key = r.getGeneratedKey.toStringUtf8
     }
+
+    if(checkCreation){
+      // To be 100% sure that everything was created properly
+      val l = new Location(ns, BinaryValue.create(key))
+      val conversion = (l: Location, ro: RiakObject) => ro
+      for( i <- 6 to 0 by -1)
+        try {
+          readByLocation[RiakObject](session, l, conversion)
+        } catch {
+          case e:IllegalStateException if e.getMessage.startsWith("Nothing was found") && i >1 =>{
+            logger.debug("Value for '{}' hasn't been created yet", l)
+            Thread.sleep(200)
+          }
+        }
+
+      // Since we proved that value is reachable by key, we expect that it also available by all 2i keys
+      objectData.indexes match {
+        case map: mutable.Map[String, _] =>
+          map foreach (idx => {
+            if(!isLocationReachableBy2iKey(session, l, idx._1, idx._2)) {
+              throw new IllegalStateException(s"Location '$l' is not reachable by 2i '${idx._1}'")
+            }else{
+              logger.debug(s"Value for '$l' is reachable by 2i '${idx._1}'")
+            }
+          })
+
+        case null =>
+        // Indexes aren't provided, here is nothing to do
+      }
+    }
     key
+  }
+
+  private def isLocationReachableBy2iKey[T](session: RiakClient, location: Location, index: String, key: T): Boolean = {
+    val builder = key match {
+      case s: String =>
+        new BinIndexQuery.Builder(location.getNamespace, index, s)
+
+      case i: Int =>
+        new IntIndexQuery.Builder(location.getNamespace, index, i.toLong)
+
+      case l: Long =>
+        new IntIndexQuery.Builder(location.getNamespace, index, l)
+
+      case _ =>
+        throw new IllegalStateException(s"Type '${key.getClass.getName}' is not suitable for 2i")
+    }
+
+    val entries = builder match {
+      case iQueryBuilder: IntIndexQuery.Builder =>
+        session.execute(iQueryBuilder.build())
+          .getEntries
+
+      case bQueryBuilder: BinIndexQuery.Builder =>
+        session.execute(bQueryBuilder.build())
+          .getEntries
+    }
+
+    val locations: Iterable[Location] = entries.map(_.getRiakObjectLocation)
+    val c = locations.count( l =>{ location.equals(l)})
+    c > 0
   }
 
   def foreachKeyInBucket(riakSession: RiakClient, ns: Namespace,  func: (RiakClient, Location) => Boolean): Unit ={
@@ -184,30 +246,46 @@ trait RiakFunctions{
   }
 
   def deleteByLocationAsync(riakSession: RiakClient, location: Location): RiakFuture[Void,Location] ={
-    val deleteRequest = new DeleteValue.Builder(location).build()
+    val deleteRequest = new DeleteValue.Builder(location)
+      .withOption(DeleteValue.Option.PW, Quorum.allQuorum())
+      .withOption(DeleteValue.Option.PR, Quorum.allQuorum())
+      .build()
+
     riakSession.executeAsync(deleteRequest)
   }
 
   def resetAndEmptyBucket(ns:Namespace): Unit = {
-    logger.debug(s"Reset bucket '$ns'...")
+    logger.debug("\n----------\n" +
+      "[Bucket RESET]  {}",
+      ns)
     val counter = new StatCounter()
 
     val semaphore = new Semaphore(numberOfParallelRequests)
 
     val listener = new RiakFutureListener[Void, Location]{
       override def handle(f: RiakFuture[Void, Location]): Unit = {
-        if(!f.isSuccess){
-          logger.error(s"Can't delete value for location '${f.getQueryInfo}'", f.cause())
-        }
+        try {
+          val v = f.get()
+          logger.debug("Value was deleted '{}'", f.getQueryInfo)
+        }catch{
+          case re: RuntimeException =>
+            logger.error(s"Can't delete value for '${f.getQueryInfo}'", re)
+            throw re
 
-        counter.increment()
-        semaphore.release()
+          case e: Exception =>
+            logger.error(s"Can't delete value for '${f.getQueryInfo}'", e)
+            throw new RuntimeException(e)
+        }finally{
+          counter.increment()
+          semaphore.release()
+        }
       }
     }
 
     withRiakDo(session =>{
       foreachKeyInBucket(session, ns, (client:RiakClient, l:Location) => {
         semaphore.acquire()
+        logger.debug("Performing delete for '{}'", l)
         deleteByLocationAsync(client, l).addListener(listener)
         false
       })
@@ -220,7 +298,7 @@ trait RiakFunctions{
     semaphore.release(numberOfParallelRequests)
 
     // -- waiting until the bucket become really empty
-    var attempts = 6
+    var attempts = 10
     var response: ListKeys.Response = null
       withRiakDo(session=>{
         do {
@@ -240,7 +318,7 @@ trait RiakFunctions{
 
     // --
     counter.stats()
-      .dump(s"Bucket '$ns' has been reset. All existed values were removed", logger)
+      .dump(s"\n----------\nBucket '$ns' has been reset. All existed values were removed", logger)
   }
 
   private def createRiakSession() = {

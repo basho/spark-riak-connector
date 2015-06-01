@@ -2,6 +2,8 @@ package com.basho.spark.connector.rdd
 
 import com.basho.riak.client.core.RiakNode
 import com.google.common.net.HostAndPort
+import org.junit.rules.TestWatcher
+import org.junit.runner.Description
 import org.slf4j.{LoggerFactory, Logger}
 
 import java.io.IOException
@@ -10,7 +12,7 @@ import com.basho.riak.client.core.query.Namespace
 import com.fasterxml.jackson.core.JsonProcessingException
 import net.javacrumbs.jsonunit.JsonAssert
 import net.javacrumbs.jsonunit.core.{Configuration, Option}
-import org.junit.Before
+import org.junit.{Rule, Before}
 
 
 
@@ -35,6 +37,25 @@ abstract class AbstractRiakTest extends RiakFunctions{
       .withRemotePort(DEFAULT_RIAK_PORT)
 
   protected def jsonData(): String = null
+
+  @Rule
+  def watchman = new TestWatcher() {
+    override def starting(description: Description): Unit = {
+      super.starting(description)
+      logger.info("\n----------------------------------------\n" +
+                  "  [TEST STARTED]  {}\n" +
+          "----------------------------------------\n",
+        description.getDisplayName)
+    }
+
+    override def finished(description: Description): Unit = {
+      super.finished(description)
+      logger.info("\n----------------------------------------\n" +
+        "  [TEST FINISHED]  {}\n" +
+        "----------------------------------------\n",
+        description.getDisplayName)
+    }
+  }
 
   @Before
   def initialize(): Unit ={

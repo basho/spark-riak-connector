@@ -1,9 +1,11 @@
 package com.basho.spark.connector.query
 
+import com.basho.riak.client.api.cap.Quorum
+
 import scala.collection.JavaConversions._
 
 import com.basho.riak.client.api.RiakClient
-import com.basho.riak.client.api.commands.kv.MultiFetch
+import com.basho.riak.client.api.commands.kv.{FetchValue, MultiFetch}
 import com.basho.riak.client.core.query.{RiakObject, Location}
 import com.basho.spark.connector.util.Logging
 
@@ -34,9 +36,10 @@ class DataQueryingIterator(query: Query[_], riakSession: RiakClient)
         return false
       }
     }
-    logTrace(s"Performing fetch(nextToken=$nextToken)")
+    logTrace(s"Performing 2i query(token=$nextToken)")
 
     val r = query.nextLocationBulk(nextToken, riakSession )
+    logDebug(s"2i query(token=${nextToken}) returns:\n  token: ${r._1}\n  locations: ${r._2}")
     nextToken = r._1
 
     dataBuffer.clear()
@@ -57,6 +60,8 @@ class DataQueryingIterator(query: Query[_], riakSession: RiakClient)
 
     // fetching actual objects
     val builder = new MultiFetch.Builder()
+      .withOption(FetchValue.Option.R, Quorum.oneQuorum())
+
     r._2.foreach(builder.addLocation)
 
     val mfr = riakSession.execute(builder.build())
@@ -69,10 +74,8 @@ class DataQueryingIterator(query: Query[_], riakSession: RiakClient)
         // TODO: add proper error handling
         logError(s"Nothing was found for location '${f.getQueryInfo.getKeyAsString}'")
       } else if (r.hasValues) {
-        logDebug(s"Value - for location '${f.getQueryInfo.getKeyAsString}'")
-
         if (r.getNumberOfValues > 1) {
-          throw new IllegalStateException(s"Location query '$location' returns more than one result: ${r.getNumberOfValues} actually")
+          throw new IllegalStateException(s"Fetch for '$location' returns more than one result: ${r.getNumberOfValues} actually")
         }
 
         val ro = r.getValue(classOf[RiakObject])
