@@ -8,10 +8,10 @@ import com.basho.riak.client.core.query.Namespace
 case class BucketDef(bucketType: String,
                     bucketName: String){
 
-  def asNamespace() = new Namespace(bucketType, bucketName)
+  def asNamespace(): Namespace = new Namespace(bucketType, bucketName)
 }
 
 object BucketDef{
-  def apply(bucketName: String) = new BucketDef("default", bucketName)
-  def apply(ns: Namespace) = new BucketDef(ns.getBucketTypeAsString, ns.getBucketNameAsString)
+  def apply(bucketName: String): BucketDef = new BucketDef("default", bucketName)
+  def apply(ns: Namespace): BucketDef = new BucketDef(ns.getBucketTypeAsString, ns.getBucketNameAsString)
 }

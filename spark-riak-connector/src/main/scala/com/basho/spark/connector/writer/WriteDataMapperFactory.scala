@@ -40,6 +40,7 @@ trait LowPriorityWriteDataMapperFactoryImplicits {
   A4: TypeTag, A5: TypeTag, A6: TypeTag, A7: TypeTag]: WriteDataMapperFactory[(A1,A2, A3, A4, A5, A6, A7)] =
     TupleWriteDataMapper.factory[(A1,A2, A3, A4, A5, A6, A7)]
 
+  // scalastyle:off no.whitespace.after.left.bracket
   implicit def tuple8Factory[
   A1: TypeTag, A2: TypeTag, A3: TypeTag,
   A4: TypeTag, A5: TypeTag, A6: TypeTag, A7: TypeTag, A8: TypeTag]: WriteDataMapperFactory[(A1,A2, A3, A4, A5, A6, A7, A8)] =
@@ -138,7 +139,7 @@ trait LowPriorityWriteDataMapperFactoryImplicits {
     (A1,A2, A3, A4, A5, A6, A7, A8, A9 ,A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, A22)] =
     TupleWriteDataMapper.factory[(A1,A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17,
       A18, A19, A20, A21, A22)]
+  // scalastyle:on no.whitespace.after.left.bracket
 }
 
-object WriteDataMapperFactory extends LowPriorityWriteDataMapperFactoryImplicits {
-}
+object WriteDataMapperFactory extends LowPriorityWriteDataMapperFactoryImplicits

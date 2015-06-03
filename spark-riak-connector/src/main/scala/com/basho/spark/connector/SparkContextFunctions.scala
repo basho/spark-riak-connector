@@ -17,7 +17,7 @@ class SparkContextFunctions(@transient val sc: SparkContext) extends Serializabl
 
     def apply(l: Location, r: RiakObject): (String,V) = {
       val k = l.getKeyAsString
-      return k -> RiakObjectConversionUtil.from(l, r)
+      k -> RiakObjectConversionUtil.from(l, r)
     }
   };
 
@@ -27,7 +27,7 @@ class SparkContextFunctions(@transient val sc: SparkContext) extends Serializabl
 
   def riakBucket[T](bucketName: String, bucketType: String, convert: (Location, RiakObject) => T)
                    (implicit connector: RiakConnector = RiakConnector(sc.getConf),
-                    ct: ClassTag[T]) =
+                    ct: ClassTag[T]): RiakRDD[T] =
       new RiakRDD[T](sc, connector, bucketType, bucketName, convert, readConf = ReadConf.fromSparkConf(sc.getConf))
 
   def riakBucket[T](ns: Namespace)
@@ -38,7 +38,7 @@ class SparkContextFunctions(@transient val sc: SparkContext) extends Serializabl
                       (implicit ct: ClassTag[(K, V)], ctV: ClassTag[V]):RiakRDD[(K,V)] =
     riakBucket[K,V](bucketName, "default", convert)
 
-  /**
+  /*
    * Creates RiakRDD containing results as Tuple2 objects of <Key> and <Value> queried from Riak bucket.
    * Convert function should be provided to specify how exactly <Key> and <Value> should be retrieved from RiakObject and populated to Tuple2.
    * Example:
@@ -49,9 +49,9 @@ class SparkContextFunctions(@transient val sc: SparkContext) extends Serializabl
    * @param bucketName name of the Riak bucket
    * @param convert function to perform convertion from Riak <Location> and <RiakObject> to Tuple2[K, V]
    * @return RiakRDD of tuples
-   **/
+   */
   def riakBucket[K, V](bucketName: String, bucketType: String, convert: (Location, RiakObject) => (K, V))
-                        (implicit ct: ClassTag[(K, V)], ctV: ClassTag[V]) =
+                        (implicit ct: ClassTag[(K, V)], ctV: ClassTag[V]): RiakRDD[(K,V)] =
     riakBucket[(K,V)](bucketName, bucketType, convert)
 
   def riakBucket[V](bucketName: String, bucketType: String)

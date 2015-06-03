@@ -3,9 +3,8 @@ package com.basho.spark.connector.rdd
 import java.net.InetAddress
 
 import com.google.common.net.HostAndPort
-import org.apache.spark.SparkConf
+import org.apache.spark.{Logging, SparkConf}
 import scala.util.control.NonFatal
-import com.basho.spark.connector.util.Logging
 
 
 /** Stores configuration of a connection to Riak.

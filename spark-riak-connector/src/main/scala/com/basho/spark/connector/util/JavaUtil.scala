@@ -6,7 +6,7 @@ import scala.reflect.runtime.universe._
 
 object JavaUtil {
 
-  def mirror = runtimeMirror(Thread.currentThread().getContextClassLoader)
+  def mirror: RuntimeMirror = runtimeMirror(Thread.currentThread().getContextClassLoader)
 
   /** Returns a `TypeTag` for the given class. */
   def getTypeTag[T](clazz: Class[T]): TypeTag[T] = TypeTag.synchronized {

@@ -8,8 +8,8 @@ import com.basho.riak.client.api.RiakClient
 import com.basho.riak.client.api.cap.Quorum
 import com.basho.riak.client.api.commands.kv.StoreValue
 import com.basho.spark.connector.rdd.{BucketDef, RiakConnector}
-import com.basho.spark.connector.util.{CountingIterator, Logging}
-import org.apache.spark.TaskContext
+import com.basho.spark.connector.util.CountingIterator
+import org.apache.spark.{Logging, TaskContext}
 import com.basho.riak.client.core.query.{Location, Namespace}
 
 
@@ -22,7 +22,7 @@ class BucketWriter[T] private (
   private val vw: WriteDataMapper[T] = dataMapper
 
   /** Main entry point */
-  def write(taskContext: TaskContext, data: Iterator[T]) {
+  def write(taskContext: TaskContext, data: Iterator[T]): Unit = {
     connector.withSessionDo { session =>
       val rowIterator = new CountingIterator(data)
       val startTime = System.currentTimeMillis()
@@ -47,12 +47,14 @@ class BucketWriter[T] private (
 
     val builder = new StoreValue.Builder(obj._2).withOption(StoreValue.Option.W, new Quorum(writeConf.writeQuorum))
 
+    // scalastyle:off null
     if( obj._1 == null) {
       builder.withNamespace(ns)
     }else {
       val location = new Location(ns, obj._1)
       builder.withLocation(location)
     }
+    // scalastyle:on null
 
     val r = session.execute(builder.build())
     val theRealKey = if (r.hasGeneratedKey) r.getGeneratedKey else obj._1

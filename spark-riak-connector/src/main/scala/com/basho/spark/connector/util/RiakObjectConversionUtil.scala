@@ -9,19 +9,19 @@ import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import scala.reflect.ClassTag
 
 object RiakObjectConversionUtil {
-  private var mapper: ObjectMapper = null
+  private var mapper: Option[ObjectMapper] = None
   private val classOfRiakObject = classOf[RiakObject]
 
   private def objectMapper():ObjectMapper ={
-    if(mapper == null){
+    if(mapper.isEmpty){
 
       /**
        * Need to register Scala module for proper processing of Scala classes
        */
       JSONConverter.registerJacksonModule(DefaultScalaModule)
-      mapper = JSONConverter.getObjectMapper
+      mapper = Some(JSONConverter.getObjectMapper)
     }
-    mapper
+    mapper.get
   }
 
   def from[T: ClassTag](location: Location, ro: RiakObject ): T = {

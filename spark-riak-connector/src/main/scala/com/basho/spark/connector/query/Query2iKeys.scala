@@ -3,12 +3,12 @@ package com.basho.spark.connector.query
 import com.basho.riak.client.api.RiakClient
 import com.basho.riak.client.core.query.Location
 import com.basho.spark.connector.rdd.{BucketDef, ReadConf}
-import com.basho.spark.connector.util.Logging
+import org.apache.spark.Logging
 
 import scala.collection.mutable.ArrayBuffer
 
 case class Query2iKeys[K](bucket: BucketDef, readConf:ReadConf, index: String, keys: Iterable[K]) extends QuerySubsetOfKeys[K] with Logging{
-  private var query2iKey: Query2iKeySingleOrRange[K] = null
+  private var query2iKey: Option[Query2iKeySingleOrRange[K]] = None
   private var tokenNext: Option[String] = None
 
   // By default there should be an empty Serializable Iterator
@@ -29,9 +29,9 @@ case class Query2iKeys[K](bucket: BucketDef, readConf:ReadConf, index: String, k
       if(!wholeBulkWasCollected(dataBuffer)) tokenNext match {
         case Some(next) =>
           // Fetch the next results page from the previously executed 2i query, if any
-          assert(query2iKey != null)
+          assert(query2iKey.isDefined)
 
-          val r = query2iKey.nextLocationBulk( tokenNext, session)
+          val r = query2iKey.get.nextLocationBulk( tokenNext, session)
           tokenNext = r._1
           _iterator = r._2.iterator
 
@@ -40,9 +40,9 @@ case class Query2iKeys[K](bucket: BucketDef, readConf:ReadConf, index: String, k
           assert(_iterator.isEmpty && tokenNext.isEmpty)
 
           val key = keys.next()
-          query2iKey = new Query2iKeySingleOrRange[K](bucket, readConf, index, key)
+          query2iKey = Some(new Query2iKeySingleOrRange[K](bucket, readConf, index, key))
 
-          val r = query2iKey.nextLocationBulk(tokenNext, session)
+          val r = query2iKey.get.nextLocationBulk(tokenNext, session)
           tokenNext = r._1
           _iterator = r._2.iterator
 
