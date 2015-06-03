@@ -1,13 +1,13 @@
 package com.basho.spark.connector.query
 
 import com.basho.riak.client.api.cap.Quorum
+import org.apache.spark.Logging
 
 import scala.collection.JavaConversions._
 
 import com.basho.riak.client.api.RiakClient
 import com.basho.riak.client.api.commands.kv.{FetchValue, MultiFetch}
 import com.basho.riak.client.core.query.{RiakObject, Location}
-import com.basho.spark.connector.util.Logging
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -22,20 +22,24 @@ class DataQueryingIterator(query: Query[_], riakSession: RiakClient)
 
   private var isThereANextValue: Any = None
   private var nextToken: Option[_] = None
-  private var _iterator: Iterator[ResultT] = null
 
-  private[this] def prefetchIfNeeded(): Boolean = {
-    if (this._iterator != null) {
-      if(this._iterator.hasNext){
+  private var _iterator: Option[Iterator[ResultT]] = None
+
+  protected[this] def prefetchIfNeeded(): Boolean = {
+    // scalastyle:off return
+    if (this._iterator.isDefined) {
+      if(this._iterator.get.hasNext){
         // Nothing to do, we still have at least one result
         logTrace("prefetch is not required, at least one prefetched value is in the buffer")
         return false
       }else if(nextToken.isEmpty){
         // Nothing to do, we already got all the data
-        logDebug("prefetch is not required, all data was processed")
+        logDebug("prefetch is not required, all data has been processed")
         return false
       }
     }
+    // scalastyle:on return
+
     logTrace(s"Performing 2i query(token=$nextToken)")
 
     val r = query.nextLocationBulk(nextToken, riakSession )
@@ -54,42 +58,18 @@ class DataQueryingIterator(query: Query[_], riakSession: RiakClient)
        *     As a result of such call the empty locations list and Null continuation token will be returned
        */
       logDebug("prefetch is not required, all data was processed (location list is empty)")
-      _iterator = Iterator.empty
-      return true
+      _iterator = Some(Iterator.empty)
+    } else {
+
+      // fetching actual objects
+      DataQueryingIterator.fetchData(riakSession, r._2, dataBuffer)
+
+      logDebug(s"Next data buffer was fetched:\n" +
+        s"\tnextToken: $nextToken\n" +
+        s"\tbuffer: $dataBuffer")
+
+      _iterator = Some(dataBuffer.iterator)
     }
-
-    // fetching actual objects
-    val builder = new MultiFetch.Builder()
-      .withOption(FetchValue.Option.R, Quorum.oneQuorum())
-
-    r._2.foreach(builder.addLocation)
-
-    val mfr = riakSession.execute(builder.build())
-
-    for (f <- mfr.getResponses) {
-      val r = f.get()
-      val location = f.getQueryInfo
-
-      if (r.isNotFound) {
-        // TODO: add proper error handling
-        logError(s"Nothing was found for location '${f.getQueryInfo.getKeyAsString}'")
-      } else if (r.hasValues) {
-        if (r.getNumberOfValues > 1) {
-          throw new IllegalStateException(s"Fetch for '$location' returns more than one result: ${r.getNumberOfValues} actually")
-        }
-
-        val ro = r.getValue(classOf[RiakObject])
-        dataBuffer += ((location, ro))
-      } else {
-        logWarning(s"There is no value for location '$location'")
-      }
-    }
-
-    logDebug(s"Next data buffer was fetched:\n" +
-      s"\tnextToken: $nextToken\n" +
-      s"\tbuffer: $dataBuffer")
-
-    _iterator = dataBuffer.iterator
     true
   }
 
@@ -99,7 +79,7 @@ class DataQueryingIterator(query: Query[_], riakSession: RiakClient)
         b
       case _ =>
         prefetchIfNeeded()
-        val r= _iterator.hasNext
+        val r= _iterator.get.hasNext
         isThereANextValue = r
         r
     }
@@ -111,6 +91,38 @@ class DataQueryingIterator(query: Query[_], riakSession: RiakClient)
 
     bufferIndex += 1
     isThereANextValue = None
-    _iterator.next()
+    _iterator.get.next()
+  }
+}
+
+object DataQueryingIterator extends  Logging {
+
+  private def fetchData(riakSession: RiakClient, locations: Iterable[Location], buffer: ArrayBuffer[(Location, RiakObject)]) ={
+    val builder = new MultiFetch.Builder()
+      .withOption(FetchValue.Option.R, Quorum.oneQuorum())
+
+    locations.foreach(builder.addLocation)
+
+    val mfr = riakSession.execute(builder.build())
+
+    for {f <- mfr.getResponses} {
+      val r = f.get()
+      val location = f.getQueryInfo
+
+      if (r.isNotFound) {
+        // TODO: add proper error handling
+        logWarning(s"Nothing was found for location '${f.getQueryInfo.getKeyAsString}'")
+      } else if (r.hasValues) {
+        if (r.getNumberOfValues > 1) {
+          throw new IllegalStateException(s"Fetch for '$location' returns more than one result: ${r.getNumberOfValues} actually")
+        }
+
+        val ro = r.getValue(classOf[RiakObject])
+        buffer += ((location, ro))
+      } else {
+        logWarning(s"There is no value for location '$location'")
+      }
+    }
+
   }
 }

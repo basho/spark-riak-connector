@@ -3,7 +3,7 @@ package com.basho.spark.connector.query
 import com.basho.riak.client.api.RiakClient
 import com.basho.riak.client.core.query.Location
 import com.basho.spark.connector.rdd.{BucketDef, ReadConf}
-import com.basho.spark.connector.util.Logging
+import org.apache.spark.Logging
 
 import scala.collection.mutable.ArrayBuffer
 

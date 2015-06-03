@@ -1,9 +1,5 @@
 package com.basho.spark.connector.util
 
-/**
- * Created by olegrocklin on 1/27/15.
- */
-
 import java.util.{Map => JavaMap}
 
 import scala.collection.JavaConversions._
@@ -16,7 +12,7 @@ import scala.reflect.runtime.universe._
   */
 object JavaApiHelper {
 
-  def mirror = runtimeMirror(Thread.currentThread().getContextClassLoader)
+  def mirror: RuntimeMirror = runtimeMirror(Thread.currentThread().getContextClassLoader)
 
   /** Returns a `TypeTag` for the given class. */
   def getTypeTag[T](clazz: Class[T]): TypeTag[T] = TypeTag.synchronized {

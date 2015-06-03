@@ -23,6 +23,8 @@ case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadConf, ind
     case l: Long => l
   }
 
+  // This method is looks ugly, but to fix that we need to introduce changes in Riak Java Client
+    // scalastyle:off cyclomatic.complexity method.length
   override def nextLocationBulk(nextToken: Option[_], session: RiakClient): (Option[String], Iterable[Location]) = {
     val ns = new Namespace(bucket.bucketType, bucket.bucketName)
     val builder = from match {
@@ -34,6 +36,9 @@ case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadConf, ind
       case str: String => to match {
           case None => new BinIndexQuery.Builder(ns, index, str)
           case Some(v: String) => new BinIndexQuery.Builder(ns, index, str)
+
+          case _ =>
+            throw new IllegalArgumentException("Illegal 2i end range value")
         }
 
       case _ =>
@@ -74,10 +79,13 @@ case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadConf, ind
       locations = entries.map(_.getRiakObjectLocation)
     }
 
+    // scalastyle:off null
     if(response.getContinuation == null){
       None -> locations
     }else{
       Some(response.getContinuation.toStringUtf8) -> locations
     }
+    // scalastyle:on null
   }
+  // scalastyle:on cyclomatic.complexity method.length
 }
