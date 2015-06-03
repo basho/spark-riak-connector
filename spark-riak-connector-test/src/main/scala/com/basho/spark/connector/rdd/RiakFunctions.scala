@@ -1,6 +1,7 @@
 package com.basho.spark.connector.rdd
 
 import java.io.IOException
+import java.net.InetAddress
 import java.nio.charset.Charset
 import java.util.concurrent.Semaphore
 
@@ -18,6 +19,7 @@ import com.fasterxml.jackson.core.`type`.TypeReference
 import com.fasterxml.jackson.databind.{SerializationFeature, DeserializationFeature, ObjectMapper}
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.google.common.net.HostAndPort
+import org.apache.spark.SparkConf
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.JavaConversions._
@@ -30,7 +32,7 @@ case class RiakObjectData( value: Object, key: String, indexes: mutable.Map[Stri
 /**
  * INTENDED FOR TEST AND DEMO USAGE ONLY
  */
-trait RiakFunctions{
+trait RiakFunctions {
   protected def riakHosts: Set[HostAndPort]
   protected def numberOfParallelRequests:Int
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
@@ -356,10 +358,24 @@ trait RiakFunctions{
 }
 
 object RiakFunctions {
+  private def resolveHost(hostName: String): Option[HostAndPort] = {
+    Some(HostAndPort.fromString(hostName))
+  }
+
   private def minConnections(nb: RiakNode.Builder):Int ={
     val f = nb.getClass.getDeclaredField("minConnections")
     f.setAccessible(true)
     f.get(nb).asInstanceOf[Int]
+  }
+
+  def apply(conf: SparkConf): RiakFunctions = {
+    val hostsStr = conf.get("spark.riak.connection.host", InetAddress.getLocalHost.getHostAddress)
+    val hosts = for {
+      hostName <- hostsStr.split(",").toSet[String]
+      hostAddress <- resolveHost(hostName.trim)
+    } yield hostAddress
+
+    apply(hosts)
   }
 
   def apply(hosts:Set[HostAndPort], minConnectionsPerRiakNode:Int = 5) = {
