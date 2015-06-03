@@ -7,9 +7,9 @@ import com.basho.spark.connector.rdd.{ReadConf, BucketDef}
 /**
  * Generic Riak Query
  */
-trait Query[TokenT] extends Serializable {
+trait Query[T] extends Serializable {
   def bucket: BucketDef
   def readConf: ReadConf
 
-  def nextLocationBulk(nextToken: Option[_], session: RiakClient): (Option[TokenT], Iterable[Location])
+  def nextLocationBulk(nextToken: Option[_], session: RiakClient): (Option[T], Iterable[Location])
 }

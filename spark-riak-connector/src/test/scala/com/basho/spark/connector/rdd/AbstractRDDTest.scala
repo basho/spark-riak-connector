@@ -2,7 +2,8 @@ package com.basho.spark.connector.rdd
 
 import com.basho.riak.client.api.RiakClient
 import com.basho.riak.client.core.query.{Namespace, RiakObject, Location}
-import com.basho.spark.connector.util.{RiakObjectConversionUtil, Logging}
+import com.basho.spark.connector.util.RiakObjectConversionUtil
+import org.apache.spark.Logging
 
 import scala.collection.mutable.ListBuffer
 import scala.reflect.ClassTag

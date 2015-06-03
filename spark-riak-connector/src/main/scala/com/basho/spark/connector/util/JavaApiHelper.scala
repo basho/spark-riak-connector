@@ -1,22 +1,12 @@
 package com.basho.spark.connector.util
 
-/**
- * Created by olegrocklin on 1/27/15.
- */
-
-import java.util.{Map => JavaMap}
-
-import scala.collection.JavaConversions._
 import scala.reflect._
 import scala.reflect.api.{Mirror, TypeCreator, _}
 import scala.reflect.runtime.universe._
 
-/** A helper class to make it possible to access components written in Scala from Java code.
-  * INTERNAL API
-  */
 object JavaApiHelper {
 
-  def mirror = runtimeMirror(Thread.currentThread().getContextClassLoader)
+  def mirror: RuntimeMirror = runtimeMirror(Thread.currentThread().getContextClassLoader)
 
   /** Returns a `TypeTag` for the given class. */
   def getTypeTag[T](clazz: Class[T]): TypeTag[T] = TypeTag.synchronized {
@@ -47,13 +37,7 @@ object JavaApiHelper {
   /** Returns a runtime class of a given `ClassTag`. */
   def getRuntimeClass[T](classTag: ClassTag[T]): Class[T] = classTag.runtimeClass.asInstanceOf[Class[T]]
 
-  /** Converts a Java `Map` to a Scala immutable `Map`. */
-  def toScalaMap[K, V](map: JavaMap[K, V]): Map[K, V] = Map(map.toSeq: _*)
-
   /** Converts an array to a Scala `Seq`. */
   def toScalaSeq[T](array: Array[T]): Seq[T] = array
-
-  /** Converts a Java `Iterable` to Scala `Seq`. */
-  def toScalaSeq[T](iterable: java.lang.Iterable[T]): Seq[T] = iterable.toSeq
 
 }

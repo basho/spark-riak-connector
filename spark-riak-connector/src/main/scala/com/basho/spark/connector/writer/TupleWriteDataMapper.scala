@@ -7,12 +7,14 @@ class TupleWriteDataMapper[T <: Product] extends WriteDataMapper[T] {
     val itor = value.productIterator
 
     if(value.productArity == 1){
+      // scalastyle:off null
       (null, itor.next())
+      // scalastyle:on null
     } else {
       val key = itor.next().toString
 
       if (value.productArity == 2) {
-        //to prevent Tuple2._2 serialization as a List of values
+        // to prevent Tuple2._2 serialization as a List of values
         key -> itor.next()
       } else {
         key -> itor

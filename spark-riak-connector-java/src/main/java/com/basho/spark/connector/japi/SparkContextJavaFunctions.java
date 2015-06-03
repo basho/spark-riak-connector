@@ -17,7 +17,7 @@ import scala.runtime.AbstractFunction2;
 
 import java.io.Serializable;
 
-import static com.basho.spark.connector.util.JavaUtil.getClassTag;
+import static com.basho.spark.connector.util.JavaApiHelper.getClassTag;
 
 public class SparkContextJavaFunctions {
     protected static class ConversionFunction<T> extends AbstractFunction2<Location, RiakObject, T> implements Serializable {

@@ -1,11 +1,11 @@
 package com.basho.spark.connector.japi.rdd;
 
 import com.basho.spark.connector.rdd.RiakRDD;
-import com.basho.spark.connector.util.JavaUtil;
+import com.basho.spark.connector.util.JavaApiHelper;
 import org.apache.spark.api.java.JavaPairRDD;
 import scala.Tuple2;
 import scala.reflect.ClassTag;
-import static com.basho.spark.connector.util.JavaUtil.getClassTag;
+import static com.basho.spark.connector.util.JavaApiHelper.getClassTag;
 
 public class RiakJavaPairRDD<K, V> extends JavaPairRDD<K, V> {
     private ClassTag<K> kClassTag;
@@ -51,6 +51,6 @@ public class RiakJavaPairRDD<K, V> extends JavaPairRDD<K, V> {
     }
 
     public RiakJavaPairRDD<K, V> queryBucketKeys(String... keys){
-        return wrap(rdd().queryBucketKeys(JavaUtil.toScalaSeq(keys)));
+        return wrap(rdd().queryBucketKeys(JavaApiHelper.toScalaSeq(keys)));
     }
 }

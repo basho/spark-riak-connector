@@ -8,9 +8,7 @@ import com.google.common.net.HostAndPort
 
 import scala.collection.JavaConversions
 
-import org.apache.spark.SparkConf
-
-import com.basho.spark.connector.util.Logging
+import org.apache.spark.{Logging, SparkConf}
 
 import scala.collection.concurrent.TrieMap
 ;
@@ -23,14 +21,16 @@ import scala.collection.concurrent.TrieMap
 class RiakConnector(conf: RiakConnectorConf)
   extends Serializable with Logging {
 
-  import com.basho.spark.connector.rdd.RiakConnector._
+  // scalastyle:off import.grouping
+  import com.basho.spark.connector.rdd.RiakConnector.createSession
+  // scalastyle:on import.grouping
 
   private[this] var _config = conf
 
   /** Known cluster hosts. This is going to return all cluster hosts after at least one successful connection has been made */
-  def hosts = _config.hosts
+  def hosts: Set[HostAndPort] = _config.hosts
 
-  def openSession() = {
+  def openSession(): RiakClient = {
     createSession(_config)
   }
 
@@ -47,6 +47,8 @@ class RiakConnector(conf: RiakConnectorConf)
 }
 
 object RiakConnector extends Logging {
+  private val DEFAULT_MIN_NUMBER_OF_CONNECTIONS = 10
+  private val DEFAULT_MAX_NUMBER_OF_CONNECTIONS = 10
   private val sessionCache = new TrieMap[RiakConnectorConf, RiakClient]()
 
   private def createSession(conf: RiakConnectorConf): RiakClient = {
@@ -57,8 +59,8 @@ object RiakConnector extends Logging {
     try {
       logDebug(s"Attempting to create riak client at $addresses")
       val builder = new RiakNode.Builder()
-        .withMinConnections(10)
-        .withMaxConnections(50)
+        .withMinConnections(DEFAULT_MIN_NUMBER_OF_CONNECTIONS)
+        .withMaxConnections(DEFAULT_MAX_NUMBER_OF_CONNECTIONS)
 
 
 
@@ -81,13 +83,13 @@ object RiakConnector extends Logging {
     }
   }
 
-  private def destroySession(session: RiakClient) {
+  private def destroySession(session: RiakClient): Unit = {
     session.shutdown()
     logInfo(s"RiakClient has been destroyed")
   }
 
   Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {
-    def run() {
+    def run(): Unit = {
       sessionCache.foreach( _._2.shutdown() )
     }
   }))
@@ -98,7 +100,7 @@ object RiakConnector extends Logging {
   }
 
   /** Returns a RiakConnector created from explicitly given connection configuration. */
-  def apply(hosts: Set[HostAndPort]) = {
+  def apply(hosts: Set[HostAndPort]): RiakConnector = {
 
     val config = RiakConnectorConf(hosts)
     new RiakConnector(config)
