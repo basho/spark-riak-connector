@@ -21,6 +21,7 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
       ",{ key: 'key-4', indexes: {creationNo: 4, category: 'stranger'}, value: {user_id: 'u2', timestamp: '2014-11-24T13:14:04Z'}}" +
       ",{ key: 'key-5', indexes: {creationNo: 5, category: 'stranger'}, value: {user_id: 'u3', timestamp: '2014-11-24T13:16:04.823Z'}}" +
       ",{ key: 'key-6', indexes: {creationNo: 6, category: 'stranger'}, value: {user_id: 'u3', timestamp: '2014-11-24T13:21:04.825Z'}}" +
+      ",{ key: 'key-7', indexes: {creationNo: 7, category: 'stranger'}, value: {user_id: 'u3', timestamp: '2014-11-24T12:01:04.825Z'}}" +
     "]"
 
   protected override def initSparkConf() =
@@ -108,6 +109,7 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
         ", {timestamp: '2014-11-24T13:14:04Z', user_id: 'u2'}" +
         ", {timestamp: '2014-11-24T13:16:04.823Z', user_id: 'u3'}" +
         ", {timestamp: '2014-11-24T13:21:04.825Z', user_id: 'u3'}" +
+        ", {timestamp: '2014-11-24T12:01:04.825Z', user_id: 'u3'}" +
       "]",
       data
     )
@@ -126,6 +128,84 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
         "{timestamp: '2014-11-24T13:14:04.823Z', user_id: 'u1'}" +
         ",{timestamp: '2014-11-24T13:18:04', user_id: 'u1'}" +
         ",{timestamp: '2014-11-24T13:16:04.823Z', user_id: 'u3'}" +
+        "]",
+      data
+    )
+  }
+
+  /*
+   * map RDD[K] to RDD[(partitionIdx,K)]
+   */
+  val funcReMapWithPartitionIdx = new Function2[Int,Iterator[UserTS], Iterator[(Int,UserTS)]] with Serializable{
+    override def apply(partitionIdx: Int, iter: Iterator[UserTS]): Iterator[(Int, UserTS)] = {
+      iter.toList.map(x => partitionIdx -> x).iterator
+    }
+  }
+
+  @Test
+  def partitionByInteger2iKeyRanges(): Unit = {
+
+    val data = sc.riakBucket[UserTS](DEFAULT_NAMESPACE)
+      .partitionBy2iRanges(CREATION_INDEX, 1->3, 4->6, 7->12)
+      .mapPartitionsWithIndex(funcReMapWithPartitionIdx, preservesPartitioning=true)
+      .groupByKey()
+      .collect()
+
+    assertEqualsUsingJSONIgnoreOrder(
+      "[" +
+
+        // The 1st partition should contains first 3 item
+        "[0, [" +
+        "     {user_id: 'u1', timestamp: '2014-11-24T13:14:04.823Z'}" +
+        "     ,{user_id: 'u1', timestamp: '2014-11-24T13:15:04.824Z'}" +
+        "     ,{user_id: 'u1', timestamp: '2014-11-24T13:18:04'}" +
+        "]]" +
+
+        // The 2nd partition should contsins items; 4,5,6
+        ",[1, [" +
+        "     {user_id: 'u2', timestamp: '2014-11-24T13:14:04Z'}" +
+        "     ,{user_id: 'u3', timestamp: '2014-11-24T13:16:04.823Z'}" +
+        "     ,{user_id: 'u3', timestamp: '2014-11-24T13:21:04.825Z'}" +
+        "]]" +
+
+        // The 3rd partition should contains the only 7th item
+        ",[2, [" +
+        "     {user_id: 'u3', timestamp: '2014-11-24T12:01:04.825Z'}" +
+        "]]" +
+      "]",
+      data
+    )
+  }
+
+  @Test
+  def partitionByString2iKeys(): Unit = {
+    val data = sc.riakBucket[UserTS](DEFAULT_NAMESPACE)
+      .partitionBy2iKeys("category", "neighbor", "visitor", "stranger")
+      .mapPartitionsWithIndex(funcReMapWithPartitionIdx, preservesPartitioning=true)
+      .groupByKey()
+      .collect()
+
+    assertEqualsUsingJSONIgnoreOrder(
+      "[" +
+
+        // 1st partition should contains 2 neighbors
+        "[0, [" +
+        " {user_id: 'u1', timestamp: '2014-11-24T13:14:04.823Z'}" +
+        " ,{user_id: 'u1', timestamp: '2014-11-24T13:18:04'}" +
+        "]]" +
+
+        // 2nd partition should contains 1 visitor
+        ",[1, [" +
+        " {user_id: 'u1', timestamp: '2014-11-24T13:15:04.824Z'}" +
+        "]]" +
+
+        // 3rd partition should contains 4 strangers
+        ",[2, [" +
+        " {user_id: 'u2', timestamp: '2014-11-24T13:14:04Z'}" +
+        " ,{user_id: 'u3', timestamp: '2014-11-24T13:16:04.823Z'}" +
+        " ,{user_id: 'u3', timestamp: '2014-11-24T13:21:04.825Z'}" +
+        " ,{user_id: 'u3', timestamp: '2014-11-24T12:01:04.825Z'}" +
+        "]]" +
         "]",
       data
     )
