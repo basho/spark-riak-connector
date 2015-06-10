@@ -7,26 +7,26 @@ import org.apache.spark.Logging
 
 import scala.collection.mutable.ArrayBuffer
 
-case class Query2iKeys[K](bucket: BucketDef, readConf:ReadConf, index: String, keys: Iterable[K]) extends QuerySubsetOfKeys[K] with Logging{
+private case class Query2iKeys[K](bucket: BucketDef, readConf:ReadConf, index: String, keys: Iterable[K]) extends QuerySubsetOfKeys[K] with Logging{
   private var query2iKey: Option[Query2iKeySingleOrRange[K]] = None
   private var tokenNext: Option[String] = None
 
   // By default there should be an empty Serializable Iterator
   private var _iterator: Iterator[Location] = ArrayBuffer.empty[Location].iterator
 
-  private def wholeBulkWasCollected(bulk: Iterable[Location]) = bulk.size >= readConf.fetchSize
+  private def bulkIsCollected(bulk: Iterable[Location]) = bulk.size >= readConf.fetchSize
 
   override def locationsByKeys(keys: Iterator[K], session: RiakClient): Iterable[Location] = {
     val dataBuffer = new ArrayBuffer[Location](readConf.fetchSize)
 
-    while ((keys.hasNext || _iterator.hasNext) && !wholeBulkWasCollected(dataBuffer)){
+    while ((keys.hasNext || _iterator.hasNext) && !bulkIsCollected(dataBuffer)){
       // Previously gathered results should be returned at first, if any
       _iterator exists ( location => {
         dataBuffer += location
-        wholeBulkWasCollected(dataBuffer)
+        bulkIsCollected(dataBuffer)
       })
 
-      if(!wholeBulkWasCollected(dataBuffer)) tokenNext match {
+      if(!bulkIsCollected(dataBuffer)) tokenNext match {
         case Some(next) =>
           // Fetch the next results page from the previously executed 2i query, if any
           assert(query2iKey.isDefined)

@@ -4,7 +4,7 @@ import com.basho.riak.client.api.RiakClient
 import com.basho.riak.client.core.query.Location
 import org.apache.spark.Logging
 
-trait QuerySubsetOfKeys[K] extends Query[Int] with Logging{
+private trait QuerySubsetOfKeys[K] extends Query[Int] with Logging{
   def keys: Iterable[K]
   private var _iterator: Option[Iterator[K]] = None
   private var _nextPos: Int = -1
