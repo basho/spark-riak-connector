@@ -9,7 +9,7 @@ import com.basho.spark.connector.rdd.{ReadConf, BucketDef}
 
 import scala.collection.JavaConversions._
 
-case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadConf, index: String, from: K, to: Option[K] = None )
+private case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadConf, index: String, from: K, to: Option[K] = None )
     extends Query[String] {
 
   private def isSuitableForIntIndex(from:K): Boolean = from match {

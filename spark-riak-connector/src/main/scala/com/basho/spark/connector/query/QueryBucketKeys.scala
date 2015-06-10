@@ -7,7 +7,7 @@ import org.apache.spark.Logging
 
 import scala.collection.mutable.ArrayBuffer
 
-case class QueryBucketKeys(bucket: BucketDef, readConf:ReadConf, keys: Iterable[String]) extends QuerySubsetOfKeys[String] with Logging{
+private case class QueryBucketKeys(bucket: BucketDef, readConf:ReadConf, keys: Iterable[String]) extends QuerySubsetOfKeys[String] with Logging{
   override def locationsByKeys(keys: Iterator[String], session: RiakClient): Iterable[Location] = {
     val dataBuffer = new ArrayBuffer[Location](readConf.fetchSize)
 
