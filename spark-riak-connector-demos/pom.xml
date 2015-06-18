@@ -13,6 +13,12 @@
 
     <dependencies>
         <dependency>
+            <groupId>com.github.wookietreiber</groupId>
+            <artifactId>scala-chart_2.10</artifactId>
+            <version>0.4.2</version>
+        </dependency>
+
+        <dependency>
             <groupId>com.basho</groupId>
             <artifactId>spark-riak-connector</artifactId>
             <version>0.0.1-SNAPSHOT</version>

@@ -1,0 +1,8 @@
+#!/bin/sh
+
+#
+# Copyright 2015 Basho Technologies Inc
+#
+# Shell script for starting the IPython Spark  with Riak Spark Connector
+
+IPYTHON_OPTS='notebook --pylab inline' ./rpyspark-shell --driver-memory 1000M
