@@ -13,7 +13,7 @@ object ReadConf {
 
   def fromSparkConf(conf: SparkConf): ReadConf = {
     ReadConf(
-      fetchSize = conf.getInt("spark.riak.input.page.row.size", DefaultFetchSize)
+      fetchSize = conf.getInt("spark.riak.input.fetch-size", DefaultFetchSize)
     )
   }
 }
