@@ -12,7 +12,7 @@ abstract class AbstractRiakSparkTest extends AbstractRiakTest {
     .setAppName(getClass.getSimpleName)
     .set("spark.riak.connection.host", DEFAULT_RIAK_HOST + ":" + DEFAULT_RIAK_PORT)
     .set("spark.riak.output.wquorum", "1")
-    .set("spark.riak.input.page.row.size", "2")
+    .set("spark.riak.input.fetch-size", "2")
 
   override def initialize(): Unit = {
     super.initialize()
