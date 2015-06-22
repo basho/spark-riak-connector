@@ -30,7 +30,7 @@ class DataQueryingIterator(query: Query[_], riakSession: RiakClient)
     if (this._iterator.isDefined) {
       if(this._iterator.get.hasNext){
         // Nothing to do, we still have at least one result
-        logTrace("prefetch is not required, at least one prefetched value is in the buffer")
+        logDebug(s"prefetch is not required, at least one pre-fetched value [actually ${dataBuffer.size-bufferIndex} from ${dataBuffer.size}] is in the buffer")
         return false
       }else if(nextToken.isEmpty){
         // Nothing to do, we already got all the data
@@ -105,7 +105,12 @@ object DataQueryingIterator extends  Logging {
 
     val mfr = riakSession.execute(builder.build())
 
+    logTrace(s"Fetching ${locations.size} values...")
+
     for {f <- mfr.getResponses} {
+
+      logTrace( s"Fetch value [${buffer.size}] for ${f.getQueryInfo}")
+
       val r = f.get()
       val location = f.getQueryInfo
 
@@ -123,6 +128,7 @@ object DataQueryingIterator extends  Logging {
         logWarning(s"There is no value for location '$location'")
       }
     }
+    logDebug(s"${buffer.size} were fetched")
 
   }
 }
