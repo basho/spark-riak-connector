@@ -1,4 +1,6 @@
-The main idea of the OFAC demo is to show how Riak and Spark can be used to analyze semi-structured data using Python. According to the kdnuggets.com Python is way more popular than Scala within Data Science community: http://www.kdnuggets.com/polls/2014/languages-analytics-data-mining-data-science.html It has mature charting modules like matplotlib, and fast, feature-rich scientific tools like numpy and pandas.
+## How to run demos
+
+The main idea of the demo is to show how Riak and Spark can be used to analyze semi-structured data using Python. According to the kdnuggets.com Python is way more popular than Scala within Data Science community: http://www.kdnuggets.com/polls/2014/languages-analytics-data-mining-data-science.html It has mature charting modules like matplotlib, and fast, feature-rich scientific tools like numpy and pandas.
 
 As part of its enforcement efforts, Office of Foreign Assets Control (OFAC) publishes a list of individuals and companies owned or controlled by, or acting for or on behalf of, targeted countries. It also lists individuals, groups, and entities, such as terrorists and narcotics traffickers designated under programs that are not country-specific. Collectively, such individuals and companies are called "Specially Designated Nationals” (SDNs). Their assets are blocked and U.S. persons are generally prohibited from dealing with them. 
 
@@ -16,7 +18,7 @@ In this demo we are going to generate descriptive and summary statistics over OF
 
 We'll support our answers by drawing appropriate charts. 
 
-## Prerequisites 
+### Prerequisites 
 
 1. Install riak
 

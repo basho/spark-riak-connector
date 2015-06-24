@@ -1,5 +1,8 @@
 package com.basho.spark.connector.demos.ofac
 
+import sys.process._
+import java.net.URL
+import java.io.File
 import java.awt.Color
 import com.basho.spark.connector.demos.Demo2iConfig
 import org.slf4j.{LoggerFactory, Logger}
@@ -21,6 +24,7 @@ import org.apache.spark.{SparkConf, SparkContext}
 
 object OFACDemo {
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
+  private var stopwords = Array("")
 
   private val OFAC_SOURCE_DATA = new Namespace("OFAC-data")
   private val OFAC_COUNTRY_BANS = new Namespace("OFAC-country-bans")
@@ -40,11 +44,12 @@ object OFACDemo {
       .setAppName("OFAC Demo")
       .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
       // Now it's 24 Mb of buffer by default instead of 0.064 Mb
-      .set("spark.kryoserializer.buffer.mb","24")
+      .set("spark.kryoserializer.buffer","24")
 
     // -- Apply defaults to sparkConf if the corresponding value doesn't set
     setSparkOpt(sparkConf, "spark.master", "local")
     setSparkOpt(sparkConf,"spark.executor.memory", "4g")
+    setSparkOpt(sparkConf, "spark.master", "local")
 
     setSparkOpt(sparkConf, "spark.riak.connection.host", "127.0.0.1:8087")
     //setSparkOpt(sparkConf, "spark.riak.connection.host", "127.0.0.1:10017")
@@ -192,7 +197,6 @@ object OFACDemo {
     hist.saveAsPNG("vessel-tonnage.png")
 
     // -- What kind of titles do individuals in the OFAC list use?
-    val stopwords = Source.fromFile(this.getClass.getResource("/ofac-data/stopwords.txt").getPath).getLines().toList
     val titles = rdd.filter(x => {
       !x.get("Title").get.toString.contains("-0-") && x.get("SDN_Type").get.toString.contains("individual")
     }).flatMap(_.get("Title").get.toString.toLowerCase.replaceAll("[,\"]", "").split(" ").map((_, 1)))
@@ -225,17 +229,22 @@ object OFACDemo {
   def createTestData(sc: SparkContext): Unit = {
     println(s"Test data creation for OFAC-Demo")
 
+    val txt = Source.fromURL("http://algs4.cs.princeton.edu/35applications/stopwords.txt").mkString
+    stopwords = txt.split("\n").map(_.trim)
+
     val sdnHeader = List("ent_num", "SDN_Name","SDN_Type","Program","Title","Call_Sign","Vess_type","Tonnage","GRT","Vess_flag","Vess_owner","Remarks")
     val addHeader = List("ent_num", "Add_num", "Address","City_State_ZIP","Country", "Add_remarks")
 
     // Read SDN.CSV file into RDD
-    val sdn = sc.textFile(this.getClass.getResource("/ofac-data/sdn.csv.bz2").getPath).map(x => {
+    new URL("http://www.treasury.gov/ofac/downloads/sdn.csv") #> new File("sdn.csv") !!
+    val sdn = sc.textFile("sdn.csv").map(x => {
       val row = x.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)").map(_.replace("\"","").trim)
       (row(0), sdnHeader.zip(row))
     }).filter(_._1 != "")
 
     // Read ADD.CSV file into RDD
-    val addr = sc.textFile(this.getClass.getResource("/ofac-data/add.csv.bz2").getPath).map(x => {
+    new URL("http://www.treasury.gov/ofac/downloads/add.csv") #> new File("add.csv") !!
+    val addr = sc.textFile("add.csv").map(x => {
       val row = x.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)").map(_.replace("\"","").trim)
       (row(0), addHeader.tail.zip(row.tail))
     }).filter(_._1 != "")
