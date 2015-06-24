@@ -23,7 +23,13 @@
         <include>com.basho.riak:riak-client</include>
         <include>com.basho.riak.protobuf:riak-pb</include>
         <include>com.fasterxml.jackson.module:jackson-module-scala_${scala.major.version}</include>
+        <include>com.fasterxml.jackson.datatype:jackson-datatype-joda</include>
         <include>org.scala-lang.modules:scala-java8-compat_${scala.major.version}</include>
+        <include>org.scala-lang:scala-swing</include>
+        <include>org.jfree:jfreechart</include>
+        <include>org.jfree:jcommon</include>
+        <include>com.github.wookietreiber:scala-chart_${scala.major.version}</include>
+        <include>joda-time:joda-time</include>
       </includes>
     </dependencySet>
 

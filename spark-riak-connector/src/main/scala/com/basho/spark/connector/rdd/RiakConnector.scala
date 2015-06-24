@@ -47,8 +47,8 @@ class RiakConnector(conf: RiakConnectorConf)
 }
 
 object RiakConnector extends Logging {
-  private val DEFAULT_MIN_NUMBER_OF_CONNECTIONS = 10
-  private val DEFAULT_MAX_NUMBER_OF_CONNECTIONS = 10
+  val DEFAULT_MIN_NUMBER_OF_CONNECTIONS = 20
+  private val DEFAULT_MAX_NUMBER_OF_CONNECTIONS = 100
   private val sessionCache = new TrieMap[RiakConnectorConf, RiakClient]()
 
   private def createSession(conf: RiakConnectorConf): RiakClient = {

@@ -1,0 +1,39 @@
+## How to run demos
+
+The main idea of the demo is to show how Riak and Spark can be used to analyze semi-structured data using Scala. As part of its enforcement efforts, Office of Foreign Assets Control (OFAC) publishes a list of individuals and companies owned or controlled by, or acting for or on behalf of, targeted countries. It also lists individuals, groups, and entities, such as terrorists and narcotics traffickers designated under programs that are not country-specific. Collectively, such individuals and companies are called "Specially Designated Nationals” (SDNs). Their assets are blocked and U.S. persons are generally prohibited from dealing with them. 
+
+For this demo we need to download a public copy of the SDN list from OFAC: http://www.treasury.gov/ofac/downloads/sdn.csv
+In order to connect SDNs to their specific locations we also need to get this address list: http://www.treasury.gov/ofac/downloads/add.csv
+
+In this demo we are going to generate descriptive and summary statistics over OFAC dataset. As a part of our analysis we are going to calculate the following:
+
+	•	How many unique SDNs do we have in total?
+	•	Which distinct SDN Types does this dataset contain?
+	•	How many banned individuals per country are in OFAC list? (supporting chart: bar plot)
+	•	How many marine vessels are on the list by country and by vessel type? (supporting chart: heat map)
+	•	What is the probability distribution of the vessel tonnage for vessels on the list? (histogram) 
+	•	What are the most common titles of the individuals on the list? (word cloud chart)
+
+We'll support our answers by drawing appropriate charts. 
+
+### Running demo on Scala
+
+1. This demo assumes that you have a Riak cluster installed and running on localhost:8087. If not, follow this guide to install Riak: http://docs.basho.com/riak/latest/ops/building/installing/
+
+2. If you don't have Maven yet, go to https://maven.apache.org/download.cgi and follow installation instructions for your OS.
+
+3. Install dependencies (we skip integration tests to speed things up):
+```
+mvn install -DskipTests=true
+```
+
+4. Extract REPL
+```
+unzip spark-riak-connector-demos/target/spark-riak-connector-demos-0.0.1-SNAPSHOT-REPL.zip
+```
+
+5. Run the Demo
+```
+cd spark-riak-connector-demos-0.0.1-SNAPSHOT
+./rspark-submit
+```

@@ -1,6 +1,7 @@
 package com.basho.spark.connector.query
 
 import com.basho.riak.client.api.cap.Quorum
+import com.basho.spark.connector.rdd.RiakConnector
 import org.apache.spark.Logging
 
 import scala.collection.JavaConversions._
@@ -98,37 +99,65 @@ class DataQueryingIterator(query: Query[_], riakSession: RiakClient)
 object DataQueryingIterator extends  Logging {
 
   private def fetchData(riakSession: RiakClient, locations: Iterable[Location], buffer: ArrayBuffer[(Location, RiakObject)]) ={
-    val builder = new MultiFetch.Builder()
-      .withOption(FetchValue.Option.R, Quorum.oneQuorum())
-
-    locations.foreach(builder.addLocation)
-
-    val mfr = riakSession.execute(builder.build())
 
     logTrace(s"Fetching ${locations.size} values...")
 
-    for {f <- mfr.getResponses} {
+    val iterator = locations.grouped(RiakConnector.DEFAULT_MIN_NUMBER_OF_CONNECTIONS)
+    while(iterator.hasNext){
+      val builder = new MultiFetch.Builder()
+          .withOption(FetchValue.Option.R, Quorum.oneQuorum())
 
-      logTrace( s"Fetch value [${buffer.size}] for ${f.getQueryInfo}")
+      iterator.next().foreach(builder.addLocation)
 
-      val r = f.get()
-      val location = f.getQueryInfo
+      val mfr = riakSession.execute(builder.build())
 
-      if (r.isNotFound) {
-        // TODO: add proper error handling
-        logWarning(s"Nothing was found for location '${f.getQueryInfo.getKeyAsString}'")
-      } else if (r.hasValues) {
-        if (r.getNumberOfValues > 1) {
-          throw new IllegalStateException(s"Fetch for '$location' returns more than one result: ${r.getNumberOfValues} actually")
+
+      for {f <- mfr.getResponses} {
+
+        logTrace( s"Fetch value [${buffer.size+1}] for ${f.getQueryInfo}")
+
+        val r = f.get()
+        val location = f.getQueryInfo
+
+        if (r.isNotFound) {
+          // TODO: add proper error handling
+          logWarning(s"Nothing was found for location '${f.getQueryInfo.getKeyAsString}'")
+        } else if (r.hasValues) {
+          if (r.getNumberOfValues > 1) {
+            throw new IllegalStateException(s"Fetch for '$location' returns more than one result: ${r.getNumberOfValues} actually")
+          }
+
+          val ro = r.getValue(classOf[RiakObject])
+          buffer += ((location, ro))
+        } else {
+          logWarning(s"There is no value for location '$location'")
         }
-
-        val ro = r.getValue(classOf[RiakObject])
-        buffer += ((location, ro))
-      } else {
-        logWarning(s"There is no value for location '$location'")
       }
     }
+//    val mfr = riakSession.execute(builder.build())
+//
+//
+//    for {f <- mfr.getResponses} {
+//
+//      logTrace( s"Fetch value [${buffer.size}] for ${f.getQueryInfo}")
+//
+//      val r = f.get()
+//      val location = f.getQueryInfo
+//
+//      if (r.isNotFound) {
+//        // TODO: add proper error handling
+//        logWarning(s"Nothing was found for location '${f.getQueryInfo.getKeyAsString}'")
+//      } else if (r.hasValues) {
+//        if (r.getNumberOfValues > 1) {
+//          throw new IllegalStateException(s"Fetch for '$location' returns more than one result: ${r.getNumberOfValues} actually")
+//        }
+//
+//        val ro = r.getValue(classOf[RiakObject])
+//        buffer += ((location, ro))
+//      } else {
+//        logWarning(s"There is no value for location '$location'")
+//      }
+//    }
     logDebug(s"${buffer.size} were fetched")
-
   }
 }
