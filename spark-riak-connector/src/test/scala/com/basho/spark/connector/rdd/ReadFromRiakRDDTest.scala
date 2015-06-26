@@ -2,6 +2,8 @@ package com.basho.spark.connector.rdd
 
 import java.util.UUID
 
+import com.basho.riak.client.core.query.RiakObject
+import com.basho.riak.client.core.util.BinaryValue
 import org.junit.Test
 import org.junit.Assert._
 
@@ -209,5 +211,34 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
         "]",
       data
     )
+  }
+
+  @Test
+  @Category(Array(classOf[RegressionTests]))
+  def readJSONValueWrittenWithCharsetInContentType(): Unit ={
+    val key = "value-with-charset"
+    val ro = new RiakObject()
+    ro.setContentType("application/json;charset=UTF-8")
+
+    ro.setValue(
+        BinaryValue.create(
+            asStrictJSON("{user_id: 'u2', timestamp: '2014-11-24T13:14:04Z'}")
+          )
+      )
+
+    withRiakDo(session=>{
+      createValueRaw(session, DEFAULT_NAMESPACE, ro, key)
+    })
+
+
+    val data = sc.riakBucket[UserTS](DEFAULT_NAMESPACE)
+        .queryBucketKeys(key)
+        .collect()
+
+    assertEqualsUsingJSONIgnoreOrder(
+      "[" +
+        "{user_id: 'u2', timestamp: '2014-11-24T13:14:04Z'}" +
+      "]",
+      data)
   }
 }

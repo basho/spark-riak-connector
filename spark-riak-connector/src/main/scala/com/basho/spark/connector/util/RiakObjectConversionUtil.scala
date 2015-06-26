@@ -31,7 +31,9 @@ object RiakObjectConversionUtil {
       // pass through conversion
       ro.asInstanceOf[T]
     } else {
-        ro.getContentType match {
+      val (contentType, charset) = parseContentTypeAndCharset(ro.getContentType)
+
+      contentType match {
           case "application/json" if !ct.runtimeClass.equals(classOf[java.lang.String]) =>
             // from https://gist.github.com/rinmalavi/6422520
             objectMapper().readValue[T](ro.getValue.unsafeGetValue(), ct.runtimeClass.asInstanceOf[Class[T]])
@@ -61,5 +63,17 @@ object RiakObjectConversionUtil {
           .setContentType("application/json")
           .setValue(BinaryValue.create(v))
     }
+  }
+
+  private def parseContentTypeAndCharset(contentType: String): (String,String) ={
+    val d = contentType.split(";").transform(x=> x.trim.toLowerCase)
+
+    var charset = "UTF-8"
+    for( i <- 1 to d.length-1){
+      if(d(i).startsWith("charset")){
+        charset = d(i).substring(d(i).indexOf("=")+1)
+      }
+    }
+    d(0)->charset
   }
 }

@@ -46,6 +46,11 @@ trait RiakFunctions {
     .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false)
     .registerModule(DefaultScalaModule)
 
+  def asStrictJSON(json: String): String = {
+    val data = tolerantMapper.readValue(json, classOf[Object])
+    tolerantMapper.writeValueAsString(data)
+  }
+
   def withRiakDo[T](code: RiakClient => T): T = {
     closeRiakSessionAfterUse(createRiakSession()) { session =>
       code(session)
@@ -89,6 +94,60 @@ trait RiakFunctions {
     session.executeAsync(store)
   }
 
+  def createValueRaw(session: RiakClient, ns: Namespace, ro: RiakObject, key: String = null, checkCreation: Boolean = true):String = {
+    val builder = new StoreValue.Builder(ro)
+      .withOption(StoreValue.Option.PW, Quorum.allQuorum())
+
+    // Use provided key, if any
+    key match {
+      case k: String =>
+        builder.withLocation(new Location(ns, k))
+      case _ =>
+        builder.withNamespace(ns)
+    }
+
+
+    val store = builder
+      .withOption(StoreValue.Option.W, new Quorum(1))
+      .build()
+
+    val r = session.execute(store)
+
+    var realKey = key
+    if(r.hasGeneratedKey) {
+      realKey = r.getGeneratedKey.toStringUtf8
+    }
+
+    if(checkCreation){
+      // To be 100% sure that everything was created properly
+      val l = new Location(ns, BinaryValue.create(realKey))
+      val conversion = (l: Location, ro: RiakObject) => ro
+      for( i <- 6 to 0 by -1)
+        try {
+          readByLocation[RiakObject](session, l, conversion)
+        } catch {
+          case e:IllegalStateException if e.getMessage.startsWith("Nothing was found") && i >1 =>{
+            logger.debug("Value for '{}' hasn't been created yet", l)
+            Thread.sleep(200)
+          }
+        }
+
+      // Since we proved that value is reachable by key, we expect that it also available by all 2i keys
+      ro.getIndexes.foreach( idx => {
+        assert(idx.values().size() == 1)
+        val name = idx.getName
+        val v = idx.values().iterator().next()
+
+        if(!isLocationReachableBy2iKey(session, l, name, v)) {
+          throw new IllegalStateException("Location '$l' is not reachable by 2i '$name'")
+        }else{
+          logger.debug(s"Value for '$l' is reachable by 2i '$name'")
+        }
+      })
+    }
+    realKey
+  }
+
   def createValue(session: RiakClient, ns: Namespace, objectData: RiakObjectData, checkCreation: Boolean = true):String = {
     val obj = new RiakObject()
 
@@ -109,16 +168,6 @@ trait RiakFunctions {
           .setValue(BinaryValue.create(v))
     }
 
-    val builder = new StoreValue.Builder(obj)
-      .withOption(StoreValue.Option.PW, Quorum.allQuorum())
-
-    // Use provided key, if any
-    objectData.key match {
-      case k: String =>
-        builder.withLocation(new Location(ns, k))
-      case _ =>
-        builder.withNamespace(ns)
-    }
 
     // Create 2i, if any
     objectData.indexes match {
@@ -145,47 +194,7 @@ trait RiakFunctions {
       // Indexes aren't provided, here is nothing to do
     }
 
-    val store = builder
-      .withOption(StoreValue.Option.W, new Quorum(1))
-      .build()
-
-    val r = session.execute(store)
-
-    var key = objectData.key
-    if(r.hasGeneratedKey) {
-      key = r.getGeneratedKey.toStringUtf8
-    }
-
-    if(checkCreation){
-      // To be 100% sure that everything was created properly
-      val l = new Location(ns, BinaryValue.create(key))
-      val conversion = (l: Location, ro: RiakObject) => ro
-      for( i <- 6 to 0 by -1)
-        try {
-          readByLocation[RiakObject](session, l, conversion)
-        } catch {
-          case e:IllegalStateException if e.getMessage.startsWith("Nothing was found") && i >1 =>{
-            logger.debug("Value for '{}' hasn't been created yet", l)
-            Thread.sleep(200)
-          }
-        }
-
-      // Since we proved that value is reachable by key, we expect that it also available by all 2i keys
-      objectData.indexes match {
-        case map: mutable.Map[String, _] =>
-          map foreach (idx => {
-            if(!isLocationReachableBy2iKey(session, l, idx._1, idx._2)) {
-              throw new IllegalStateException(s"Location '$l' is not reachable by 2i '${idx._1}'")
-            }else{
-              logger.debug(s"Value for '$l' is reachable by 2i '${idx._1}'")
-            }
-          })
-
-        case null =>
-        // Indexes aren't provided, here is nothing to do
-      }
-    }
-    key
+    createValueRaw(session, ns, obj, objectData.key, checkCreation)
   }
 
   private def isLocationReachableBy2iKey[T](session: RiakClient, location: Location, index: String, key: T): Boolean = {
