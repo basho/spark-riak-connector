@@ -16,7 +16,7 @@ import com.basho.riak.client.core._
 import com.basho.riak.client.core.query.{Location, RiakObject, Namespace}
 import com.fasterxml.jackson.core.JsonParser
 import com.fasterxml.jackson.core.`type`.TypeReference
-import com.fasterxml.jackson.databind.{SerializationFeature, DeserializationFeature, ObjectMapper}
+import com.fasterxml.jackson.databind.{ObjectWriter, SerializationFeature, DeserializationFeature, ObjectMapper}
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.google.common.net.HostAndPort
 import org.apache.spark.SparkConf
@@ -46,9 +46,21 @@ trait RiakFunctions {
     .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false)
     .registerModule(DefaultScalaModule)
 
-  def asStrictJSON(json: String): String = {
-    val data = tolerantMapper.readValue(json, classOf[Object])
-    tolerantMapper.writeValueAsString(data)
+  def asStrictJSON(data: Any, prettyPrint: Boolean = false): String = {
+    val writter: ObjectWriter = prettyPrint match {
+      case true =>
+        tolerantMapper.writerWithDefaultPrettyPrinter()
+      case _ =>
+        tolerantMapper.writer()
+    }
+
+    writter.writeValueAsString(
+      data match {
+        case s: String =>
+          val o = tolerantMapper.readValue(s, classOf[Object])
+        case _ => data
+      }
+    )
   }
 
   def withRiakDo[T](code: RiakClient => T): T = {

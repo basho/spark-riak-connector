@@ -9,7 +9,9 @@ CUR_DIR=`pwd`
 EXTRA_CP=$(echo $CUR_DIR/**/*.jar | tr ' ' ':'):
 EXTRA_JRS=$(echo $CUR_DIR/**/*.jar | tr ' ' ',')
 
+. ./config.sh
+
 pyspark --driver-class-path $EXTRA_CP \
 	--jars  $EXTRA_JRS\
-	--conf spark.riak.connection.host=127.0.0.1:8087 \
+	--conf spark.riak.connection.host=$RIAK_HOST:$RIAK_PORT \
 	$@

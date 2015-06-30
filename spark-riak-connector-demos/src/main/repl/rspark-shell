@@ -5,7 +5,9 @@
 #
 # Shell script for starting the Spark Shell REPL with Riak Spark Connector
 
+. ./config.sh
+
 spark-shell --jars $(echo ./**/*.jar | tr ' ' ',') \
-	--conf spark.riak.connection.host=127.0.0.1:8087 \
+	--conf spark.riak.connection.host=$RIAK_HOST:$RIAK_PORT \
 	-i ./rspark-shell-defaults.scala \
 	$@
