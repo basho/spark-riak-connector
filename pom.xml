@@ -12,6 +12,7 @@
         <spark.version>1.4.0</spark.version>
         <scala.version>2.10.5</scala.version>
         <scala.major.version>2.10</scala.major.version>
+        <fasterxml.jackson.version>2.4.4</fasterxml.jackson.version>
     </properties>
     
     <modules>
@@ -137,10 +138,21 @@
                 <artifactId>jackson-module-scala_${scala.major.version}</artifactId>
 
                 <!--
-                    Version should be the same as u sed in the spark:
+                    Version should be the same as used in the spark:
                     https://github.com/FasterXML/jackson-module-scala/issues/137
                 -->
-                <version>2.4.2</version>
+                <version>${fasterxml.jackson.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>com.google.guava</groupId>
+                        <artifactId>guava</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>com.google.guava</groupId>
+                <artifactId>guava</artifactId>
+                <version>14.0.1</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.spark</groupId>

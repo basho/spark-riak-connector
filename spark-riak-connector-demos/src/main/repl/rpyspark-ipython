@@ -5,4 +5,6 @@
 #
 # Shell script for starting the IPython Spark  with Riak Spark Connector
 
-IPYTHON_OPTS='notebook --pylab inline' ./rpyspark-shell --driver-memory 1000M
+. ./config.sh
+
+IPYTHON_OPTS='notebook' ./rpyspark-shell --driver-memory $DRIVER_MEM

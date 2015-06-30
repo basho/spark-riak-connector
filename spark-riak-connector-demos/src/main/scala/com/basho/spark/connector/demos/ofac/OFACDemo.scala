@@ -1,10 +1,10 @@
 package com.basho.spark.connector.demos.ofac
 
-import sys.process._
-import java.net.URL
-import java.io.File
 import java.awt.Color
+import com.basho.riak.client.core.query.indexes.LongIntIndex
 import com.basho.spark.connector.demos.Demo2iConfig
+import com.basho.spark.connector.util.RiakObjectConversionUtil
+import com.basho.spark.connector.writer.{WriteDataMapper, WriteDataMapperFactory}
 import org.slf4j.{LoggerFactory, Logger}
 
 import scala.io.Source
@@ -17,9 +17,9 @@ import org.jfree.chart.axis.AxisLocation
 import org.jfree.data.xy.{MatrixSeries, MatrixSeriesCollection}
 
 import com.basho.spark.connector._
-import com.basho.riak.client.core.query.Namespace
-import com.basho.spark.connector.rdd.RiakFunctions
-import com.basho.riak.client.api.annotations.RiakIndex
+import com.basho.riak.client.core.query.{RiakObject, Namespace}
+import com.basho.spark.connector.rdd.{BucketDef, RiakFunctions}
+import com.basho.riak.client.api.annotations.{RiakKey, RiakIndex}
 import org.apache.spark.{SparkConf, SparkContext}
 
 object OFACDemo {
@@ -48,11 +48,11 @@ object OFACDemo {
 
     // -- Apply defaults to sparkConf if the corresponding value doesn't set
     setSparkOpt(sparkConf, "spark.master", "local")
-    setSparkOpt(sparkConf,"spark.executor.memory", "4g")
+    setSparkOpt(sparkConf,"spark.executor.memory", "512M")
     setSparkOpt(sparkConf, "spark.master", "local")
 
-    setSparkOpt(sparkConf, "spark.riak.connection.host", "127.0.0.1:8087")
-    //setSparkOpt(sparkConf, "spark.riak.connection.host", "127.0.0.1:10017")
+    //setSparkOpt(sparkConf, "spark.riak.connection.host", "127.0.0.1:8087")
+    setSparkOpt(sparkConf, "spark.riak.connection.host", "127.0.0.1:10017")
 
     setSparkOpt(sparkConf, "spark.riak.demo.index", CFG_DEFAULT_INDEX)
     setSparkOpt(sparkConf, "spark.riak.demo.bucket", CFG_DEFAULT_BUCKET)
@@ -64,7 +64,7 @@ object OFACDemo {
 
     // -- Cleanup Riak buckets before we start
     val rf = RiakFunctions(Demo2iConfig(sparkConf).riakConf.hosts, NUMBER_OF_PARALLEL_REQUESTS)
-    for(ns <-List(OFAC_SOURCE_DATA, OFAC_VESSTYPE_BANS, OFAC_COUNTRY_BANS, OFAC_TONNAGE_HIST, OFAC_TITLES)) {
+    for(ns <-List(OFAC_VESSTYPE_BANS, OFAC_COUNTRY_BANS, OFAC_TONNAGE_HIST, OFAC_TITLES)) {
       rf.resetAndEmptyBucket(ns)
     }
 
@@ -227,6 +227,9 @@ object OFACDemo {
   }
 
   def createTestData(sc: SparkContext): Unit = {
+    val rf = RiakFunctions(Demo2iConfig(sc.getConf).riakConf.hosts, NUMBER_OF_PARALLEL_REQUESTS)
+    rf.resetAndEmptyBucket(OFAC_SOURCE_DATA)
+
     println(s"Test data creation for OFAC-Demo")
 
     val txt = Source.fromURL("http://algs4.cs.princeton.edu/35applications/stopwords.txt").mkString
@@ -236,25 +239,53 @@ object OFACDemo {
     val addHeader = List("ent_num", "Add_num", "Address","City_State_ZIP","Country", "Add_remarks")
 
     // Read SDN.CSV file into RDD
-    new URL("http://www.treasury.gov/ofac/downloads/sdn.csv") #> new File("sdn.csv") !!
-    val sdn = sc.textFile("sdn.csv").map(x => {
+    val sdn_file = Source.fromURL("http://www.treasury.gov/ofac/downloads/sdn.csv").mkString.split("\n").map(_.trim)
+    val sdn = sc.parallelize(sdn_file).map(x => {
       val row = x.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)").map(_.replace("\"","").trim)
       (row(0), sdnHeader.zip(row))
     }).filter(_._1 != "")
 
     // Read ADD.CSV file into RDD
-    new URL("http://www.treasury.gov/ofac/downloads/add.csv") #> new File("add.csv") !!
-    val addr = sc.textFile("add.csv").map(x => {
+    val addr_file = Source.fromURL("http://www.treasury.gov/ofac/downloads/add.csv").mkString.split("\n").map(_.trim)
+    val addr = sc.parallelize(addr_file).map(x => {
       val row = x.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)").map(_.replace("\"","").trim)
       (row(0), addHeader.tail.zip(row.tail))
     }).filter(_._1 != "")
 
     // Create RDD content object with Riak secondary index suitable for this demo
     val rdd = sdn.leftOuterJoin(addr).map(x => (x._1, List(x._2._1, x._2._2.get).flatten.toMap)).map(x => {
-      new DemoRiakRecord(index = x._1.toLong, x._2)
-    })
+      new DemoRiakRecord(key=x._1.trim, index = x._1.toLong, x._2)
+    }).cache()
 
-    // Save test data into riak bucket
+    if(logger.isDebugEnabled()) {
+
+      val qntEmptyData = rdd.filter(x => x.data.isEmpty).count()
+      val qntNULLKeys = rdd.filter(x => List(x.data.keys).isEmpty).count()
+      val firstEl = rdd.first()
+
+      logger.debug("Source data statistics:\n" +
+          s"Total number of records: ${rdd.count}\n" +
+            s"\tnumber of elements with empty data: $qntEmptyData\n" +
+            s"\tnumber of elements with zero keys in Map: $qntNULLKeys\n" +
+            "The first value is:\n" +
+            rf.asStrictJSON(firstEl, true)
+        )
+    }
+
+    implicit val vwf = new WriteDataMapperFactory[DemoRiakRecord] {
+      override def dataMapper(bucket: BucketDef): WriteDataMapper[DemoRiakRecord] = {
+        new WriteDataMapper[DemoRiakRecord] {
+          override def mapValue(value: DemoRiakRecord): (String, RiakObject) = {
+            val ro = RiakObjectConversionUtil.to(value)
+            ro.getIndexes.getIndex[LongIntIndex, LongIntIndex.Name](LongIntIndex.named("entNum"))
+              .add(value.index)
+            (value.key, ro)
+          }
+        }
+      }
+    }
+
+    // Store test data into riak bucket
     rdd.saveToRiak(CFG_DEFAULT_BUCKET)
   }
 
@@ -263,6 +294,14 @@ object OFACDemo {
     sparkConf.set(option, optval)
   }
 
-  case class DemoRiakRecord(@(RiakIndex@field)(name = "entNum") index: Long, data: Map[String, String])
+  case class DemoRiakRecord(
+    @(RiakKey@field)
+    key: String,
+
+    @(RiakIndex@field)(name = "entNum")
+    index: Long,
+
+    data: Map[String, String]
+  )
 }
 
