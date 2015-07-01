@@ -57,7 +57,7 @@ trait RiakFunctions {
     writter.writeValueAsString(
       data match {
         case s: String =>
-          val o = tolerantMapper.readValue(s, classOf[Object])
+          tolerantMapper.readValue(s, classOf[Object])
         case _ => data
       }
     )
@@ -69,21 +69,84 @@ trait RiakFunctions {
     }
   }
 
+  protected def parseRiakObjectData(json: String): List[RiakObjectData] = {
+    tolerantMapper.readValue(json, new TypeReference[List[RiakObjectData]]{})
+  }
+
+
+  protected def createRiakObjectFrom(data: AnyRef): (String, RiakObject) = {
+
+    val rod = data match {
+      case json:String =>
+        tolerantMapper.readValue(json, new TypeReference[RiakObjectData]{})
+
+      case r: RiakObjectData =>
+        r
+    }
+
+    val ro = new RiakObject()
+
+    var v: String = null
+
+    // Set value
+    rod.value match {
+      case map: Map[_,_] =>
+        v = tolerantMapper
+          .writerWithDefaultPrettyPrinter()
+          .writeValueAsString(rod.value)
+
+        ro.setContentType("application/json")
+          .setValue(BinaryValue.create(v))
+      case _ =>
+        v = rod.value.toString
+        ro.setContentType("text/plain")
+          .setValue(BinaryValue.create(v))
+    }
+
+
+    // Create 2i, if any
+    rod.indexes match {
+      case map: mutable.Map[String, _] =>
+        val riakIndexes = ro.getIndexes
+
+        map foreach( idx => {
+          idx._2 match {
+            case i: java.lang.Integer =>
+              riakIndexes.getIndex[LongIntIndex, LongIntIndex.Name](LongIntIndex.named(idx._1))
+                .add(i.toLong)
+
+            case l: java.lang.Long =>
+              riakIndexes.getIndex[LongIntIndex, LongIntIndex.Name](LongIntIndex.named(idx._1))
+                .add(l)
+
+            case str: String =>
+              // We need to use this signature (with Charset) because of inconsistency in signatures of StringBinIndex.named()
+              riakIndexes.getIndex[StringBinIndex, StringBinIndex.Name](StringBinIndex.named(idx._1, Charset.defaultCharset()))
+                .add(str)
+          }
+        })
+      case null =>
+      // Indexes aren't provided, here is nothing to do
+    }
+
+    rod.key -> ro
+  }
+
   // Purge data: data might be not only created, but it may be also changed during the previous test case execution
   def createValues(session: RiakClient, ns: Namespace,data: String, purgeBucketBefore: Boolean = false): Unit = {
 
-    val robjects: List[RiakObjectData] = tolerantMapper.readValue(data, new TypeReference[List[RiakObjectData]]{})
+    val rodOjects: List[RiakObjectData] = parseRiakObjectData(data)
 
     withRiakDo( session => {
       if(purgeBucketBefore){
         foreachKeyInBucket(session, ns, this.deleteByLocation)
       }
 
-      for(i <- 0 until robjects.length) {
+      for(i <- 0 until rodOjects.length) {
         logger.trace(s"Creating value [$i]...")
-        val d = robjects.get(i)
-        val key = createValue(session, ns, d)
-        logger.info(s"Value [$i] was created: key: '$key', ${d.value}")
+        val (requestedKey, ro) = createRiakObjectFrom(rodOjects.get(i))
+        val key = createValueRaw(session, ns, ro, requestedKey, true)
+        logger.info(s"Value [$i] was created: key: '$key', ${rodOjects.get(i).value}")
       }
     })
   }
@@ -158,55 +221,6 @@ trait RiakFunctions {
       })
     }
     realKey
-  }
-
-  def createValue(session: RiakClient, ns: Namespace, objectData: RiakObjectData, checkCreation: Boolean = true):String = {
-    val obj = new RiakObject()
-
-    var v: String = null
-
-    // Set value
-    objectData.value match {
-      case map: Map[_,_] =>
-        v = tolerantMapper
-          .writerWithDefaultPrettyPrinter()
-          .writeValueAsString(objectData.value)
-
-        obj.setContentType("application/json")
-          .setValue(BinaryValue.create(v))
-      case _ =>
-        v = objectData.value.toString
-        obj.setContentType("text/plain")
-          .setValue(BinaryValue.create(v))
-    }
-
-
-    // Create 2i, if any
-    objectData.indexes match {
-      case map: mutable.Map[String, _] =>
-        val riakIndexes = obj.getIndexes
-
-        map foreach( idx => {
-          idx._2 match {
-            case i: java.lang.Integer =>
-              riakIndexes.getIndex[LongIntIndex, LongIntIndex.Name](LongIntIndex.named(idx._1))
-                .add(i.toLong)
-
-            case l: java.lang.Long =>
-              riakIndexes.getIndex[LongIntIndex, LongIntIndex.Name](LongIntIndex.named(idx._1))
-                .add(l)
-
-            case str: String =>
-              // We need to use this signature (with Charset) because of inconsistency in signatures of StringBinIndex.named()
-              riakIndexes.getIndex[StringBinIndex, StringBinIndex.Name](StringBinIndex.named(idx._1, Charset.defaultCharset()))
-                .add(str)
-          }
-        })
-      case null =>
-      // Indexes aren't provided, here is nothing to do
-    }
-
-    createValueRaw(session, ns, obj, objectData.key, checkCreation)
   }
 
   private def isLocationReachableBy2iKey[T](session: RiakClient, location: Location, index: String, key: T): Boolean = {
