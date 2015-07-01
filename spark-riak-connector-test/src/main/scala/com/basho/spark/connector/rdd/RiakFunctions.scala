@@ -405,12 +405,13 @@ object RiakFunctions {
 
   def apply(conf: SparkConf): RiakFunctions = {
     val hostsStr = conf.get("spark.riak.connection.host", InetAddress.getLocalHost.getHostAddress)
+    val minConnections = conf.get("spark.riak.connection.host.connections.min", "10").toInt
     val hosts = for {
       hostName <- hostsStr.split(",").toSet[String]
       hostAddress <- resolveHost(hostName.trim)
     } yield hostAddress
 
-    apply(hosts)
+    apply(hosts, minConnections)
   }
 
   def apply(hosts:Set[HostAndPort], minConnectionsPerRiakNode:Int = 5) = {

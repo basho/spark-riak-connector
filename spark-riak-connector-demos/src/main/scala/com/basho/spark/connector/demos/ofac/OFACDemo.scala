@@ -2,7 +2,6 @@ package com.basho.spark.connector.demos.ofac
 
 import java.awt.Color
 import com.basho.riak.client.core.query.indexes.LongIntIndex
-import com.basho.spark.connector.demos.Demo2iConfig
 import com.basho.spark.connector.util.RiakObjectConversionUtil
 import com.basho.spark.connector.writer.{WriteDataMapper, WriteDataMapperFactory}
 import org.slf4j.{LoggerFactory, Logger}
@@ -49,10 +48,10 @@ object OFACDemo {
     // -- Apply defaults to sparkConf if the corresponding value doesn't set
     setSparkOpt(sparkConf, "spark.master", "local")
     setSparkOpt(sparkConf,"spark.executor.memory", "512M")
-    setSparkOpt(sparkConf, "spark.master", "local")
 
     //setSparkOpt(sparkConf, "spark.riak.connection.host", "127.0.0.1:8087")
     setSparkOpt(sparkConf, "spark.riak.connection.host", "127.0.0.1:10017")
+    setSparkOpt(sparkConf, "spark.riak.connection.host.connections.min", NUMBER_OF_PARALLEL_REQUESTS.toString)
 
     setSparkOpt(sparkConf, "spark.riak.demo.index", CFG_DEFAULT_INDEX)
     setSparkOpt(sparkConf, "spark.riak.demo.bucket", CFG_DEFAULT_BUCKET)
@@ -63,7 +62,7 @@ object OFACDemo {
     val sc = new SparkContext(sparkConf)
 
     // -- Cleanup Riak buckets before we start
-    val rf = RiakFunctions(Demo2iConfig(sparkConf).riakConf.hosts, NUMBER_OF_PARALLEL_REQUESTS)
+    val rf = RiakFunctions(sparkConf)
     for(ns <-List(OFAC_VESSTYPE_BANS, OFAC_COUNTRY_BANS, OFAC_TONNAGE_HIST, OFAC_TITLES)) {
       rf.resetAndEmptyBucket(ns)
     }
@@ -227,7 +226,7 @@ object OFACDemo {
   }
 
   def createTestData(sc: SparkContext): Unit = {
-    val rf = RiakFunctions(Demo2iConfig(sc.getConf).riakConf.hosts, NUMBER_OF_PARALLEL_REQUESTS)
+    val rf = RiakFunctions(sc.getConf)
     rf.resetAndEmptyBucket(OFAC_SOURCE_DATA)
 
     println(s"Test data creation for OFAC-Demo")
