@@ -1,8 +1,10 @@
 package com.basho.spark.connector.query
 
 
+import java.math.BigInteger
+
 import com.basho.riak.client.api.RiakClient
-import com.basho.riak.client.api.commands.indexes.{BinIndexQuery, IntIndexQuery}
+import com.basho.riak.client.api.commands.indexes.{BigIntIndexQuery, BinIndexQuery, IntIndexQuery}
 import com.basho.riak.client.core.query.{Namespace, Location}
 import com.basho.riak.client.core.util.BinaryValue
 import com.basho.spark.connector.rdd.{ReadConf, BucketDef}
@@ -12,15 +14,26 @@ import scala.collection.JavaConversions._
 private case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadConf, index: String, from: K, to: Option[K] = None )
     extends Query[String] {
 
-  private def isSuitableForIntIndex(from:K): Boolean = from match {
+  private def isSuitableForIntIndex(v:K): Boolean = v match {
     case _: Long => true
     case _: Int => true
+    case _ => false
+  }
+
+  private def isSuitableForBigIntIndex(v: K): Boolean = v match {
+    case _: BigInt => true
+    case _: BigInteger => true
     case _ => false
   }
 
   private def convertToLong(value: K): Long = value match {
     case i: Int => i.toLong
     case l: Long => l
+  }
+
+  private def convertToBigInteger(value: K): BigInteger = value match {
+    case i: BigInt => i.underlying()
+    case bi:BigInteger => bi
   }
 
   // This method is looks ugly, but to fix that we need to introduce changes in Riak Java Client
@@ -32,6 +45,11 @@ private case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadC
           case None => new IntIndexQuery.Builder(ns, index, convertToLong(from))
           case Some(v) =>  new IntIndexQuery.Builder(ns, index, convertToLong(from), convertToLong(v))
         }
+
+      case _ if isSuitableForBigIntIndex(from) => to match {
+        case None => new BigIntIndexQuery.Builder(ns, index, convertToBigInteger(from))
+        case Some(v) =>  new BigIntIndexQuery.Builder(ns, index, convertToBigInteger(from), convertToBigInteger(v))
+      }
 
       case str: String => to match {
           case None => new BinIndexQuery.Builder(ns, index, str)
@@ -63,6 +81,7 @@ private case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadC
 
     val request = builder match {
       case iQueryBuilder: IntIndexQuery.Builder => iQueryBuilder.build()
+      case bigIQueryBuilder: BigIntIndexQuery.Builder => bigIQueryBuilder.build()
       case bQueryBuilder: BinIndexQuery.Builder => bQueryBuilder.build()
     }
 
@@ -74,6 +93,7 @@ private case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadC
     if( response.hasEntries){
       val entries = response match {
         case iQueryResponse: IntIndexQuery.Response => iQueryResponse.getEntries
+        case bigIQueryResponse: BigIntIndexQuery.Response => bigIQueryResponse.getEntries
         case bQueryResponse: BinIndexQuery.Response => bQueryResponse.getEntries
       }
       locations = entries.map(_.getRiakObjectLocation)

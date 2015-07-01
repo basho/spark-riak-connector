@@ -27,7 +27,7 @@ class RiakRDD[R] private[connector] (
   override def getPartitions: Array[Partition] = {
     val partitions = RiakKeysPartitioner.partitions(connector.hosts, keys.get)
 
-    logDebug(s"Created total ${partitions.length} Spark partitions for $bucketType.$bucketName.")
+    logDebug(s"Created total ${partitions.length} Spark partitions for bucket {$bucketType.$bucketName}.")
     if(isTraceEnabled()) {
       logTrace(s"partitions:\n\t${partitions.mkString("\n\t")}")
     }
@@ -40,7 +40,6 @@ class RiakRDD[R] private[connector] (
     split match {
       case rp: RiakKeysPartition[_] =>
         val session = connector.openSession()
-        val partition = split.asInstanceOf[RiakPartition]
         val startTime = System.currentTimeMillis()
 
         val query = Query(BucketDef(bucketType, bucketName), readConf, rp.keys)
@@ -52,7 +51,7 @@ class RiakRDD[R] private[connector] (
           val endTime = System.currentTimeMillis()
           val duration = (endTime - startTime) / 1000.0
           logDebug(s"Fetched ${countingIterator.count} rows from ${query.bucket}" +
-            f" for partition ${partition.index} in $duration%.3f s.")
+            f" for partition ${rp.index} in $duration%.3f s.")
           session.shutdown()
         }
         countingIterator

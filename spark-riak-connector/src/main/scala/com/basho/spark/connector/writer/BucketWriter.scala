@@ -58,7 +58,7 @@ class BucketWriter[T] private (
 
     val r = session.execute(builder.build())
     val theRealKey = if (r.hasGeneratedKey) r.getGeneratedKey else obj._1
-    logInfo(s"Value was created: '$ns' with key: '$theRealKey': ${obj._2}")
+    logDebug(s"Value was written: '$ns' with key: '$theRealKey': ${obj._2}")
   }
 }
 

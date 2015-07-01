@@ -16,7 +16,7 @@ import scala.collection.concurrent.TrieMap
 /** Provides and manages connections to Riak.
   * can be either given explicitly or automatically configured from `SparkConf`.
   * The connection options are:
-  *   - `spark.riak.connection.hosts`:               contact point to connect to the Cassandra cluster, defaults to spark master host
+  *   - `spark.riak.connection.hosts`:               contact point to connect to the Riak cluster, defaults to spark master host
   */
 class RiakConnector(conf: RiakConnectorConf)
   extends Serializable with Logging {
@@ -47,8 +47,8 @@ class RiakConnector(conf: RiakConnectorConf)
 }
 
 object RiakConnector extends Logging {
-  private val DEFAULT_MIN_NUMBER_OF_CONNECTIONS = 10
-  private val DEFAULT_MAX_NUMBER_OF_CONNECTIONS = 10
+  val DEFAULT_MIN_NUMBER_OF_CONNECTIONS = 20
+  private val DEFAULT_MAX_NUMBER_OF_CONNECTIONS = 100
   private val sessionCache = new TrieMap[RiakConnectorConf, RiakClient]()
 
   private def createSession(conf: RiakConnectorConf): RiakClient = {

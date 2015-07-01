@@ -1,5 +1,6 @@
 package com.basho.spark.connector.rdd
 
+import java.math.BigInteger
 import java.util.UUID
 
 import org.junit.Test
@@ -209,5 +210,44 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
         "]",
       data
     )
+  }
+
+  @Test
+  @Category(Array(classOf[RegressionTests]))
+  def readJSONValueWrittenWithCharsetInContentType(): Unit ={
+
+    val (key, ro) = createRiakObjectFrom("{key: 'value-with-charset', value: {user_id: 'u2', timestamp: '2014-11-24T13:14:04Z'}}")
+    ro.setContentType("application/json;charset=UTF-8")
+
+    withRiakDo(session=>{
+      createValueRaw(session, DEFAULT_NAMESPACE, ro, key)
+    })
+
+
+    val data = sc.riakBucket[UserTS](DEFAULT_NAMESPACE)
+        .queryBucketKeys(key)
+        .collect()
+
+    assertEqualsUsingJSONIgnoreOrder(
+      "[" +
+        "{user_id: 'u2', timestamp: '2014-11-24T13:14:04Z'}" +
+      "]",
+      data)
+  }
+
+  @Test
+  def readUDT_2iJavaBigIntegerKeysRange(): Unit = {
+    val rdd = sc.riakBucket[UserTS](DEFAULT_NAMESPACE)
+      .query2iRange(CREATION_INDEX, new BigInteger("1"), new BigInteger("3"))
+
+    val data = rdd.collect()
+
+    assertEqualsUsingJSONIgnoreOrder(
+      "[" +
+        "{timestamp: '2014-11-24T13:14:04.823Z', user_id: 'u1'}," +
+        "{timestamp: '2014-11-24T13:15:04.824Z', user_id: 'u1'}," +
+        "{timestamp: '2014-11-24T13:18:04', user_id: 'u1'}" +
+        "]"
+      , data)
   }
 }

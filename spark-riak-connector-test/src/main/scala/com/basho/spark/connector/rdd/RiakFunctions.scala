@@ -16,7 +16,7 @@ import com.basho.riak.client.core._
 import com.basho.riak.client.core.query.{Location, RiakObject, Namespace}
 import com.fasterxml.jackson.core.JsonParser
 import com.fasterxml.jackson.core.`type`.TypeReference
-import com.fasterxml.jackson.databind.{SerializationFeature, DeserializationFeature, ObjectMapper}
+import com.fasterxml.jackson.databind.{ObjectWriter, SerializationFeature, DeserializationFeature, ObjectMapper}
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.google.common.net.HostAndPort
 import org.apache.spark.SparkConf
@@ -46,27 +46,107 @@ trait RiakFunctions {
     .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false)
     .registerModule(DefaultScalaModule)
 
+  def asStrictJSON(data: Any, prettyPrint: Boolean = false): String = {
+    val writter: ObjectWriter = prettyPrint match {
+      case true =>
+        tolerantMapper.writerWithDefaultPrettyPrinter()
+      case _ =>
+        tolerantMapper.writer()
+    }
+
+    writter.writeValueAsString(
+      data match {
+        case s: String =>
+          tolerantMapper.readValue(s, classOf[Object])
+        case _ => data
+      }
+    )
+  }
+
   def withRiakDo[T](code: RiakClient => T): T = {
     closeRiakSessionAfterUse(createRiakSession()) { session =>
       code(session)
     }
   }
 
+  protected def parseRiakObjectData(json: String): List[RiakObjectData] = {
+    tolerantMapper.readValue(json, new TypeReference[List[RiakObjectData]]{})
+  }
+
+
+  protected def createRiakObjectFrom(data: AnyRef): (String, RiakObject) = {
+
+    val rod = data match {
+      case json:String =>
+        tolerantMapper.readValue(json, new TypeReference[RiakObjectData]{})
+
+      case r: RiakObjectData =>
+        r
+    }
+
+    val ro = new RiakObject()
+
+    var v: String = null
+
+    // Set value
+    rod.value match {
+      case map: Map[_,_] =>
+        v = tolerantMapper
+          .writerWithDefaultPrettyPrinter()
+          .writeValueAsString(rod.value)
+
+        ro.setContentType("application/json")
+          .setValue(BinaryValue.create(v))
+      case _ =>
+        v = rod.value.toString
+        ro.setContentType("text/plain")
+          .setValue(BinaryValue.create(v))
+    }
+
+
+    // Create 2i, if any
+    rod.indexes match {
+      case map: mutable.Map[String, _] =>
+        val riakIndexes = ro.getIndexes
+
+        map foreach( idx => {
+          idx._2 match {
+            case i: java.lang.Integer =>
+              riakIndexes.getIndex[LongIntIndex, LongIntIndex.Name](LongIntIndex.named(idx._1))
+                .add(i.toLong)
+
+            case l: java.lang.Long =>
+              riakIndexes.getIndex[LongIntIndex, LongIntIndex.Name](LongIntIndex.named(idx._1))
+                .add(l)
+
+            case str: String =>
+              // We need to use this signature (with Charset) because of inconsistency in signatures of StringBinIndex.named()
+              riakIndexes.getIndex[StringBinIndex, StringBinIndex.Name](StringBinIndex.named(idx._1, Charset.defaultCharset()))
+                .add(str)
+          }
+        })
+      case null =>
+      // Indexes aren't provided, here is nothing to do
+    }
+
+    rod.key -> ro
+  }
+
   // Purge data: data might be not only created, but it may be also changed during the previous test case execution
   def createValues(session: RiakClient, ns: Namespace,data: String, purgeBucketBefore: Boolean = false): Unit = {
 
-    val robjects: List[RiakObjectData] = tolerantMapper.readValue(data, new TypeReference[List[RiakObjectData]]{})
+    val rodOjects: List[RiakObjectData] = parseRiakObjectData(data)
 
     withRiakDo( session => {
       if(purgeBucketBefore){
         foreachKeyInBucket(session, ns, this.deleteByLocation)
       }
 
-      for(i <- 0 until robjects.length) {
+      for(i <- 0 until rodOjects.length) {
         logger.trace(s"Creating value [$i]...")
-        val d = robjects.get(i)
-        val key = createValue(session, ns, d)
-        logger.info(s"Value [$i] was created: key: '$key', ${d.value}")
+        val (requestedKey, ro) = createRiakObjectFrom(rodOjects.get(i))
+        val key = createValueRaw(session, ns, ro, requestedKey, true)
+        logger.info(s"Value [$i] was created: key: '$key', ${rodOjects.get(i).value}")
       }
     })
   }
@@ -89,61 +169,18 @@ trait RiakFunctions {
     session.executeAsync(store)
   }
 
-  def createValue(session: RiakClient, ns: Namespace, objectData: RiakObjectData, checkCreation: Boolean = true):String = {
-    val obj = new RiakObject()
-
-    var v: String = null
-
-    // Set value
-    objectData.value match {
-      case map: Map[_,_] =>
-        v = tolerantMapper
-          .writerWithDefaultPrettyPrinter()
-          .writeValueAsString(objectData.value)
-
-        obj.setContentType("application/json")
-          .setValue(BinaryValue.create(v))
-      case _ =>
-        v = objectData.value.toString
-        obj.setContentType("text/plain")
-          .setValue(BinaryValue.create(v))
-    }
-
-    val builder = new StoreValue.Builder(obj)
+  def createValueRaw(session: RiakClient, ns: Namespace, ro: RiakObject, key: String = null, checkCreation: Boolean = true):String = {
+    val builder = new StoreValue.Builder(ro)
       .withOption(StoreValue.Option.PW, Quorum.allQuorum())
 
     // Use provided key, if any
-    objectData.key match {
+    key match {
       case k: String =>
         builder.withLocation(new Location(ns, k))
       case _ =>
         builder.withNamespace(ns)
     }
 
-    // Create 2i, if any
-    objectData.indexes match {
-      case map: mutable.Map[String, _] =>
-        val riakIndexes = obj.getIndexes
-
-        map foreach( idx => {
-          idx._2 match {
-            case i: java.lang.Integer =>
-              riakIndexes.getIndex[LongIntIndex, LongIntIndex.Name](LongIntIndex.named(idx._1))
-                .add(i.toLong)
-
-            case l: java.lang.Long =>
-              riakIndexes.getIndex[LongIntIndex, LongIntIndex.Name](LongIntIndex.named(idx._1))
-                .add(l)
-
-            case str: String =>
-              // We need to use this signature (with Charset) because of inconsistency in signatures of StringBinIndex.named()
-              riakIndexes.getIndex[StringBinIndex, StringBinIndex.Name](StringBinIndex.named(idx._1, Charset.defaultCharset()))
-                .add(str)
-          }
-        })
-      case null =>
-      // Indexes aren't provided, here is nothing to do
-    }
 
     val store = builder
       .withOption(StoreValue.Option.W, new Quorum(1))
@@ -151,14 +188,14 @@ trait RiakFunctions {
 
     val r = session.execute(store)
 
-    var key = objectData.key
+    var realKey = key
     if(r.hasGeneratedKey) {
-      key = r.getGeneratedKey.toStringUtf8
+      realKey = r.getGeneratedKey.toStringUtf8
     }
 
     if(checkCreation){
       // To be 100% sure that everything was created properly
-      val l = new Location(ns, BinaryValue.create(key))
+      val l = new Location(ns, BinaryValue.create(realKey))
       val conversion = (l: Location, ro: RiakObject) => ro
       for( i <- 6 to 0 by -1)
         try {
@@ -171,21 +208,19 @@ trait RiakFunctions {
         }
 
       // Since we proved that value is reachable by key, we expect that it also available by all 2i keys
-      objectData.indexes match {
-        case map: mutable.Map[String, _] =>
-          map foreach (idx => {
-            if(!isLocationReachableBy2iKey(session, l, idx._1, idx._2)) {
-              throw new IllegalStateException(s"Location '$l' is not reachable by 2i '${idx._1}'")
-            }else{
-              logger.debug(s"Value for '$l' is reachable by 2i '${idx._1}'")
-            }
-          })
+      ro.getIndexes.foreach( idx => {
+        assert(idx.values().size() == 1)
+        val name = idx.getName
+        val v = idx.values().iterator().next()
 
-        case null =>
-        // Indexes aren't provided, here is nothing to do
-      }
+        if(!isLocationReachableBy2iKey(session, l, name, v)) {
+          throw new IllegalStateException("Location '$l' is not reachable by 2i '$name'")
+        }else{
+          logger.debug(s"Value for '$l' is reachable by 2i '$name'")
+        }
+      })
     }
-    key
+    realKey
   }
 
   private def isLocationReachableBy2iKey[T](session: RiakClient, location: Location, index: String, key: T): Boolean = {
@@ -370,12 +405,13 @@ object RiakFunctions {
 
   def apply(conf: SparkConf): RiakFunctions = {
     val hostsStr = conf.get("spark.riak.connection.host", InetAddress.getLocalHost.getHostAddress)
+    val minConnections = conf.get("spark.riak.connection.host.connections.min", "10").toInt
     val hosts = for {
       hostName <- hostsStr.split(",").toSet[String]
       hostAddress <- resolveHost(hostName.trim)
     } yield hostAddress
 
-    apply(hosts)
+    apply(hosts, minConnections)
   }
 
   def apply(hosts:Set[HostAndPort], minConnectionsPerRiakNode:Int = 5) = {
