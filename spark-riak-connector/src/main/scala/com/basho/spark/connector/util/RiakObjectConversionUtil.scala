@@ -71,7 +71,7 @@ object RiakObjectConversionUtil {
     var charset = "UTF-8"
     for( i <- 1 to d.length-1){
       if(d(i).startsWith("charset")){
-        charset = d(i).substring(d(i).indexOf("=")+1)
+        charset = d(i).substring(d(i).indexOf("=") + 1)
       }
     }
     d(0)->charset

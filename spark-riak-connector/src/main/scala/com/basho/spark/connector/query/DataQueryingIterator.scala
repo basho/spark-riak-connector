@@ -114,7 +114,7 @@ object DataQueryingIterator extends  Logging {
 
       for {f <- mfr.getResponses} {
 
-        logTrace( s"Fetch value [${buffer.size+1}] for ${f.getQueryInfo}")
+        logTrace( s"Fetch value [${buffer.size + 1}] for ${f.getQueryInfo}")
 
         val r = f.get()
         val location = f.getQueryInfo
@@ -134,30 +134,6 @@ object DataQueryingIterator extends  Logging {
         }
       }
     }
-//    val mfr = riakSession.execute(builder.build())
-//
-//
-//    for {f <- mfr.getResponses} {
-//
-//      logTrace( s"Fetch value [${buffer.size}] for ${f.getQueryInfo}")
-//
-//      val r = f.get()
-//      val location = f.getQueryInfo
-//
-//      if (r.isNotFound) {
-//        // TODO: add proper error handling
-//        logWarning(s"Nothing was found for location '${f.getQueryInfo.getKeyAsString}'")
-//      } else if (r.hasValues) {
-//        if (r.getNumberOfValues > 1) {
-//          throw new IllegalStateException(s"Fetch for '$location' returns more than one result: ${r.getNumberOfValues} actually")
-//        }
-//
-//        val ro = r.getValue(classOf[RiakObject])
-//        buffer += ((location, ro))
-//      } else {
-//        logWarning(s"There is no value for location '$location'")
-//      }
-//    }
     logDebug(s"${buffer.size} were fetched")
   }
 }
