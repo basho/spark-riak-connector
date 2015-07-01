@@ -1,9 +1,8 @@
 package com.basho.spark.connector.rdd
 
+import java.math.BigInteger
 import java.util.UUID
 
-import com.basho.riak.client.core.query.RiakObject
-import com.basho.riak.client.core.util.BinaryValue
 import org.junit.Test
 import org.junit.Assert._
 
@@ -216,15 +215,9 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
   @Test
   @Category(Array(classOf[RegressionTests]))
   def readJSONValueWrittenWithCharsetInContentType(): Unit ={
-    val key = "value-with-charset"
-    val ro = new RiakObject()
-    ro.setContentType("application/json;charset=UTF-8")
 
-    ro.setValue(
-        BinaryValue.create(
-            asStrictJSON("{user_id: 'u2', timestamp: '2014-11-24T13:14:04Z'}")
-          )
-      )
+    val (key, ro) = createRiakObjectFrom("{key: 'value-with-charset', value: {user_id: 'u2', timestamp: '2014-11-24T13:14:04Z'}}")
+    ro.setContentType("application/json;charset=UTF-8")
 
     withRiakDo(session=>{
       createValueRaw(session, DEFAULT_NAMESPACE, ro, key)
@@ -240,5 +233,21 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
         "{user_id: 'u2', timestamp: '2014-11-24T13:14:04Z'}" +
       "]",
       data)
+  }
+
+  @Test
+  def readUDT_2iJavaBigIntegerKeysRange(): Unit = {
+    val rdd = sc.riakBucket[UserTS](DEFAULT_NAMESPACE)
+      .query2iRange(CREATION_INDEX, new BigInteger("1"), new BigInteger("3"))
+
+    val data = rdd.collect()
+
+    assertEqualsUsingJSONIgnoreOrder(
+      "[" +
+        "{timestamp: '2014-11-24T13:14:04.823Z', user_id: 'u1'}," +
+        "{timestamp: '2014-11-24T13:15:04.824Z', user_id: 'u1'}," +
+        "{timestamp: '2014-11-24T13:18:04', user_id: 'u1'}" +
+        "]"
+      , data)
   }
 }
