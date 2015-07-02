@@ -41,15 +41,12 @@
                     <artifactId>license-maven-plugin</artifactId>
                     <version>2.11</version>
                     <configuration>
-                        <header>com/mycila/maven/plugin/license/templates/APACHE-2.txt</header>
-                        <properties>
-                            <owner>Basho Basho Technologies, Inc.</owner>
-                            <!--<email>mathieu.carbou@gmail.com</email>-->
-                        </properties>
+                        <aggregate>true</aggregate>
+                        <header>NOTICE</header>
                         <excludes>
+                            <exclude>**/scalastyle_config.xml</exclude>
                             <exclude>**/README</exclude>
-                            <exclude>src/test/resources/**</exclude>
-                            <exclude>src/main/resources/**</exclude>
+                            <exclude>**/pom.xml</exclude>
                         </excludes>
                     </configuration>
                     <executions>
