@@ -1,9 +1,23 @@
+/**
+ * Copyright (c) 2015 Basho Technologies, Inc.
+ *
+ * This file is provided to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file
+ * except in compliance with the License.  You may obtain
+ * a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package com.basho.spark.connector.rdd
 
-import com.basho.riak.client.core.query.{Namespace, RiakObject, Location}
-import com.basho.riak.client.core.util.BinaryValue
-import com.basho.spark.connector.util.RiakObjectConversionUtil
-import com.basho.spark.connector.writer.{ValueWriter, ValueWriterFactory}
+import com.basho.riak.client.core.query.Location
 
 import org.apache.spark.rdd.RDD
 import org.junit.{Ignore, Before, Test}
@@ -67,18 +81,6 @@ class SparkRDDTest extends AbstractRDDTest {
       .sortBy(_._1)
   }
 
-  private def fetchAllFromBucket(ns:Namespace): List[(String,String)] = {
-    val data =  ListBuffer[(String,String)]()
-    withRiakDo(session=>
-      foreachKeyInBucket(session, ns, (client, l: Location) =>{
-        val v = readByLocation[String](client, l)
-        data += ((l.getKeyAsString,v))
-        false
-      })
-    )
-    data.toList
-  }
-
   @Test
   def checkActions(): Unit ={
     val perUserTotalRDD = calculateUserOrderedTotals()
@@ -91,42 +93,6 @@ class SparkRDDTest extends AbstractRDDTest {
     rdd = sc.riakBucket(DEFAULT_NAMESPACE)
 
 
-  }
-
-    @Test
-  def storePairRDDUsingCustomMapper(): Unit = {
-    /**
-     * RDD contains the following data:
-     *   (u2, 1)
-     *   (u3, 2)
-     *   (u1, 3)
-     */
-    val perUserTotals = calculateUserOrderedTotals()
-
-    /**
-     * Custom value writer factory which uses totals as a key.
-     */
-    implicit val vwf = new ValueWriterFactory[(String,Int)]{
-      override def valueWriter(bucket: BucketDef): ValueWriter[(String, Int)] = {
-        new ValueWriter[(String, Int)] {
-          override def mapValue(value: (String, Int)): (BinaryValue, RiakObject) = {
-            (BinaryValue.create(value._2.toString), RiakObjectConversionUtil.to(value._1))
-          }
-        }
-      }
-    }
-
-    perUserTotals.saveAsRiakBucket(BucketDef(DEFAULT_NAMESPACE_4STORE))
-
-    val data = fetchAllFromBucket(DEFAULT_NAMESPACE_4STORE)
-
-    // Since Riak may returns results in any order, we need to ignore order at all
-    assertEqualsUsingJSONIgnoreOrder(
-      "[" +
-        "['2','u3']," +
-        "['3','u1']," +
-        "['1','u2']" +
-      "]", data)
   }
 
   @Ignore("Need to fix Tuple2 desiarilization")

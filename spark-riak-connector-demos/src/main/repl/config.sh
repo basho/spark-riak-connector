@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 #
 # Copyright (c) 2015 Basho Technologies, Inc.
 #
@@ -16,19 +17,16 @@
 # under the License.
 #
 
-# This sets the global logging level and specifies the appenders
-log4j.rootLogger=WARN, CONSOLE
 
-# settings for the console appender
-log4j.appender.CONSOLE=org.apache.log4j.ConsoleAppender
-log4j.appender.CONSOLE.layout=org.apache.log4j.PatternLayout
-log4j.appender.CONSOLE.layout.ConversionPattern=%-5p %c %x - %m%n
+# Spark Master URL
+MASTER_URL="spark://ip-172-31-9-126:7077"
 
-log4j.logger.com.basho.spark=DEBUG
+# Riak connection host for spark-riak-connector
+RIAK_HOST="172.31.9.126"
 
+# Riak connection port for spark-riak-connector
+RIAK_PORT="10017"
 
-# Turns on Riak Java Client logging
-#log4j.logger.com.basho=DEBUG
-
-# Turns on low level Riak Java Client logging
-log4j.logger.io.netty.handler.logging.LoggingHandler=DEBUG
+DRIVER_MEM="512M"
+EXECUTOR_MEM="512M"
+MAIN_CLASS="com.basho.spark.connector.demos.ofac.OFACDemo"

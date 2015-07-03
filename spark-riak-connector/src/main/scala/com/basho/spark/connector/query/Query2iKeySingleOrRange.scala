@@ -1,20 +1,45 @@
+/**
+ * Copyright (c) 2015 Basho Technologies, Inc.
+ *
+ * This file is provided to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file
+ * except in compliance with the License.  You may obtain
+ * a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package com.basho.spark.connector.query
 
 
+import java.math.BigInteger
+
 import com.basho.riak.client.api.RiakClient
-import com.basho.riak.client.api.commands.indexes.{BinIndexQuery, IntIndexQuery}
+import com.basho.riak.client.api.commands.indexes.{BigIntIndexQuery, BinIndexQuery, IntIndexQuery}
 import com.basho.riak.client.core.query.{Namespace, Location}
 import com.basho.riak.client.core.util.BinaryValue
 import com.basho.spark.connector.rdd.{ReadConf, BucketDef}
 
 import scala.collection.JavaConversions._
 
-case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadConf, index: String, from: K, to: Option[K] = None )
+private case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadConf, index: String, from: K, to: Option[K] = None )
     extends Query[String] {
 
-  private def isSuitableForIntIndex(from:K): Boolean = from match {
+  private def isSuitableForIntIndex(v:K): Boolean = v match {
     case _: Long => true
     case _: Int => true
+    case _ => false
+  }
+
+  private def isSuitableForBigIntIndex(v: K): Boolean = v match {
+    case _: BigInt => true
+    case _: BigInteger => true
     case _ => false
   }
 
@@ -23,6 +48,13 @@ case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadConf, ind
     case l: Long => l
   }
 
+  private def convertToBigInteger(value: K): BigInteger = value match {
+    case i: BigInt => i.underlying()
+    case bi:BigInteger => bi
+  }
+
+  // This method is looks ugly, but to fix that we need to introduce changes in Riak Java Client
+    // scalastyle:off cyclomatic.complexity method.length
   override def nextLocationBulk(nextToken: Option[_], session: RiakClient): (Option[String], Iterable[Location]) = {
     val ns = new Namespace(bucket.bucketType, bucket.bucketName)
     val builder = from match {
@@ -31,9 +63,17 @@ case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadConf, ind
           case Some(v) =>  new IntIndexQuery.Builder(ns, index, convertToLong(from), convertToLong(v))
         }
 
+      case _ if isSuitableForBigIntIndex(from) => to match {
+        case None => new BigIntIndexQuery.Builder(ns, index, convertToBigInteger(from))
+        case Some(v) =>  new BigIntIndexQuery.Builder(ns, index, convertToBigInteger(from), convertToBigInteger(v))
+      }
+
       case str: String => to match {
           case None => new BinIndexQuery.Builder(ns, index, str)
           case Some(v: String) => new BinIndexQuery.Builder(ns, index, str)
+
+          case _ =>
+            throw new IllegalArgumentException("Illegal 2i end range value")
         }
 
       case _ =>
@@ -58,6 +98,7 @@ case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadConf, ind
 
     val request = builder match {
       case iQueryBuilder: IntIndexQuery.Builder => iQueryBuilder.build()
+      case bigIQueryBuilder: BigIntIndexQuery.Builder => bigIQueryBuilder.build()
       case bQueryBuilder: BinIndexQuery.Builder => bQueryBuilder.build()
     }
 
@@ -69,15 +110,19 @@ case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadConf, ind
     if( response.hasEntries){
       val entries = response match {
         case iQueryResponse: IntIndexQuery.Response => iQueryResponse.getEntries
+        case bigIQueryResponse: BigIntIndexQuery.Response => bigIQueryResponse.getEntries
         case bQueryResponse: BinIndexQuery.Response => bQueryResponse.getEntries
       }
       locations = entries.map(_.getRiakObjectLocation)
     }
 
+    // scalastyle:off null
     if(response.getContinuation == null){
       None -> locations
     }else{
       Some(response.getContinuation.toStringUtf8) -> locations
     }
+    // scalastyle:on null
   }
+  // scalastyle:on cyclomatic.complexity method.length
 }

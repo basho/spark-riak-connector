@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.basho</groupId>
         <artifactId>spark-riak-connector-parent</artifactId>
-        <version>0.0.1-SNAPSHOT</version>
+        <version>0.8.0</version>
     </parent>
 
     <artifactId>spark-riak-connector</artifactId>
@@ -27,7 +27,7 @@
         <dependency>
             <groupId>com.basho</groupId>
             <artifactId>spark-riak-connector-test</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
+            <version>0.8.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -37,4 +37,32 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.scalastyle</groupId>
+                <artifactId>scalastyle-maven-plugin</artifactId>
+                <version>0.7.0</version>
+                <configuration>
+                    <verbose>false</verbose>
+                    <failOnViolation>true</failOnViolation>
+                    <includeTestSourceDirectory>false</includeTestSourceDirectory>
+                    <failOnWarning>false</failOnWarning>
+                    <sourceDirectory>${basedir}/src/main/scala</sourceDirectory>
+                    <testSourceDirectory>${basedir}/src/test/scala</testSourceDirectory>
+                    <configLocation>${basedir}/../scalastyle_config.xml</configLocation>
+                    <outputFile>${project.basedir}/target/scalastyle-output.xml</outputFile>
+                    <outputEncoding>UTF-8</outputEncoding>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 </project>

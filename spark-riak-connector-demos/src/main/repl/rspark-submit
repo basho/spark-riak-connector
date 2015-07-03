@@ -5,10 +5,13 @@
 #
 # Shell script for submitting Riak Spark Connector Demos
 
-#	--properties-file ./simpledemo.properties \
+. ./config.sh
+
 spark-submit --jars $(echo ./lib/*.jar | tr ' ' ',') \
-	--conf spark.riak.connection.host=127.0.0.1:10017 \
-	--class com.basho.spark.connector.demos.FootballDemo \
-	--driver-memory 4G \
+	--master $MASTER_URL \
+	--conf spark.riak.connection.host=$RIAK_HOST:$RIAK_PORT \
+	--class $MAIN_CLASS \
+	--driver-memory $DRIVER_MEM \
+	--executor-memory $EXECUTOR_MEM \
 	$@ \
 	$(echo ./demos-jar/*.jar | tr ' ' ',')

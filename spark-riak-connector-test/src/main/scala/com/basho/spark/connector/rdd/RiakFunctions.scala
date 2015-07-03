@@ -1,11 +1,30 @@
+/**
+ * Copyright (c) 2015 Basho Technologies, Inc.
+ *
+ * This file is provided to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file
+ * except in compliance with the License.  You may obtain
+ * a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package com.basho.spark.connector.rdd
 
 import java.io.IOException
+import java.net.InetAddress
 import java.nio.charset.Charset
 import java.util.concurrent.Semaphore
 
 import com.basho.riak.client.api.RiakClient
 import com.basho.riak.client.api.cap.Quorum
+import com.basho.riak.client.api.commands.indexes.{IntIndexQuery, BinIndexQuery}
 import com.basho.riak.client.api.commands.kv.{DeleteValue, StoreValue, FetchValue, ListKeys}
 import com.basho.riak.client.core.RiakNode.Builder
 import com.basho.riak.client.core.query.indexes.{StringBinIndex, LongIntIndex}
@@ -14,9 +33,10 @@ import com.basho.riak.client.core._
 import com.basho.riak.client.core.query.{Location, RiakObject, Namespace}
 import com.fasterxml.jackson.core.JsonParser
 import com.fasterxml.jackson.core.`type`.TypeReference
-import com.fasterxml.jackson.databind.{SerializationFeature, DeserializationFeature, ObjectMapper}
+import com.fasterxml.jackson.databind.{ObjectWriter, SerializationFeature, DeserializationFeature, ObjectMapper}
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.google.common.net.HostAndPort
+import org.apache.spark.SparkConf
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.JavaConversions._
@@ -26,7 +46,10 @@ import scala.reflect.ClassTag
 
 case class RiakObjectData( value: Object, key: String, indexes: mutable.Map[String, Object])
 
-trait RiakFunctions{
+/**
+ * INTENDED FOR TEST AND DEMO USAGE ONLY
+ */
+trait RiakFunctions {
   protected def riakHosts: Set[HostAndPort]
   protected def numberOfParallelRequests:Int
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
@@ -40,6 +63,22 @@ trait RiakFunctions{
     .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false)
     .registerModule(DefaultScalaModule)
 
+  def asStrictJSON(data: Any, prettyPrint: Boolean = false): String = {
+    val writter: ObjectWriter = prettyPrint match {
+      case true =>
+        tolerantMapper.writerWithDefaultPrettyPrinter()
+      case _ =>
+        tolerantMapper.writer()
+    }
+
+    writter.writeValueAsString(
+      data match {
+        case s: String =>
+          tolerantMapper.readValue(s, classOf[Object])
+        case _ => data
+      }
+    )
+  }
 
   def withRiakDo[T](code: RiakClient => T): T = {
     closeRiakSessionAfterUse(createRiakSession()) { session =>
@@ -47,80 +86,45 @@ trait RiakFunctions{
     }
   }
 
-  // Purge data: data might be not only created, but it may be also changed during the previous test case execution
-  def createValues(session: RiakClient, ns: Namespace,data: String, purgeBucketBefore: Boolean = false): Unit = {
-
-    val robjects: List[RiakObjectData] = tolerantMapper.readValue(data, new TypeReference[List[RiakObjectData]]{})
-
-    withRiakDo( session => {
-      if(purgeBucketBefore){
-        foreachKeyInBucket(session, ns, this.deleteByLocation)
-      }
-
-      for(i <- 0 until robjects.length) {
-        logger.trace(s"Creating value [$i]...")
-        val d = robjects.get(i)
-        val key = createValue(session, ns, d)
-        logger.info(s"Value [$i] was created: key: '$key', ${d.value}")
-      }
-    })
-
-    // Let's take a nap to be sure that test data was created properly
-    Thread.sleep(4000)
+  protected def parseRiakObjectData(json: String): List[RiakObjectData] = {
+    tolerantMapper.readValue(json, new TypeReference[List[RiakObjectData]]{})
   }
 
-  def createValueAsync(session: RiakClient, ns: Namespace, obj: AnyRef, key: String = null):RiakFuture[StoreValue.Response, Location] = {
-    val builder = new StoreValue.Builder(obj)
 
-    // Use provided key, if any
-    key match {
-      case k: String =>
-        builder.withLocation(new Location(ns, k))
-      case _ =>
-        builder.withNamespace(ns)
+  protected def createRiakObjectFrom(data: AnyRef): (String, RiakObject) = {
+
+    val rod = data match {
+      case json:String =>
+        tolerantMapper.readValue(json, new TypeReference[RiakObjectData]{})
+
+      case r: RiakObjectData =>
+        r
     }
 
-    val store = builder
-      .withOption(StoreValue.Option.W, new Quorum(1))
-      .build()
-
-    session.executeAsync(store)
-  }
-
-  def createValue(session: RiakClient, ns: Namespace, objectData: RiakObjectData):String = {
-    val obj = new RiakObject()
+    val ro = new RiakObject()
 
     var v: String = null
 
     // Set value
-    objectData.value match {
+    rod.value match {
       case map: Map[_,_] =>
         v = tolerantMapper
           .writerWithDefaultPrettyPrinter()
-          .writeValueAsString(objectData.value)
+          .writeValueAsString(rod.value)
 
-        obj.setContentType("application/json")
+        ro.setContentType("application/json")
           .setValue(BinaryValue.create(v))
       case _ =>
-        v = objectData.value.toString
-        obj.setContentType("text/plain")
+        v = rod.value.toString
+        ro.setContentType("text/plain")
           .setValue(BinaryValue.create(v))
     }
 
-    val builder = new StoreValue.Builder(obj)
-
-    // Use provided key, if any
-    objectData.key match {
-      case k: String =>
-        builder.withLocation(new Location(ns, k))
-      case _ =>
-        builder.withNamespace(ns)
-    }
 
     // Create 2i, if any
-    objectData.indexes match {
+    rod.indexes match {
       case map: mutable.Map[String, _] =>
-        val riakIndexes = obj.getIndexes
+        val riakIndexes = ro.getIndexes
 
         map foreach( idx => {
           idx._2 match {
@@ -142,17 +146,128 @@ trait RiakFunctions{
       // Indexes aren't provided, here is nothing to do
     }
 
+    rod.key -> ro
+  }
+
+  // Purge data: data might be not only created, but it may be also changed during the previous test case execution
+  def createValues(session: RiakClient, ns: Namespace,data: String, purgeBucketBefore: Boolean = false): Unit = {
+
+    val rodOjects: List[RiakObjectData] = parseRiakObjectData(data)
+
+    withRiakDo( session => {
+      if(purgeBucketBefore){
+        foreachKeyInBucket(session, ns, this.deleteByLocation)
+      }
+
+      for(i <- 0 until rodOjects.length) {
+        logger.trace(s"Creating value [$i]...")
+        val (requestedKey, ro) = createRiakObjectFrom(rodOjects.get(i))
+        val key = createValueRaw(session, ns, ro, requestedKey, true)
+        logger.info(s"Value [$i] was created: key: '$key', ${rodOjects.get(i).value}")
+      }
+    })
+  }
+
+  def createValueAsync(session: RiakClient, ns: Namespace, obj: AnyRef, key: String = null):RiakFuture[StoreValue.Response, Location] = {
+    val builder = new StoreValue.Builder(obj)
+
+    // Use provided key, if any
+    key match {
+      case k: String =>
+        builder.withLocation(new Location(ns, k))
+      case _ =>
+        builder.withNamespace(ns)
+    }
+
+    val store = builder
+      .withOption(StoreValue.Option.W, new Quorum(1))
+      .build()
+
+    session.executeAsync(store)
+  }
+
+  def createValueRaw(session: RiakClient, ns: Namespace, ro: RiakObject, key: String = null, checkCreation: Boolean = true):String = {
+    val builder = new StoreValue.Builder(ro)
+      .withOption(StoreValue.Option.PW, Quorum.allQuorum())
+
+    // Use provided key, if any
+    key match {
+      case k: String =>
+        builder.withLocation(new Location(ns, k))
+      case _ =>
+        builder.withNamespace(ns)
+    }
+
+
     val store = builder
       .withOption(StoreValue.Option.W, new Quorum(1))
       .build()
 
     val r = session.execute(store)
 
-    var key = objectData.key
+    var realKey = key
     if(r.hasGeneratedKey) {
-      key = r.getGeneratedKey.toStringUtf8
+      realKey = r.getGeneratedKey.toStringUtf8
     }
-    key
+
+    if(checkCreation){
+      // To be 100% sure that everything was created properly
+      val l = new Location(ns, BinaryValue.create(realKey))
+      val conversion = (l: Location, ro: RiakObject) => ro
+      for( i <- 6 to 0 by -1)
+        try {
+          readByLocation[RiakObject](session, l, conversion)
+        } catch {
+          case e:IllegalStateException if e.getMessage.startsWith("Nothing was found") && i >1 =>{
+            logger.debug("Value for '{}' hasn't been created yet", l)
+            Thread.sleep(200)
+          }
+        }
+
+      // Since we proved that value is reachable by key, we expect that it also available by all 2i keys
+      ro.getIndexes.foreach( idx => {
+        assert(idx.values().size() == 1)
+        val name = idx.getName
+        val v = idx.values().iterator().next()
+
+        if(!isLocationReachableBy2iKey(session, l, name, v)) {
+          throw new IllegalStateException("Location '$l' is not reachable by 2i '$name'")
+        }else{
+          logger.debug(s"Value for '$l' is reachable by 2i '$name'")
+        }
+      })
+    }
+    realKey
+  }
+
+  private def isLocationReachableBy2iKey[T](session: RiakClient, location: Location, index: String, key: T): Boolean = {
+    val builder = key match {
+      case s: String =>
+        new BinIndexQuery.Builder(location.getNamespace, index, s)
+
+      case i: Int =>
+        new IntIndexQuery.Builder(location.getNamespace, index, i.toLong)
+
+      case l: Long =>
+        new IntIndexQuery.Builder(location.getNamespace, index, l)
+
+      case _ =>
+        throw new IllegalStateException(s"Type '${key.getClass.getName}' is not suitable for 2i")
+    }
+
+    val entries = builder match {
+      case iQueryBuilder: IntIndexQuery.Builder =>
+        session.execute(iQueryBuilder.build())
+          .getEntries
+
+      case bQueryBuilder: BinIndexQuery.Builder =>
+        session.execute(bQueryBuilder.build())
+          .getEntries
+    }
+
+    val locations: Iterable[Location] = entries.map(_.getRiakObjectLocation)
+    val c = locations.count( l =>{ location.equals(l)})
+    c > 0
   }
 
   def foreachKeyInBucket(riakSession: RiakClient, ns: Namespace,  func: (RiakClient, Location) => Boolean): Unit ={
@@ -185,26 +300,46 @@ trait RiakFunctions{
   }
 
   def deleteByLocationAsync(riakSession: RiakClient, location: Location): RiakFuture[Void,Location] ={
-    val deleteRequest = new DeleteValue.Builder(location).build()
+    val deleteRequest = new DeleteValue.Builder(location)
+      .withOption(DeleteValue.Option.PW, Quorum.allQuorum())
+      .withOption(DeleteValue.Option.PR, Quorum.allQuorum())
+      .build()
+
     riakSession.executeAsync(deleteRequest)
   }
 
   def resetAndEmptyBucket(ns:Namespace): Unit = {
-    logger.debug(s"Reset bucket '$ns'...")
+    logger.debug("\n----------\n" +
+      "[Bucket RESET]  {}",
+      ns)
     val counter = new StatCounter()
 
     val semaphore = new Semaphore(numberOfParallelRequests)
 
     val listener = new RiakFutureListener[Void, Location]{
       override def handle(f: RiakFuture[Void, Location]): Unit = {
-        counter.increment()
-        semaphore.release()
+        try {
+          val v = f.get()
+          logger.debug("Value was deleted '{}'", f.getQueryInfo)
+        }catch{
+          case re: RuntimeException =>
+            logger.error(s"Can't delete value for '${f.getQueryInfo}'", re)
+            throw re
+
+          case e: Exception =>
+            logger.error(s"Can't delete value for '${f.getQueryInfo}'", e)
+            throw new RuntimeException(e)
+        }finally{
+          counter.increment()
+          semaphore.release()
+        }
       }
     }
 
     withRiakDo(session =>{
       foreachKeyInBucket(session, ns, (client:RiakClient, l:Location) => {
         semaphore.acquire()
+        logger.debug("Performing delete for '{}'", l)
         deleteByLocationAsync(client, l).addListener(listener)
         false
       })
@@ -212,12 +347,32 @@ trait RiakFunctions{
 
     logger.trace("All operations were initiated, waiting for completion")
 
-    // wait until completion of all already started operations
+    // -- wait until completion of all already started operations
     semaphore.acquire(numberOfParallelRequests)
     semaphore.release(numberOfParallelRequests)
 
-    val stats = counter.stats()
-      .dump(s"Bucket '$ns' has been reset. All existed values were removed", logger)
+    // -- waiting until the bucket become really empty
+    var attempts = 10
+    var response: ListKeys.Response = null
+      withRiakDo(session=>{
+        do {
+          Thread.sleep(500)
+          val req = new ListKeys.Builder(ns).build()
+          response = session.execute(req)
+          attempts -= 1
+        }while(attempts>0 && response.iterator().hasNext)
+      })
+
+    response.iterator().toList match {
+      case Nil => //Nothing to do
+      case l:List[Any] => {
+        throw new IllegalStateException(s"Bucket '$ns' is not empty after truncation")
+      }
+    }
+
+    // --
+    counter.stats()
+      .dump(s"\n----------\nBucket '$ns' has been reset. All existed values were removed", logger)
   }
 
   private def createRiakSession() = {
@@ -238,8 +393,6 @@ trait RiakFunctions{
         nodes.toList
       ).build()
 
-
-      nodes foreach (n=> println(s"Node: ${n.getRemoteAddress}:${n.getPort}"))
       cluster.start()
 
       new RiakClient(cluster)
@@ -257,10 +410,25 @@ trait RiakFunctions{
 }
 
 object RiakFunctions {
+  private def resolveHost(hostName: String): Option[HostAndPort] = {
+    Some(HostAndPort.fromString(hostName))
+  }
+
   private def minConnections(nb: RiakNode.Builder):Int ={
     val f = nb.getClass.getDeclaredField("minConnections")
     f.setAccessible(true)
     f.get(nb).asInstanceOf[Int]
+  }
+
+  def apply(conf: SparkConf): RiakFunctions = {
+    val hostsStr = conf.get("spark.riak.connection.host", InetAddress.getLocalHost.getHostAddress)
+    val minConnections = conf.get("spark.riak.connection.host.connections.min", "10").toInt
+    val hosts = for {
+      hostName <- hostsStr.split(",").toSet[String]
+      hostAddress <- resolveHost(hostName.trim)
+    } yield hostAddress
+
+    apply(hosts, minConnections)
   }
 
   def apply(hosts:Set[HostAndPort], minConnectionsPerRiakNode:Int = 5) = {

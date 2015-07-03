@@ -1,14 +1,28 @@
+/**
+ * Copyright (c) 2015 Basho Technologies, Inc.
+ *
+ * This file is provided to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file
+ * except in compliance with the License.  You may obtain
+ * a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package com.basho.spark.connector.japi.rdd;
 
 import com.basho.spark.connector.rdd.RiakRDD;
-import com.basho.spark.connector.util.JavaUtil;
+import com.basho.spark.connector.util.JavaApiHelper;
 import org.apache.spark.api.java.JavaRDD;
-import static com.basho.spark.connector.util.JavaUtil.getClassTag;
+import static com.basho.spark.connector.util.JavaApiHelper.getClassTag;
 
-import scala.collection.JavaConversions;
 import scala.reflect.ClassTag;
-
-import java.util.Arrays;
 
 public class RiakJavaRDD<T> extends JavaRDD<T> {
     private ClassTag<T> classTag;
@@ -41,6 +55,6 @@ public class RiakJavaRDD<T> extends JavaRDD<T> {
     }
 
     public RiakJavaRDD<T> queryBucketKeys(String... keys){
-        return wrap(rdd().queryBucketKeys(JavaUtil.toScalaSeq(keys)));
+        return wrap(rdd().queryBucketKeys(JavaApiHelper.toScalaSeq(keys)));
     }
 }

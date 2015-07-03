@@ -15,22 +15,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package com.basho.spark.connector.rdd
+package com.basho.spark.connector.writer
 
-import org.apache.spark.SparkConf
+import com.basho.spark.connector.rdd.BucketDef
 
-/** RDD read settings
-  * @param fetchSize number of keys to fetch in a single round-trip to Riak
- */
-case class ReadConf (
-  fetchSize: Int = ReadConf.DefaultFetchSize )
+class DefaultWriteDataMapper[T] (bucketDef: BucketDef) extends WriteDataMapper[T]{
+  override def mapValue(value: T): (String, Any) = {
+    // scalastyle:off null
+    (null, value)
+    // scalastyle:on null
+  }
+}
 
-object ReadConf {
-  val DefaultFetchSize = 1000
-
-  def fromSparkConf(conf: SparkConf): ReadConf = {
-    ReadConf(
-      fetchSize = conf.getInt("spark.riak.input.fetch-size", DefaultFetchSize)
-    )
+object DefaultWriteDataMapper {
+  def factory[T]: WriteDataMapperFactory[T] = new WriteDataMapperFactory[T] {
+    override def dataMapper(bucketDef: BucketDef) = {
+      new DefaultWriteDataMapper[T](bucketDef)
+    }
   }
 }

@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.basho</groupId>
         <artifactId>spark-riak-connector-parent</artifactId>
-        <version>0.0.1-SNAPSHOT</version>
+        <version>0.8.0</version>
     </parent>
     
     <artifactId>spark-riak-connector-demos</artifactId>
@@ -13,20 +13,32 @@
 
     <dependencies>
         <dependency>
+            <groupId>com.github.wookietreiber</groupId>
+            <artifactId>scala-chart_${scala.major.version}</artifactId>
+            <version>0.4.2</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.jfree</groupId>
+            <artifactId>jfreechart</artifactId>
+            <version>1.0.19</version>
+        </dependency>
+
+        <dependency>
             <groupId>com.basho</groupId>
             <artifactId>spark-riak-connector</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
+            <version>0.8.0</version>
         </dependency>
         <dependency>
             <groupId>com.basho</groupId>
             <artifactId>spark-riak-connector-java</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
+            <version>0.8.0</version>
         </dependency>
 
         <dependency>
             <groupId>com.basho</groupId>
             <artifactId>spark-riak-connector-test</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
+            <version>0.8.0</version>
             <exclusions>
                 <exclusion>
                     <groupId>junit</groupId>

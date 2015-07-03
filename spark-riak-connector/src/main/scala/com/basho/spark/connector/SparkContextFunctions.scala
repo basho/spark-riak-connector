@@ -1,3 +1,20 @@
+/**
+ * Copyright (c) 2015 Basho Technologies, Inc.
+ *
+ * This file is provided to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file
+ * except in compliance with the License.  You may obtain
+ * a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package com.basho.spark.connector
 
 import java.io.Serializable
@@ -17,7 +34,7 @@ class SparkContextFunctions(@transient val sc: SparkContext) extends Serializabl
 
     def apply(l: Location, r: RiakObject): (String,V) = {
       val k = l.getKeyAsString
-      return k -> RiakObjectConversionUtil.from(l, r)
+      k -> RiakObjectConversionUtil.from(l, r)
     }
   };
 
@@ -27,7 +44,7 @@ class SparkContextFunctions(@transient val sc: SparkContext) extends Serializabl
 
   def riakBucket[T](bucketName: String, bucketType: String, convert: (Location, RiakObject) => T)
                    (implicit connector: RiakConnector = RiakConnector(sc.getConf),
-                    ct: ClassTag[T]) =
+                    ct: ClassTag[T]): RiakRDD[T] =
       new RiakRDD[T](sc, connector, bucketType, bucketName, convert, readConf = ReadConf.fromSparkConf(sc.getConf))
 
   def riakBucket[T](ns: Namespace)
@@ -38,7 +55,7 @@ class SparkContextFunctions(@transient val sc: SparkContext) extends Serializabl
                       (implicit ct: ClassTag[(K, V)], ctV: ClassTag[V]):RiakRDD[(K,V)] =
     riakBucket[K,V](bucketName, "default", convert)
 
-  /**
+  /*
    * Creates RiakRDD containing results as Tuple2 objects of <Key> and <Value> queried from Riak bucket.
    * Convert function should be provided to specify how exactly <Key> and <Value> should be retrieved from RiakObject and populated to Tuple2.
    * Example:
@@ -49,9 +66,9 @@ class SparkContextFunctions(@transient val sc: SparkContext) extends Serializabl
    * @param bucketName name of the Riak bucket
    * @param convert function to perform convertion from Riak <Location> and <RiakObject> to Tuple2[K, V]
    * @return RiakRDD of tuples
-   **/
+   */
   def riakBucket[K, V](bucketName: String, bucketType: String, convert: (Location, RiakObject) => (K, V))
-                        (implicit ct: ClassTag[(K, V)], ctV: ClassTag[V]) =
+                        (implicit ct: ClassTag[(K, V)], ctV: ClassTag[V]): RiakRDD[(K,V)] =
     riakBucket[(K,V)](bucketName, bucketType, convert)
 
   def riakBucket[V](bucketName: String, bucketType: String)
