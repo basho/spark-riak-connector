@@ -37,11 +37,11 @@ mvn install -DskipTests=true
 
 4. Extract REPL
 ```
-unzip spark-riak-connector-demos/target/spark-riak-connector-demos-0.0.1-SNAPSHOT-REPL.zip
+unzip spark-riak-connector-demos/target/spark-riak-connector-demos-0.8.0-REPL.zip
 ```
 
 5. Run the Demo
 ```
-cd spark-riak-connector-demos-0.0.1-SNAPSHOT
+ cd spark-riak-connector-demos-0.8.0/
 ./rspark-submit
 ```
