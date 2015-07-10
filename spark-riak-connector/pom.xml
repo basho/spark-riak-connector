@@ -22,7 +22,7 @@
         </dependency>
         <dependency>
             <groupId>com.basho.riak</groupId>
-            <artifactId>riak-client</artifactId>
+            <artifactId>dataplatform-riak-client</artifactId>
         </dependency>
         <dependency>
             <groupId>com.basho</groupId>

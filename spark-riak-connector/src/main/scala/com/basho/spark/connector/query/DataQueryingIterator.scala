@@ -18,7 +18,6 @@
 package com.basho.spark.connector.query
 
 import com.basho.riak.client.api.cap.Quorum
-import com.basho.spark.connector.rdd.RiakConnector
 import org.apache.spark.Logging
 
 import scala.collection.JavaConversions._
@@ -29,7 +28,7 @@ import com.basho.riak.client.core.query.{RiakObject, Location}
 
 import scala.collection.mutable.ArrayBuffer
 
-class DataQueryingIterator(query: Query[_], riakSession: RiakClient)
+class DataQueryingIterator(query: Query[_], riakSession: RiakClient, minConnectionsPerNode: Int)
   extends Iterator[(Location, RiakObject)] with Logging {
 
   type ResultT = (Location, RiakObject)
@@ -61,7 +60,7 @@ class DataQueryingIterator(query: Query[_], riakSession: RiakClient)
     logTrace(s"Performing 2i query(token=$nextToken)")
 
     val r = query.nextLocationBulk(nextToken, riakSession )
-    logDebug(s"2i query(token=${nextToken}) returns:\n  token: ${r._1}\n  locations: ${r._2}")
+    logDebug(s"2i query(token=$nextToken) returns:\n  token: ${r._1}\n  locations: ${r._2}")
     nextToken = r._1
 
     dataBuffer.clear()
@@ -79,8 +78,14 @@ class DataQueryingIterator(query: Query[_], riakSession: RiakClient)
       _iterator = Some(Iterator.empty)
     } else {
 
-      // fetching actual objects
-      DataQueryingIterator.fetchData(riakSession, r._2, dataBuffer)
+      /**
+       * To be 100% sure that massive fetch doesn't lead to the connection pool starvation,
+       * fetch will be performed by the smaller chunk of keys.
+       *
+       * Ideally the chunk size should be equal to min number of connections to the RiakNode
+       */
+      val itChunkedLocations: Iterator[Iterable[Location]] = r._2.grouped(minConnectionsPerNode)
+      DataQueryingIterator.fetchData(riakSession, itChunkedLocations, dataBuffer)
 
       logDebug(s"Next data buffer was fetched:\n" +
         s"\tnextToken: $nextToken\n" +
@@ -115,16 +120,16 @@ class DataQueryingIterator(query: Query[_], riakSession: RiakClient)
 
 object DataQueryingIterator extends  Logging {
 
-  private def fetchData(riakSession: RiakClient, locations: Iterable[Location], buffer: ArrayBuffer[(Location, RiakObject)]) ={
+  private def fetchData(riakSession: RiakClient, itChunkedLocations: Iterator[Iterable[Location]], buffer: ArrayBuffer[(Location, RiakObject)]) ={
 
-    logTrace(s"Fetching ${locations.size} values...")
-
-    val iterator = locations.grouped(RiakConnector.DEFAULT_MIN_NUMBER_OF_CONNECTIONS)
-    while(iterator.hasNext){
+    while(itChunkedLocations.hasNext){
       val builder = new MultiFetch.Builder()
           .withOption(FetchValue.Option.R, Quorum.oneQuorum())
 
-      iterator.next().foreach(builder.addLocation)
+      val locations = itChunkedLocations.next()
+      logTrace(s"Fetching ${locations.size} values...")
+
+      locations .foreach(builder.addLocation)
 
       val mfr = riakSession.execute(builder.build())
 

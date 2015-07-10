@@ -17,9 +17,9 @@
  */
 package com.basho.spark.connector.rdd.partitioner
 
+import com.basho.riak.client.core.util.HostAndPort
 import com.basho.spark.connector.query.RiakKeys
 import com.basho.spark.connector.rdd.RiakPartition
-import com.google.common.net.HostAndPort
 import org.apache.spark.Partition
 
 case class RiakKeysPartition[K] (

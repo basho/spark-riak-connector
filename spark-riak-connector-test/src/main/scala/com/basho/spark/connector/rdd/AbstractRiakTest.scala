@@ -18,7 +18,7 @@
 package com.basho.spark.connector.rdd
 
 import com.basho.riak.client.core.RiakNode
-import com.google.common.net.HostAndPort
+import com.basho.riak.client.core.util.HostAndPort
 import org.junit.rules.TestWatcher
 import org.junit.runner.Description
 import org.slf4j.{LoggerFactory, Logger}
