@@ -17,22 +17,43 @@
  */
 package com.basho.spark.connector.query
 
+import com.basho.riak.client.core.operations.CoveragePlanOperation.Response.CoverageEntry
+
 case class RiakKeys[T](
-  keysOrRange: Either[Seq[T],Seq[(T, Option[T])]],
+  // Might be None if represents the full bucket read
+    keysOrRange: Option[Either[Seq[T],Seq[(T, Option[T])]]],
+
   // Might be None if represents the bucket keys
-  index: Option[String] = None
-)
+  index: Option[String] = None,
+
+  coverageEntries: Option[Seq[CoverageEntry]] = None
+){
+
+  def copy( keysOrRange: Option[Either[Seq[T],Seq[(T, Option[T])]]] = keysOrRange,
+            index: Option[String] = index,
+            coverageEntries: Option[Seq[CoverageEntry]] = coverageEntries ): RiakKeys[T] ={
+    new RiakKeys[T]( keysOrRange, index, coverageEntries)
+  }
+}
 
 object RiakKeys {
   def create2iKeyRanges[K](index: String, ranges: (K, Option[K])*):RiakKeys[K] ={
-    new RiakKeys[K](Right(ranges), Some(index))
+    new RiakKeys[K](Some(Right(ranges)), Some(index))
   }
 
   def create2iKeys[K](index: String, keys: K*):RiakKeys[K] ={
-    new RiakKeys[K](Left(keys), Some(index))
+    new RiakKeys[K](Some(Left(keys)), Some(index))
   }
 
   def createBucketKeys(keys: String*):RiakKeys[String] ={
-    new RiakKeys[String](Left(keys))
+    new RiakKeys[String](Some(Left(keys)))
+  }
+
+  def create2iReadAll(index: String, ce: CoverageEntry*): RiakKeys[CoverageEntry] ={
+    new RiakKeys[CoverageEntry](keysOrRange=None, index=Some(index), coverageEntries = Some(ce))
+  }
+
+  def create2iKeyRangesLocal[K](index: String, ranges: (K, Option[K])*): RiakKeys[K] ={
+    new RiakKeys[K](keysOrRange=Some(Right(ranges)), index=Some(index), coverageEntries = Some(Array.empty[CoverageEntry]))
   }
 }

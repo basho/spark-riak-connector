@@ -22,13 +22,15 @@ import java.math.BigInteger
 
 import com.basho.riak.client.api.RiakClient
 import com.basho.riak.client.api.commands.indexes.{BigIntIndexQuery, BinIndexQuery, IntIndexQuery}
+import com.basho.riak.client.core.operations.CoveragePlanOperation.Response.CoverageEntry
 import com.basho.riak.client.core.query.{Namespace, Location}
 import com.basho.riak.client.core.util.BinaryValue
 import com.basho.spark.connector.rdd.{ReadConf, BucketDef}
 
 import scala.collection.JavaConversions._
 
-private case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadConf, index: String, from: K, to: Option[K] = None )
+private case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadConf, index: String, from: K,
+        to: Option[K] = None, coverageEntry: Option[CoverageEntry] = None )
     extends Query[String] {
 
   private def isSuitableForIntIndex(v:K): Boolean = v match {
@@ -58,6 +60,12 @@ private case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadC
   override def nextLocationBulk(nextToken: Option[_], session: RiakClient): (Option[String], Iterable[Location]) = {
     val ns = new Namespace(bucket.bucketType, bucket.bucketName)
     val builder = from match {
+
+      case ce: CoverageEntry =>
+        // Coverage Entry can't be used in the range manner, therefore 'to' must be None
+        require(to.isEmpty)
+        new IntIndexQuery.Builder(ns, index, ce.getCoverContext)
+
       case _ if isSuitableForIntIndex(from) => to match {
           case None => new IntIndexQuery.Builder(ns, index, convertToLong(from))
           case Some(v) =>  new IntIndexQuery.Builder(ns, index, convertToLong(from), convertToLong(v))
@@ -83,6 +91,10 @@ private case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadC
     builder
       .withMaxResults(readConf.fetchSize)
       .withPaginationSort(true)
+
+    if(coverageEntry.isDefined){
+      builder.withCoverContext(coverageEntry.get.getCoverContext)
+    }
 
     nextToken match {
       case None =>

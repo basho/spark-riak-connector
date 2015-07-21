@@ -18,6 +18,7 @@
 package com.basho.spark.connector.query
 
 import com.basho.riak.client.api.RiakClient
+import com.basho.riak.client.core.operations.CoveragePlanOperation.Response.CoverageEntry
 import com.basho.riak.client.core.query.Location
 import com.basho.spark.connector.rdd.{ReadConf, BucketDef}
 
@@ -33,8 +34,16 @@ trait Query[T] extends Serializable {
 
 object Query{
   def apply[K](bucket: BucketDef, readConf:ReadConf, riakKeys: RiakKeys[K]): Query[K] = {
+
+    val ce = riakKeys.coverageEntries match {
+      case None => None
+      case Some(entries) =>
+        require(entries.size == 1)
+        Some(entries.head)
+    }
+
     riakKeys.keysOrRange match {
-      case Left(keys: Seq[K]) =>
+      case Some(Left(keys: Seq[K])) =>
         if( riakKeys.index.isDefined){
           // Query 2i Keys
           new Query2iKeys[K](bucket, readConf, riakKeys.index.get, keys).asInstanceOf[Query[K]]
@@ -42,11 +51,20 @@ object Query{
           new QueryBucketKeys(bucket, readConf, keys.asInstanceOf[Seq[String]] ).asInstanceOf[Query[K]]
         }
 
-      case Right(range: Seq[(K, Option[K])]) =>
+      case Some(Right(range: Seq[(K, Option[K])])) =>
         require(riakKeys.index.isDefined)
         require(range.size == 1)
         val r = range.head
-        new Query2iKeySingleOrRange[K](bucket, readConf, riakKeys.index.get, r._1, r._2).asInstanceOf[Query[K]]
+        new Query2iKeySingleOrRange[K](bucket, readConf, riakKeys.index.get, r._1, r._2, ce).asInstanceOf[Query[K]]
+
+      case None =>
+        require(riakKeys.index.isDefined)
+        require(riakKeys.coverageEntries.isDefined)
+
+        val ce = riakKeys.coverageEntries.get
+        require(!ce.isEmpty)
+
+        new Query2iKeys[CoverageEntry](bucket, readConf, riakKeys.index.get, ce).asInstanceOf[Query[K]]
     }
   }
 }

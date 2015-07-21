@@ -120,16 +120,16 @@ class DataQueryingIterator(query: Query[_], riakSession: RiakClient, minConnecti
 
 object DataQueryingIterator extends  Logging {
 
-  private def fetchData(riakSession: RiakClient, itChunkedLocations: Iterator[Iterable[Location]], buffer: ArrayBuffer[(Location, RiakObject)]) ={
+  private def fetchData(riakSession: RiakClient, chunkedLocations: Iterator[Iterable[Location]], buffer: ArrayBuffer[(Location, RiakObject)]) ={
 
-    while(itChunkedLocations.hasNext){
+    while(chunkedLocations.hasNext){
       val builder = new MultiFetch.Builder()
           .withOption(FetchValue.Option.R, Quorum.oneQuorum())
 
-      val locations = itChunkedLocations.next()
+      val locations = chunkedLocations.next()
       logTrace(s"Fetching ${locations.size} values...")
 
-      locations .foreach(builder.addLocation)
+      locations.foreach(builder.addLocation)
 
       val mfr = riakSession.execute(builder.build())
 

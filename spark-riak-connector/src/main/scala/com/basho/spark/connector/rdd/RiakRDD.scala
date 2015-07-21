@@ -20,7 +20,7 @@ package com.basho.spark.connector.rdd
 
 import com.basho.riak.client.core.query.{Location, RiakObject}
 import com.basho.spark.connector.query._
-import com.basho.spark.connector.rdd.partitioner.{RiakKeysPartition, RiakKeysPartitioner}
+import com.basho.spark.connector.rdd.partitioner.{RiakLocalCoverPartition, RiakLocalReadsPartitioner, RiakKeysPartition, RiakKeysPartitioner}
 
 import scala.reflect.ClassTag
 import scala.language.existentials
@@ -42,7 +42,20 @@ class RiakRDD[R] private[connector] (
   extends RDD[R](sc, Seq.empty) with Logging {
 
   override def getPartitions: Array[Partition] = {
-    val partitions = RiakKeysPartitioner.partitions(connector.hosts, keys.get)
+
+    val partitions = keys match{
+      case None =>
+        throw new IllegalMonitorStateException("Query criteria should be provided")
+
+      case Some(rk) =>
+        rk.coverageEntries match {
+          case Some(ce) =>
+            RiakLocalReadsPartitioner.partitions(connector, BucketDef(bucketType, bucketName), readConf, keys.get)
+
+          case _ =>
+            RiakKeysPartitioner.partitions(connector.hosts, keys.get)
+        }
+    }
 
     logDebug(s"Created total ${partitions.length} Spark partitions for bucket {$bucketType.$bucketName}.")
     if(isTraceEnabled()) {
@@ -73,6 +86,24 @@ class RiakRDD[R] private[connector] (
         }
         countingIterator
 
+      // TODO: remove duplicated code
+      case rl: RiakLocalCoverPartition[_] =>
+        val session = connector.openSession(Some(Seq(rl.primaryHost)))
+        val startTime = System.currentTimeMillis()
+
+        val query = Query(BucketDef(bucketType, bucketName), readConf, rl.queryData)
+        val iterator: Iterator[(Location, RiakObject)] = new DataQueryingIterator(query, session, connector.minConnections)
+        val convertingIterator = new DataConvertingIterator[R](iterator, convert)
+        val countingIterator = new CountingIterator[R](convertingIterator)
+        context.addTaskCompletionListener { (context) =>
+          val endTime = System.currentTimeMillis()
+          val duration = (endTime - startTime) / 1000.0
+          logDebug(s"Fetched ${countingIterator.count} rows from ${query.bucket}" +
+            f" for partition ${rl.index} in $duration%.3f s.")
+          session.shutdown()
+        }
+        countingIterator
+
       case _ =>
         throw new IllegalStateException("Unsupported partition type")
     }
@@ -89,6 +120,14 @@ class RiakRDD[R] private[connector] (
 
   def query2iKeys[K](index: String, keys: K* ): RiakRDD[R] = {
     copy(keys = Some(RiakKeys.create2iKeys[K](index, keys:_*)))
+  }
+
+  def query2iRangeLocal[K](index: String, from: K, to: K): RiakRDD[R] ={
+    copy(keys = Some(RiakKeys.create2iKeyRangesLocal(index, (from, Some(to)))))
+  }
+
+  def query2iAll(index: String): RiakRDD[R] ={
+    copy(keys = Some(RiakKeys.create2iReadAll(index)))
   }
 
   def queryBucketKeys(keys: String*): RiakRDD[R] = {

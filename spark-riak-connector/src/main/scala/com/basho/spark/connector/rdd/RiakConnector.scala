@@ -53,8 +53,17 @@ class RiakConnector(conf: RiakConnectorConf)
   /** Maximum number of connections per one RiakNode */
   def maxConnections: Int = _config.maxConnections
 
-  def openSession(): RiakClient = {
-    createSession(_config)
+  def openSession(hosts: Option[Seq[HostAndPort]] = None): RiakClient = {
+    val cfg = hosts match {
+      case None =>
+        _config
+
+      case Some(h:Seq[HostAndPort]) =>
+        new RiakConnectorConf(hosts=Set(h: _*), minConnections = _config.minConnections,
+          maxConnections = _config.maxConnections)
+    }
+
+    createSession(cfg)
   }
 
   def withSessionDo[T](code: RiakClient => T): T = {
