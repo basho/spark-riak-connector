@@ -268,7 +268,6 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
       , data)
   }
 
-  @Ignore("Ignored since it fails because of returning wrong number of results (Riak issue)")
   @Test
   def local2iRangeRead() ={
     val data = sc.riakBucket[UserTS](DEFAULT_NAMESPACE)
