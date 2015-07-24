@@ -25,27 +25,31 @@ import org.apache.spark.Partition
 
 import scala.collection.JavaConversions._
 
-case class RiakLocalCoverPartition[K] (
+case class RiakLocalCoveragePartition[K] (
     index: Int,
     endpoints: Set[HostAndPort],
     primaryHost: HostAndPort,
     queryData: RiakKeys[K]
 ) extends RiakPartition
 
-object RiakLocalReadsPartitioner {
+/**
+ * Obtains Coverage Plan and creates a separate partition for each Coverage Entry
+ */
+object RiakCoveragePlanBasedPartitioner {
   def partitions[K](connector: RiakConnector, bucket: BucketDef, readConf: ReadConf, queryData: RiakKeys[K]): Array[Partition] = {
     connector.withSessionDo(session =>{
       val cmd = new Builder(bucket.asNamespace())
-        //TODO: introduce Spark Conf parameter spark.riak.input.split.count
-        .withMinPartitions(3)
+        .withMinPartitions(readConf.splitCount)
         .build()
 
       val coveragePlan = session.execute(cmd)
 
+      // TODO: add proper Coverage Plan logging
+
       var partitionIdx = -1
       val partitions = for {
         ce <- coveragePlan
-        partition = new RiakLocalCoverPartition({partitionIdx += 1; partitionIdx },
+        partition = new RiakLocalCoveragePartition({partitionIdx += 1; partitionIdx },
             coveragePlan.hosts().toSet, HostAndPort.fromParts(ce.getHost, ce.getPort),
             queryData.copy(coverageEntries = Some(Seq(ce)))
           )

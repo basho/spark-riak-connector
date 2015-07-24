@@ -62,9 +62,12 @@ private case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadC
     val builder = from match {
 
       case ce: CoverageEntry =>
-        // Coverage Entry can't be used in the range manner, therefore 'to' must be None
-        require(to.isEmpty)
-        new IntIndexQuery.Builder(ns, index, ce.getCoverContext)
+        // Query all data
+
+        require(to.isEmpty, "Coverage Entry can't be used in a range manner, therefore 'to' parameter must be None")
+        require(coverageEntry.isEmpty, "The Coverage Entry parameter mustn't be used for this type of query")
+
+        new BinIndexQuery.Builder(ns, index, ce.getCoverContext)
 
       case _ if isSuitableForIntIndex(from) => to match {
           case None => new IntIndexQuery.Builder(ns, index, convertToLong(from))
@@ -93,6 +96,7 @@ private case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadC
       .withPaginationSort(true)
 
     if(coverageEntry.isDefined){
+      // local 2i query (coverage entry is provided) either Equal or Range
       builder.withCoverContext(coverageEntry.get.getCoverContext)
     }
 

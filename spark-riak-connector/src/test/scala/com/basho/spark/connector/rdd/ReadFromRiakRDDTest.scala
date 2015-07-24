@@ -20,7 +20,7 @@ package com.basho.spark.connector.rdd
 import java.math.BigInteger
 import java.util.UUID
 
-import org.junit.Test
+import org.junit.{Ignore, Test}
 import org.junit.Assert._
 
 import com.basho.spark.connector._
@@ -266,5 +266,22 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
         "{timestamp: '2014-11-24T13:18:04', user_id: 'u1'}" +
         "]"
       , data)
+  }
+
+  @Ignore("Ignored since it fails because of returning wrong number of results (Riak issue)")
+  @Test
+  def local2iRangeRead() ={
+    val data = sc.riakBucket[UserTS](DEFAULT_NAMESPACE)
+      .query2iRangeLocal("creationNo", 1, 1000)
+      .mapPartitionsWithIndex(funcReMapWithPartitionIdx, preservesPartitioning=true)
+      .groupByKey()
+      .collect()
+
+    val count = data.size
+
+    // TODO: needs to verify the number of the created partitions
+    val allValues = data.map{case (k,v)=> v}.flatten
+
+    assertEquals(7, allValues.size)
   }
 }

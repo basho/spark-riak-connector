@@ -49,8 +49,8 @@ object RiakKeys {
     new RiakKeys[String](Some(Left(keys)))
   }
 
-  def create2iReadAll(index: String, ce: CoverageEntry*): RiakKeys[CoverageEntry] ={
-    new RiakKeys[CoverageEntry](keysOrRange=None, index=Some(index), coverageEntries = Some(ce))
+  def createReadLocal(ce: CoverageEntry*): RiakKeys[CoverageEntry] ={
+    new RiakKeys[CoverageEntry](keysOrRange=None, index=Some("$bucket"), coverageEntries = Some(ce))
   }
 
   def create2iKeyRangesLocal[K](index: String, ranges: (K, Option[K])*): RiakKeys[K] ={

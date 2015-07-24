@@ -20,7 +20,7 @@ package com.basho.spark.connector.rdd
 
 import com.basho.riak.client.core.query.{Location, RiakObject}
 import com.basho.spark.connector.query._
-import com.basho.spark.connector.rdd.partitioner.{RiakLocalCoverPartition, RiakLocalReadsPartitioner, RiakKeysPartition, RiakKeysPartitioner}
+import com.basho.spark.connector.rdd.partitioner.{RiakLocalCoveragePartition, RiakCoveragePlanBasedPartitioner, RiakKeysPartition, RiakKeysPartitioner}
 
 import scala.reflect.ClassTag
 import scala.language.existentials
@@ -50,7 +50,7 @@ class RiakRDD[R] private[connector] (
       case Some(rk) =>
         rk.coverageEntries match {
           case Some(ce) =>
-            RiakLocalReadsPartitioner.partitions(connector, BucketDef(bucketType, bucketName), readConf, keys.get)
+            RiakCoveragePlanBasedPartitioner.partitions(connector, BucketDef(bucketType, bucketName), readConf, keys.get)
 
           case _ =>
             RiakKeysPartitioner.partitions(connector.hosts, keys.get)
@@ -87,7 +87,7 @@ class RiakRDD[R] private[connector] (
         countingIterator
 
       // TODO: remove duplicated code
-      case rl: RiakLocalCoverPartition[_] =>
+      case rl: RiakLocalCoveragePartition[_] =>
         val session = connector.openSession(Some(Seq(rl.primaryHost)))
         val startTime = System.currentTimeMillis()
 
@@ -126,8 +126,14 @@ class RiakRDD[R] private[connector] (
     copy(keys = Some(RiakKeys.create2iKeyRangesLocal(index, (from, Some(to)))))
   }
 
-  def query2iAll(index: String): RiakRDD[R] ={
-    copy(keys = Some(RiakKeys.create2iReadAll(index)))
+  /**
+   * Perform query all data from the bucket.
+   * Utilizes Coverage Plan to perform bunch of local read
+   *
+   * @see RiakCoveragePlanBasedPartitioner
+   */
+  def queryAll(): RiakRDD[R] ={
+    copy(keys = Some(RiakKeys.createReadLocal()))
   }
 
   def queryBucketKeys(keys: String*): RiakRDD[R] = {

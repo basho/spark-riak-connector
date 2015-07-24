@@ -21,7 +21,7 @@ import org.junit.{Ignore, Test}
 import com.basho.spark.connector._
 import org.junit.Assert._
 
-class LocalReadTest extends AbstractRDDTest {
+class FullBucketReadTest extends AbstractRDDTest {
   private val NUMBER_OF_TEST_VALUES = 20
 
   @Override
@@ -43,11 +43,13 @@ class LocalReadTest extends AbstractRDDTest {
     }
   }
 
+  /**
+   * Utilize CoveragePlan support to perform local reads
+   */
   @Test
-  def simpleDo2iLocalRangeRead() ={
+  def fullBucketRead() ={
     val data = sc.riakBucket[String](DEFAULT_NAMESPACE)
-      //.query2iAll("creationNo")
-      .query2iRangeLocal("creationNo", 1, 1000)
+      .queryAll()
       .mapPartitionsWithIndex(funcReMapWithPartitionIdx, preservesPartitioning=true)
       .groupByKey()
       .collect()
