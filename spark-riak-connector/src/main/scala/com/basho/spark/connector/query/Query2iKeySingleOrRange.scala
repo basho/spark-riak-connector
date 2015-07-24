@@ -67,7 +67,7 @@ private case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadC
         require(to.isEmpty, "Coverage Entry can't be used in a range manner, therefore 'to' parameter must be None")
         require(coverageEntry.isEmpty, "The Coverage Entry parameter mustn't be used for this type of query")
 
-        new BinIndexQuery.Builder(ns, index, ce.getCoverContext)
+        new BinIndexQuery.Builder(ns, index, ce.getCoverageContext)
 
       case _ if isSuitableForIntIndex(from) => to match {
           case None => new IntIndexQuery.Builder(ns, index, convertToLong(from))
@@ -97,7 +97,7 @@ private case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadC
 
     if(coverageEntry.isDefined){
       // local 2i query (coverage entry is provided) either Equal or Range
-      builder.withCoverContext(coverageEntry.get.getCoverContext)
+      builder.withCoverageContext(coverageEntry.get.getCoverageContext)
     }
 
     nextToken match {
