@@ -37,7 +37,7 @@ class DataQueryingIterator(query: Query[_], riakSession: RiakClient, minConnecti
   private val dataBuffer: ArrayBuffer[ResultT] = new ArrayBuffer[ResultT](query.readConf.fetchSize)
   private var bufferIndex = 0
 
-  private var isThereANextValue: Any = None
+  private var isThereNextValue: Option[Boolean] = None
   private var nextToken: Option[_] = None
 
   private var _iterator: Option[Iterator[ResultT]] = None
@@ -97,13 +97,13 @@ class DataQueryingIterator(query: Query[_], riakSession: RiakClient, minConnecti
   }
 
   override def hasNext: Boolean =
-    isThereANextValue match {
-      case b: Boolean =>
+    isThereNextValue match {
+      case Some(b: Boolean) =>
         b
-      case _ =>
+      case None =>
         prefetchIfNeeded()
         val r= _iterator.get.hasNext
-        isThereANextValue = r
+        isThereNextValue = Some(r)
         r
     }
 
@@ -113,7 +113,7 @@ class DataQueryingIterator(query: Query[_], riakSession: RiakClient, minConnecti
     }
 
     bufferIndex += 1
-    isThereANextValue = None
+    isThereNextValue = None
     _iterator.get.next()
   }
 }
