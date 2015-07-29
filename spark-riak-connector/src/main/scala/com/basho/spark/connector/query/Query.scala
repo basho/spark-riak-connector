@@ -33,7 +33,7 @@ trait Query[T] extends Serializable {
 }
 
 object Query{
-  def apply[K](bucket: BucketDef, readConf:ReadConf, riakKeys: RiakKeys[K]): Query[K] = {
+  def apply[K](bucket: BucketDef, readConf:ReadConf, riakKeys: QueryData[K]): Query[K] = {
 
     val ce = riakKeys.coverageEntries match {
       case None => None

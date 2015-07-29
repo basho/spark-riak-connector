@@ -19,7 +19,7 @@ package com.basho.spark.connector.rdd.partitioner
 
 import com.basho.riak.client.api.commands.kv.CoveragePlan.Builder
 import com.basho.riak.client.core.util.HostAndPort
-import com.basho.spark.connector.query.RiakKeys
+import com.basho.spark.connector.query.QueryData
 import com.basho.spark.connector.rdd.{ReadConf, BucketDef, RiakConnector, RiakPartition}
 import org.apache.spark.Partition
 
@@ -29,14 +29,14 @@ case class RiakLocalCoveragePartition[K] (
     index: Int,
     endpoints: Set[HostAndPort],
     primaryHost: HostAndPort,
-    queryData: RiakKeys[K]
+    queryData: QueryData[K]
 ) extends RiakPartition
 
 /**
  * Obtains Coverage Plan and creates a separate partition for each Coverage Entry
  */
 object RiakCoveragePlanBasedPartitioner {
-  def partitions[K](connector: RiakConnector, bucket: BucketDef, readConf: ReadConf, queryData: RiakKeys[K]): Array[Partition] = {
+  def partitions[K](connector: RiakConnector, bucket: BucketDef, readConf: ReadConf, queryData: QueryData[K]): Array[Partition] = {
     connector.withSessionDo(session =>{
       val cmd = new Builder(bucket.asNamespace())
         .withMinPartitions(readConf.splitCount)

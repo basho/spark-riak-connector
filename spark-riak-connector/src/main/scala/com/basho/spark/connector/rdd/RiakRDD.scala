@@ -35,7 +35,7 @@ class RiakRDD[R] private[connector] (
     val bucketType: String,
     val bucketName: String,
     val convert:(Location, RiakObject) => R,
-    val keys: Option[RiakKeys[_]] = None,
+    val keys: Option[QueryData[_]] = None,
     val readConf: ReadConf = ReadConf()
     )(
       implicit val ct : ClassTag[R])
@@ -110,20 +110,20 @@ class RiakRDD[R] private[connector] (
   }
 
   private def copy(
-                   keys: Option[RiakKeys[_]] = keys,
+                   keys: Option[QueryData[_]] = keys,
                    readConf: ReadConf = readConf, connector: RiakConnector = connector): RiakRDD[R] =
     new RiakRDD(sc, connector, bucketType, bucketName, convert, keys, readConf)
 
   def query2iRange[K](index: String, from: K, to: K): RiakRDD[R] = {
-    copy(keys = Some(RiakKeys.create2iKeyRanges[K](index, (from, Some(to)))))
+    copy(keys = Some(QueryData.create2iKeyRanges[K](index, (from, Some(to)))))
   }
 
   def query2iKeys[K](index: String, keys: K* ): RiakRDD[R] = {
-    copy(keys = Some(RiakKeys.create2iKeys[K](index, keys:_*)))
+    copy(keys = Some(QueryData.create2iKeys[K](index, keys:_*)))
   }
 
   def query2iRangeLocal[K](index: String, from: K, to: K): RiakRDD[R] ={
-    copy(keys = Some(RiakKeys.create2iKeyRangesLocal(index, (from, Some(to)))))
+    copy(keys = Some(QueryData.create2iKeyRangesLocal(index, (from, Some(to)))))
   }
 
   /**
@@ -133,11 +133,11 @@ class RiakRDD[R] private[connector] (
    * @see RiakCoveragePlanBasedPartitioner
    */
   def queryAll(): RiakRDD[R] ={
-    copy(keys = Some(RiakKeys.createReadLocal()))
+    copy(keys = Some(QueryData.createReadLocal()))
   }
 
   def queryBucketKeys(keys: String*): RiakRDD[R] = {
-    copy(keys = Some(RiakKeys.createBucketKeys(keys:_*)))
+    copy(keys = Some(QueryData.createBucketKeys(keys:_*)))
   }
 
   /**
@@ -145,7 +145,7 @@ class RiakRDD[R] private[connector] (
    */
   def partitionBy2iRanges[K](index: String, ranges: (K, K)*): RiakRDD[R] = {
     val r = ranges map( x => (x._1, Some(x._2)) )
-    copy(keys = Some(RiakKeys.create2iKeyRanges[K](index, r:_*)))
+    copy(keys = Some(QueryData.create2iKeyRanges[K](index, r:_*)))
   }
 
   /**
@@ -153,7 +153,7 @@ class RiakRDD[R] private[connector] (
    */
   def partitionBy2iKeys[K](index: String, keys: K*): RiakRDD[R] = {
     val r = keys map( k=> (k, None) )
-    copy(keys = Some(RiakKeys.create2iKeyRanges[K](index, r:_*)))
+    copy(keys = Some(QueryData.create2iKeyRanges[K](index, r:_*)))
   }
 }
 

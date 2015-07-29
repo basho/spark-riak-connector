@@ -19,7 +19,7 @@ package com.basho.spark.connector.query
 
 import com.basho.riak.client.core.operations.CoveragePlanOperation.Response.CoverageEntry
 
-case class RiakKeys[T](
+case class QueryData[T](
   // Might be None if represents the full bucket read
     keysOrRange: Option[Either[Seq[T],Seq[(T, Option[T])]]],
 
@@ -31,29 +31,29 @@ case class RiakKeys[T](
 
   def copy( keysOrRange: Option[Either[Seq[T],Seq[(T, Option[T])]]] = keysOrRange,
             index: Option[String] = index,
-            coverageEntries: Option[Seq[CoverageEntry]] = coverageEntries ): RiakKeys[T] ={
-    new RiakKeys[T]( keysOrRange, index, coverageEntries)
+            coverageEntries: Option[Seq[CoverageEntry]] = coverageEntries ): QueryData[T] ={
+    new QueryData[T]( keysOrRange, index, coverageEntries)
   }
 }
 
-object RiakKeys {
-  def create2iKeyRanges[K](index: String, ranges: (K, Option[K])*):RiakKeys[K] ={
-    new RiakKeys[K](Some(Right(ranges)), Some(index))
+object QueryData {
+  def create2iKeyRanges[K](index: String, ranges: (K, Option[K])*):QueryData[K] ={
+    new QueryData[K](Some(Right(ranges)), Some(index))
   }
 
-  def create2iKeys[K](index: String, keys: K*):RiakKeys[K] ={
-    new RiakKeys[K](Some(Left(keys)), Some(index))
+  def create2iKeys[K](index: String, keys: K*):QueryData[K] ={
+    new QueryData[K](Some(Left(keys)), Some(index))
   }
 
-  def createBucketKeys(keys: String*):RiakKeys[String] ={
-    new RiakKeys[String](Some(Left(keys)))
+  def createBucketKeys(keys: String*):QueryData[String] ={
+    new QueryData[String](Some(Left(keys)))
   }
 
-  def createReadLocal(ce: CoverageEntry*): RiakKeys[CoverageEntry] ={
-    new RiakKeys[CoverageEntry](keysOrRange=None, index=Some("$bucket"), coverageEntries = Some(ce))
+  def createReadLocal(ce: CoverageEntry*): QueryData[CoverageEntry] ={
+    new QueryData[CoverageEntry](keysOrRange=None, index=Some("$bucket"), coverageEntries = Some(ce))
   }
 
-  def create2iKeyRangesLocal[K](index: String, ranges: (K, Option[K])*): RiakKeys[K] ={
-    new RiakKeys[K](keysOrRange=Some(Right(ranges)), index=Some(index), coverageEntries = Some(Array.empty[CoverageEntry]))
+  def create2iKeyRangesLocal[K](index: String, ranges: (K, Option[K])*): QueryData[K] ={
+    new QueryData[K](keysOrRange=Some(Right(ranges)), index=Some(index), coverageEntries = Some(Array.empty[CoverageEntry]))
   }
 }
