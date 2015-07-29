@@ -66,32 +66,32 @@ class DataQueryingIterator(query: Query[_], riakSession: RiakClient, minConnecti
     dataBuffer.clear()
     bufferIndex = 0
 
-    if(r._2.isEmpty){
-      /**
-       * It is Absolutely possible situation, for instance:
-       *     in case when the last data page will be returned as a result of  2i continuation query and
-       *     this page will be fully filled with data then the valid continuation token wile be also returned (it will be not null),
-       *     therefore additional/subsequent data fetch request will be required.
-       *     As a result of such call the empty locations list and Null continuation token will be returned
-       */
-      logDebug("prefetch is not required, all data was processed (location list is empty)")
-      _iterator = Some(Iterator.empty)
-    } else {
+    r match {
+      case (_, Nil) =>
+        /**
+         * It is Absolutely possible situation, for instance:
+         *     in case when the last data page will be returned as a result of  2i continuation query and
+         *     this page will be fully filled with data then the valid continuation token wile be also returned (it will be not null),
+         *     therefore additional/subsequent data fetch request will be required.
+         *     As a result of such call the empty locations list and Null continuation token will be returned
+         */
+        logDebug("prefetch is not required, all data was processed (location list is empty)")
+        _iterator = Some(Iterator.empty)
+      case (_, locations: Iterable[Location]) =>
+        /**
+         * To be 100% sure that massive fetch doesn't lead to the connection pool starvation,
+         * fetch will be performed by the smaller chunks of keys.
+         *
+         * Ideally the chunk size should be equal to min number of connections to the RiakNode
+         */
+        val itChunkedLocations = locations.grouped(minConnectionsPerNode)
+        DataQueryingIterator.fetchData(riakSession, itChunkedLocations, dataBuffer)
 
-      /**
-       * To be 100% sure that massive fetch doesn't lead to the connection pool starvation,
-       * fetch will be performed by the smaller chunk of keys.
-       *
-       * Ideally the chunk size should be equal to min number of connections to the RiakNode
-       */
-      val itChunkedLocations: Iterator[Iterable[Location]] = r._2.grouped(minConnectionsPerNode)
-      DataQueryingIterator.fetchData(riakSession, itChunkedLocations, dataBuffer)
+        logDebug(s"Next data buffer was fetched:\n" +
+          s"\tnextToken: $nextToken\n" +
+          s"\tbuffer: $dataBuffer")
 
-      logDebug(s"Next data buffer was fetched:\n" +
-        s"\tnextToken: $nextToken\n" +
-        s"\tbuffer: $dataBuffer")
-
-      _iterator = Some(dataBuffer.iterator)
+        _iterator = Some(dataBuffer.iterator)
     }
     true
   }
