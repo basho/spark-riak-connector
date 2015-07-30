@@ -46,10 +46,9 @@ object RiakCoveragePlanBasedPartitioner {
 
       // TODO: add proper Coverage Plan logging
 
-      var partitionIdx = -1
       val partitions = for {
-        ce <- coveragePlan
-        partition = new RiakLocalCoveragePartition({partitionIdx += 1; partitionIdx },
+        (ce, partitionIdx) <- coveragePlan.zipWithIndex
+        partition = new RiakLocalCoveragePartition(partitionIdx,
             coveragePlan.hosts().toSet, HostAndPort.fromParts(ce.getHost, ce.getPort),
             queryData.copy(coverageEntries = Some(Seq(ce)))
           )
