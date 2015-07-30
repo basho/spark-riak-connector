@@ -273,7 +273,7 @@ trait RiakFunctions {
     val req = new ListKeys.Builder(ns).build()
     val response = riakSession.execute(req)
 
-    response.iterator().exists( x=> func(riakSession, x) )
+    response.iterator().forall( x=> func(riakSession, x) )
   }
 
   def readByLocation[T:ClassTag](riakSession: RiakClient, location: Location, convert:(Location, RiakObject) => T): T ={
@@ -295,7 +295,7 @@ trait RiakFunctions {
   def deleteByLocation(riakSession: RiakClient, location: Location): Boolean ={
     val deleteRequest = new DeleteValue.Builder(location).build()
     riakSession.execute(deleteRequest)
-    false
+    true
   }
 
   def deleteByLocationAsync(riakSession: RiakClient, location: Location): RiakFuture[Void,Location] ={
@@ -340,7 +340,7 @@ trait RiakFunctions {
         semaphore.acquire()
         logger.debug("Performing delete for '{}'", l)
         deleteByLocationAsync(client, l).addListener(listener)
-        false
+        true
       })
     })
 
