@@ -33,7 +33,7 @@ trait Query[T] extends Serializable {
 }
 
 object Query{
-  def apply[K](bucket: BucketDef, readConf:ReadConf, queryData: QueryData[K]): Query[K] = {
+  def apply[K](bucket: BucketDef, readConf:ReadConf, queryData: QueryData[K]): Query[_] = {
 
     val ce = queryData.coverageEntries match {
       case None => None
@@ -46,10 +46,10 @@ object Query{
       case Some(Left(keys: Seq[K])) =>
         if( queryData.index.isDefined){
           // Query 2i Keys
-          new Query2iKeys[K](bucket, readConf, queryData.index.get, keys).asInstanceOf[Query[K]]
+          new Query2iKeys[K](bucket, readConf, queryData.index.get, keys)
         }else{
           // Query Bucket Keys
-          new QueryBucketKeys(bucket, readConf, keys.asInstanceOf[Seq[String]] ).asInstanceOf[Query[K]]
+          new QueryBucketKeys(bucket, readConf, keys.asInstanceOf[Seq[String]])
         }
 
       case Some(Right(range: Seq[(K, Option[K])])) =>
@@ -57,7 +57,7 @@ object Query{
         require(queryData.index.isDefined)
         require(range.size == 1)
         val r = range.head
-        new Query2iKeySingleOrRange[K](bucket, readConf, queryData.index.get, r._1, r._2, ce).asInstanceOf[Query[K]]
+        new Query2iKeySingleOrRange[K](bucket, readConf, queryData.index.get, r._1, r._2, ce)
 
       case None =>
         // Full Bucket Read
@@ -67,7 +67,7 @@ object Query{
         val ce = queryData.coverageEntries.get
         require(!ce.isEmpty)
 
-        new Query2iKeys[CoverageEntry](bucket, readConf, queryData.index.get, ce).asInstanceOf[Query[K]]
+        new Query2iKeys[CoverageEntry](bucket, readConf, queryData.index.get, ce)
     }
   }
 }
