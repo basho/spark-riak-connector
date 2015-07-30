@@ -34,7 +34,6 @@ abstract class AbstractRDDTest extends AbstractRiakSparkTest with Logging{
       foreachKeyInBucket(session, ns, (client, l: Location) =>{
         val v = readByLocation[String](client, l)
         data += ((l.getKeyAsString,v))
-        true
       })
     )
     data.toList
