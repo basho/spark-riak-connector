@@ -33,38 +33,41 @@ trait Query[T] extends Serializable {
 }
 
 object Query{
-  def apply[K](bucket: BucketDef, readConf:ReadConf, riakKeys: QueryData[K]): Query[K] = {
+  def apply[K](bucket: BucketDef, readConf:ReadConf, queryData: QueryData[K]): Query[K] = {
 
-    val ce = riakKeys.coverageEntries match {
+    val ce = queryData.coverageEntries match {
       case None => None
       case Some(entries) =>
         require(entries.size == 1)
         Some(entries.head)
     }
 
-    riakKeys.keysOrRange match {
+    queryData.keysOrRange match {
       case Some(Left(keys: Seq[K])) =>
-        if( riakKeys.index.isDefined){
+        if( queryData.index.isDefined){
           // Query 2i Keys
-          new Query2iKeys[K](bucket, readConf, riakKeys.index.get, keys).asInstanceOf[Query[K]]
+          new Query2iKeys[K](bucket, readConf, queryData.index.get, keys).asInstanceOf[Query[K]]
         }else{
+          // Query Bucket Keys
           new QueryBucketKeys(bucket, readConf, keys.asInstanceOf[Seq[String]] ).asInstanceOf[Query[K]]
         }
 
       case Some(Right(range: Seq[(K, Option[K])])) =>
-        require(riakKeys.index.isDefined)
+        // Query 2i Range, local (queryData.coverageEntries is provided) or not
+        require(queryData.index.isDefined)
         require(range.size == 1)
         val r = range.head
-        new Query2iKeySingleOrRange[K](bucket, readConf, riakKeys.index.get, r._1, r._2, ce).asInstanceOf[Query[K]]
+        new Query2iKeySingleOrRange[K](bucket, readConf, queryData.index.get, r._1, r._2, ce).asInstanceOf[Query[K]]
 
       case None =>
-        require(riakKeys.index.isDefined)
-        require(riakKeys.coverageEntries.isDefined)
+        // Full Bucket Read
+        require(queryData.index.isDefined)
+        require(queryData.coverageEntries.isDefined)
 
-        val ce = riakKeys.coverageEntries.get
+        val ce = queryData.coverageEntries.get
         require(!ce.isEmpty)
 
-        new Query2iKeys[CoverageEntry](bucket, readConf, riakKeys.index.get, ce).asInstanceOf[Query[K]]
+        new Query2iKeys[CoverageEntry](bucket, readConf, queryData.index.get, ce).asInstanceOf[Query[K]]
     }
   }
 }

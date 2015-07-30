@@ -19,6 +19,7 @@ package com.basho.spark.connector.rdd
 
 
 import com.basho.riak.client.core.query.{Location, RiakObject}
+import com.basho.riak.client.core.util.HostAndPort
 import com.basho.spark.connector.query._
 import com.basho.spark.connector.rdd.partitioner.{RiakLocalCoveragePartition, RiakCoveragePlanBasedPartitioner, RiakKeysPartition, RiakKeysPartitioner}
 
@@ -35,7 +36,7 @@ class RiakRDD[R] private[connector] (
     val bucketType: String,
     val bucketName: String,
     val convert:(Location, RiakObject) => R,
-    val keys: Option[QueryData[_]] = None,
+    val queryData: Option[QueryData[_]] = None,
     val readConf: ReadConf = ReadConf()
     )(
       implicit val ct : ClassTag[R])
@@ -43,17 +44,17 @@ class RiakRDD[R] private[connector] (
 
   override def getPartitions: Array[Partition] = {
 
-    val partitions = keys match{
+    val partitions = queryData match{
       case None =>
         throw new IllegalMonitorStateException("Query criteria should be provided")
 
       case Some(rk) =>
         rk.coverageEntries match {
           case Some(ce) =>
-            RiakCoveragePlanBasedPartitioner.partitions(connector, BucketDef(bucketType, bucketName), readConf, keys.get)
+            RiakCoveragePlanBasedPartitioner.partitions(connector, BucketDef(bucketType, bucketName), readConf, queryData.get)
 
           case _ =>
-            RiakKeysPartitioner.partitions(connector.hosts, keys.get)
+            RiakKeysPartitioner.partitions(connector.hosts, queryData.get)
         }
     }
 
@@ -65,44 +66,40 @@ class RiakRDD[R] private[connector] (
     partitions
   }
 
+  private def doCompute[K](partitionIdx: Int, context: TaskContext, queryData: QueryData[K],
+                           primaryHost: Option[HostAndPort] = None): Iterator[R] = {
+
+    val session = primaryHost match {
+      case None =>
+        connector.openSession()
+      case Some(h: HostAndPort) =>
+        connector.openSession(Some(Seq(h)))
+    }
+    val startTime = System.currentTimeMillis()
+
+    val query = Query(BucketDef(bucketType, bucketName), readConf, queryData)
+
+    val iterator: Iterator[(Location, RiakObject)] = new DataQueryingIterator(query, session, connector.minConnections)
+    val convertingIterator = new DataConvertingIterator[R](iterator, convert)
+    val countingIterator = new CountingIterator[R](convertingIterator)
+    context.addTaskCompletionListener { (context) =>
+      val endTime = System.currentTimeMillis()
+      val duration = (endTime - startTime) / 1000.0
+      logDebug(s"Fetched ${countingIterator.count} rows from ${query.bucket}" +
+        f" for partition ${partitionIdx} in $duration%.3f s.")
+      session.shutdown()
+    }
+    countingIterator
+  }
+
   override def compute(split: Partition, context: TaskContext): Iterator[R] = {
 
     split match {
       case rp: RiakKeysPartition[_] =>
-        val session = connector.openSession()
-        val startTime = System.currentTimeMillis()
+        doCompute(split.index, context, rp.keys)
 
-        val query = Query(BucketDef(bucketType, bucketName), readConf, rp.keys)
-
-        val iterator: Iterator[(Location, RiakObject)] = new DataQueryingIterator(query, session, connector.minConnections)
-        val convertingIterator = new DataConvertingIterator[R](iterator, convert)
-        val countingIterator = new CountingIterator[R](convertingIterator)
-        context.addTaskCompletionListener { (context) =>
-          val endTime = System.currentTimeMillis()
-          val duration = (endTime - startTime) / 1000.0
-          logDebug(s"Fetched ${countingIterator.count} rows from ${query.bucket}" +
-            f" for partition ${rp.index} in $duration%.3f s.")
-          session.shutdown()
-        }
-        countingIterator
-
-      // TODO: remove duplicated code
       case rl: RiakLocalCoveragePartition[_] =>
-        val session = connector.openSession(Some(Seq(rl.primaryHost)))
-        val startTime = System.currentTimeMillis()
-
-        val query = Query(BucketDef(bucketType, bucketName), readConf, rl.queryData)
-        val iterator: Iterator[(Location, RiakObject)] = new DataQueryingIterator(query, session, connector.minConnections)
-        val convertingIterator = new DataConvertingIterator[R](iterator, convert)
-        val countingIterator = new CountingIterator[R](convertingIterator)
-        context.addTaskCompletionListener { (context) =>
-          val endTime = System.currentTimeMillis()
-          val duration = (endTime - startTime) / 1000.0
-          logDebug(s"Fetched ${countingIterator.count} rows from ${query.bucket}" +
-            f" for partition ${rl.index} in $duration%.3f s.")
-          session.shutdown()
-        }
-        countingIterator
+        doCompute(split.index, context, rl.queryData, Some(rl.primaryHost))
 
       case _ =>
         throw new IllegalStateException("Unsupported partition type")
@@ -110,20 +107,20 @@ class RiakRDD[R] private[connector] (
   }
 
   private def copy(
-                   keys: Option[QueryData[_]] = keys,
+                   queryData: Option[QueryData[_]] = queryData,
                    readConf: ReadConf = readConf, connector: RiakConnector = connector): RiakRDD[R] =
-    new RiakRDD(sc, connector, bucketType, bucketName, convert, keys, readConf)
+    new RiakRDD(sc, connector, bucketType, bucketName, convert, queryData, readConf)
 
   def query2iRange[K](index: String, from: K, to: K): RiakRDD[R] = {
-    copy(keys = Some(QueryData.create2iKeyRanges[K](index, (from, Some(to)))))
+    copy(queryData = Some(QueryData.create2iKeyRanges[K](index, (from, Some(to)))))
   }
 
   def query2iKeys[K](index: String, keys: K* ): RiakRDD[R] = {
-    copy(keys = Some(QueryData.create2iKeys[K](index, keys:_*)))
+    copy(queryData = Some(QueryData.create2iKeys[K](index, keys:_*)))
   }
 
   def query2iRangeLocal[K](index: String, from: K, to: K): RiakRDD[R] ={
-    copy(keys = Some(QueryData.create2iKeyRangesLocal(index, (from, Some(to)))))
+    copy(queryData = Some(QueryData.create2iKeyRangesLocal(index, (from, Some(to)))))
   }
 
   /**
@@ -133,11 +130,11 @@ class RiakRDD[R] private[connector] (
    * @see RiakCoveragePlanBasedPartitioner
    */
   def queryAll(): RiakRDD[R] ={
-    copy(keys = Some(QueryData.createReadLocal()))
+    copy(queryData = Some(QueryData.createReadLocal()))
   }
 
   def queryBucketKeys(keys: String*): RiakRDD[R] = {
-    copy(keys = Some(QueryData.createBucketKeys(keys:_*)))
+    copy(queryData = Some(QueryData.createBucketKeys(keys:_*)))
   }
 
   /**
@@ -145,7 +142,7 @@ class RiakRDD[R] private[connector] (
    */
   def partitionBy2iRanges[K](index: String, ranges: (K, K)*): RiakRDD[R] = {
     val r = ranges map( x => (x._1, Some(x._2)) )
-    copy(keys = Some(QueryData.create2iKeyRanges[K](index, r:_*)))
+    copy(queryData = Some(QueryData.create2iKeyRanges[K](index, r:_*)))
   }
 
   /**
@@ -153,7 +150,7 @@ class RiakRDD[R] private[connector] (
    */
   def partitionBy2iKeys[K](index: String, keys: K*): RiakRDD[R] = {
     val r = keys map( k=> (k, None) )
-    copy(keys = Some(QueryData.create2iKeyRanges[K](index, r:_*)))
+    copy(queryData = Some(QueryData.create2iKeyRanges[K](index, r:_*)))
   }
 }
 

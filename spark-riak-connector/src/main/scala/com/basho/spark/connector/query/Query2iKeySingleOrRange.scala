@@ -62,7 +62,7 @@ private case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadC
     val builder = from match {
 
       case ce: CoverageEntry =>
-        // Query all data
+        // Full Bucket Read (Query all data)
 
         require(to.isEmpty, "Coverage Entry can't be used in a range manner, therefore 'to' parameter must be None")
         require(coverageEntry.isEmpty, "The Coverage Entry parameter mustn't be used for this type of query")

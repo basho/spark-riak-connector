@@ -409,9 +409,6 @@ trait RiakFunctions {
 }
 
 object RiakFunctions {
-//  private def resolveHost(hostName: String): Option[HostAndPort] = {
-//    Some(HostAndPort.fromString(hostName))
-//  }
 
   private def minConnections(nb: RiakNode.Builder):Int ={
     val f = nb.getClass.getDeclaredField("minConnections")
@@ -424,11 +421,6 @@ object RiakFunctions {
     val hosts = HostAndPort.hostsFromString(hostsStr, 8087).toSet
     val minConnections = conf.get("spark.riak.connection.host.connections.min", "5").toInt
     val maxConnections = conf.get("spark.riak.connection.host.connections.max", "15").toInt
-
-//    val hosts = for {
-//      hostName <- hostsStr.split(",").toSet[String]
-//      hostAddress <- resolveHost(hostName.trim)
-//    } yield hostAddress
 
     apply(hosts, minConnections, maxConnections)
   }
