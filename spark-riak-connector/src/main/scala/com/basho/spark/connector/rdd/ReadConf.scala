@@ -21,16 +21,23 @@ import org.apache.spark.SparkConf
 
 /** RDD read settings
   * @param fetchSize number of keys to fetch in a single round-trip to Riak
+  * @param splitCount desired minimum number of Spark partitions to divide the data into
  */
 case class ReadConf (
-  fetchSize: Int = ReadConf.DefaultFetchSize )
+  fetchSize: Int = ReadConf.DefaultFetchSize,
+  splitCount: Int = ReadConf.DefaultSplitCount
+)
 
 object ReadConf {
   val DefaultFetchSize = 1000
 
+  // TODO: Need to think about the proper default value
+  val DefaultSplitCount = 10
+
   def fromSparkConf(conf: SparkConf): ReadConf = {
     ReadConf(
-      fetchSize = conf.getInt("spark.riak.input.fetch-size", DefaultFetchSize)
+      fetchSize = conf.getInt("spark.riak.input.fetch-size", DefaultFetchSize),
+      splitCount = conf.getInt("spark.riak.input.split.count", DefaultSplitCount)
     )
   }
 }

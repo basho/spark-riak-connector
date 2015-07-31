@@ -19,13 +19,13 @@
 
 
 # Spark Master URL
-MASTER_URL="spark://ip-172-31-9-126:7077"
+MASTER_URL="local"
 
 # Riak connection host for spark-riak-connector
-RIAK_HOST="172.31.9.126"
+RIAK_HOST="localhost"
 
 # Riak connection port for spark-riak-connector
-RIAK_PORT="10017"
+RIAK_PORT="8087"
 
 DRIVER_MEM="512M"
 EXECUTOR_MEM="512M"

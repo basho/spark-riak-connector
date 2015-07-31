@@ -22,13 +22,15 @@ import java.math.BigInteger
 
 import com.basho.riak.client.api.RiakClient
 import com.basho.riak.client.api.commands.indexes.{BigIntIndexQuery, BinIndexQuery, IntIndexQuery}
+import com.basho.riak.client.core.operations.CoveragePlanOperation.Response.CoverageEntry
 import com.basho.riak.client.core.query.{Namespace, Location}
 import com.basho.riak.client.core.util.BinaryValue
 import com.basho.spark.connector.rdd.{ReadConf, BucketDef}
 
 import scala.collection.JavaConversions._
 
-private case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadConf, index: String, from: K, to: Option[K] = None )
+private case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadConf, index: String, from: K,
+        to: Option[K] = None, coverageEntry: Option[CoverageEntry] = None )
     extends Query[String] {
 
   private def isSuitableForIntIndex(v:K): Boolean = v match {
@@ -58,6 +60,15 @@ private case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadC
   override def nextLocationBulk(nextToken: Option[_], session: RiakClient): (Option[String], Iterable[Location]) = {
     val ns = new Namespace(bucket.bucketType, bucket.bucketName)
     val builder = from match {
+
+      case ce: CoverageEntry =>
+        // Full Bucket Read (Query all data)
+
+        require(to.isEmpty, "Coverage Entry can't be used in a range manner, therefore 'to' parameter must be None")
+        require(coverageEntry.isEmpty, "The Coverage Entry parameter mustn't be used for this type of query")
+
+        new BinIndexQuery.Builder(ns, index, ce.getCoverageContext)
+
       case _ if isSuitableForIntIndex(from) => to match {
           case None => new IntIndexQuery.Builder(ns, index, convertToLong(from))
           case Some(v) =>  new IntIndexQuery.Builder(ns, index, convertToLong(from), convertToLong(v))
@@ -83,6 +94,11 @@ private case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadC
     builder
       .withMaxResults(readConf.fetchSize)
       .withPaginationSort(true)
+
+    if(coverageEntry.isDefined){
+      // local 2i query (coverage entry is provided) either Equal or Range
+      builder.withCoverageContext(coverageEntry.get.getCoverageContext)
+    }
 
     nextToken match {
       case None =>

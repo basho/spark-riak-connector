@@ -17,7 +17,7 @@
  */
 package com.basho.spark.connector.rdd
 
-import com.google.common.net.HostAndPort
+import com.basho.riak.client.core.util.HostAndPort
 import org.apache.spark.Partition
 
 trait RiakPartition extends Partition{

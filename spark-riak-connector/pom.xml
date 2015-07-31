@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.basho</groupId>
         <artifactId>spark-riak-connector-parent</artifactId>
-        <version>0.8.0</version>
+        <version>1.0.0.beta2</version>
     </parent>
 
     <artifactId>spark-riak-connector</artifactId>
@@ -22,12 +22,12 @@
         </dependency>
         <dependency>
             <groupId>com.basho.riak</groupId>
-            <artifactId>riak-client</artifactId>
+            <artifactId>dataplatform-riak-client</artifactId>
         </dependency>
         <dependency>
             <groupId>com.basho</groupId>
             <artifactId>spark-riak-connector-test</artifactId>
-            <version>0.8.0</version>
+            <version>1.0.0.beta2</version>
             <scope>test</scope>
         </dependency>
         <dependency>

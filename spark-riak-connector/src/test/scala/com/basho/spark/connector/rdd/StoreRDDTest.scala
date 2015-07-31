@@ -222,7 +222,6 @@ class RDDStoreTest  extends AbstractRDDTest {
       foreachKeyInBucket(session, ns, (client:RiakClient, l:Location) => {
         val ro = readByLocation[RiakObject](session, l)
         assertEquals(s"Unexpected RiakObject.contentType\nExpected\t:$expected\nActual\t:${ro.getContentType}", expected, ro.getContentType)
-        false
       })
     })
   }

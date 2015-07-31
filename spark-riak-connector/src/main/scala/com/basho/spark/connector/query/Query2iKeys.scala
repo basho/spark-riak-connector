@@ -38,9 +38,9 @@ private case class Query2iKeys[K](bucket: BucketDef, readConf:ReadConf, index: S
 
     while ((keys.hasNext || _iterator.hasNext) && !bulkIsCollected(dataBuffer)){
       // Previously gathered results should be returned at first, if any
-      _iterator exists ( location => {
+      _iterator forall  ( location => {
         dataBuffer += location
-        bulkIsCollected(dataBuffer)
+        !bulkIsCollected(dataBuffer)
       })
 
       if(!bulkIsCollected(dataBuffer)) tokenNext match {

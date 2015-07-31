@@ -28,14 +28,13 @@ import com.basho.riak.client.api.commands.indexes.{IntIndexQuery, BinIndexQuery}
 import com.basho.riak.client.api.commands.kv.{DeleteValue, StoreValue, FetchValue, ListKeys}
 import com.basho.riak.client.core.RiakNode.Builder
 import com.basho.riak.client.core.query.indexes.{StringBinIndex, LongIntIndex}
-import com.basho.riak.client.core.util.BinaryValue
+import com.basho.riak.client.core.util.{HostAndPort, BinaryValue}
 import com.basho.riak.client.core._
 import com.basho.riak.client.core.query.{Location, RiakObject, Namespace}
 import com.fasterxml.jackson.core.JsonParser
 import com.fasterxml.jackson.core.`type`.TypeReference
 import com.fasterxml.jackson.databind.{ObjectWriter, SerializationFeature, DeserializationFeature, ObjectMapper}
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
-import com.google.common.net.HostAndPort
 import org.apache.spark.SparkConf
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -270,11 +269,11 @@ trait RiakFunctions {
     c > 0
   }
 
-  def foreachKeyInBucket(riakSession: RiakClient, ns: Namespace,  func: (RiakClient, Location) => Boolean): Unit ={
+  def foreachKeyInBucket(riakSession: RiakClient, ns: Namespace,  func: (RiakClient, Location) => Unit): Unit ={
     val req = new ListKeys.Builder(ns).build()
     val response = riakSession.execute(req)
 
-    response.iterator().exists( x=> func(riakSession, x) )
+    response.iterator().foreach( x=> func(riakSession, x) )
   }
 
   def readByLocation[T:ClassTag](riakSession: RiakClient, location: Location, convert:(Location, RiakObject) => T): T ={
@@ -293,10 +292,9 @@ trait RiakFunctions {
     convert(location, ro)
   }
 
-  def deleteByLocation(riakSession: RiakClient, location: Location): Boolean ={
+  def deleteByLocation(riakSession: RiakClient, location: Location): Unit ={
     val deleteRequest = new DeleteValue.Builder(location).build()
     riakSession.execute(deleteRequest)
-    false
   }
 
   def deleteByLocationAsync(riakSession: RiakClient, location: Location): RiakFuture[Void,Location] ={
@@ -341,7 +339,6 @@ trait RiakFunctions {
         semaphore.acquire()
         logger.debug("Performing delete for '{}'", l)
         deleteByLocationAsync(client, l).addListener(listener)
-        false
       })
     })
 
@@ -382,7 +379,7 @@ trait RiakFunctions {
 
       case _ =>
         for( host <- riakHosts) yield nodeBuilder
-            .withRemoteAddress( host.getHostText)
+            .withRemoteAddress( host.getHost)
             .withRemotePort(host.getPortOrDefault(8087))
             .build()
 
@@ -410,9 +407,6 @@ trait RiakFunctions {
 }
 
 object RiakFunctions {
-  private def resolveHost(hostName: String): Option[HostAndPort] = {
-    Some(HostAndPort.fromString(hostName))
-  }
 
   private def minConnections(nb: RiakNode.Builder):Int ={
     val f = nb.getClass.getDeclaredField("minConnections")
@@ -422,16 +416,14 @@ object RiakFunctions {
 
   def apply(conf: SparkConf): RiakFunctions = {
     val hostsStr = conf.get("spark.riak.connection.host", InetAddress.getLocalHost.getHostAddress)
-    val minConnections = conf.get("spark.riak.connection.host.connections.min", "10").toInt
-    val hosts = for {
-      hostName <- hostsStr.split(",").toSet[String]
-      hostAddress <- resolveHost(hostName.trim)
-    } yield hostAddress
+    val hosts = HostAndPort.hostsFromString(hostsStr, 8087).toSet
+    val minConnections = conf.get("spark.riak.connection.host.connections.min", "5").toInt
+    val maxConnections = conf.get("spark.riak.connection.host.connections.max", "15").toInt
 
-    apply(hosts, minConnections)
+    apply(hosts, minConnections, maxConnections)
   }
 
-  def apply(hosts:Set[HostAndPort], minConnectionsPerRiakNode:Int = 5) = {
+  def apply(hosts:Set[HostAndPort], minConnectionsPerRiakNode:Int = 5, maxConnectionsPerRiakNode: Int = 15) = {
     val nb = new Builder()
       .withMinConnections(minConnectionsPerRiakNode)
 

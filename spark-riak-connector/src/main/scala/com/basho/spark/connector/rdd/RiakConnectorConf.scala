@@ -19,21 +19,28 @@ package com.basho.spark.connector.rdd
 
 import java.net.InetAddress
 
-import com.google.common.net.HostAndPort
+import com.basho.riak.client.core.util.HostAndPort
 import org.apache.spark.{Logging, SparkConf}
 import scala.util.control.NonFatal
+import scala.collection.JavaConversions._
 
 
 /** Stores configuration of a connection to Riak.
   */
 case class RiakConnectorConf(
-  hosts: Set[HostAndPort])
+  hosts: Set[HostAndPort],
+  minConnections: Int,
+  maxConnections: Int)
 
 object RiakConnectorConf extends Logging {
+  val DEFAULT_MIN_CONNECTIONS = 20
+  val DEFAULT_MAX_CONNECTIONS = 50
   val RiakConnectionHostProperty = "spark.riak.connection.host"
+  val RiakMinConnectionPerHostProperty = "spark.riak.connection.host.connections.min"
+  val RiakMaxConnectionPerHostProperty = "spark.riak.connection.host.connections.max"
 
   private def resolveHost(hostName: String): Option[HostAndPort] = {
-    try Some(HostAndPort.fromString(hostName))
+    try Some(HostAndPort.fromString(hostName, 8087))
     catch {
       case NonFatal(e) =>
         logError(s"Unknown host '$hostName'", e)
@@ -42,12 +49,11 @@ object RiakConnectorConf extends Logging {
   }
 
   def apply(conf: SparkConf): RiakConnectorConf = {
+    val minConnections = conf.get(RiakMinConnectionPerHostProperty, DEFAULT_MIN_CONNECTIONS.toString).toInt
+    val maxConnections = conf.get(RiakMaxConnectionPerHostProperty, DEFAULT_MAX_CONNECTIONS.toString).toInt
     val hostsStr = conf.get(RiakConnectionHostProperty, InetAddress.getLocalHost.getHostAddress)
-    val hosts = for {
-      hostName <- hostsStr.split(",").toSet[String]
-      hostAddress <- resolveHost(hostName.trim)
-    } yield hostAddress
+    val hosts = HostAndPort.hostsFromString(hostsStr, 8087).toSet
 
-    RiakConnectorConf(hosts)
+    RiakConnectorConf(hosts, minConnections, maxConnections)
   }
 }

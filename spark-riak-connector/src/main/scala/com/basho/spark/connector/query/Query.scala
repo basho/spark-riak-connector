@@ -18,6 +18,7 @@
 package com.basho.spark.connector.query
 
 import com.basho.riak.client.api.RiakClient
+import com.basho.riak.client.core.operations.CoveragePlanOperation.Response.CoverageEntry
 import com.basho.riak.client.core.query.Location
 import com.basho.spark.connector.rdd.{ReadConf, BucketDef}
 
@@ -32,21 +33,41 @@ trait Query[T] extends Serializable {
 }
 
 object Query{
-  def apply[K](bucket: BucketDef, readConf:ReadConf, riakKeys: RiakKeys[K]): Query[K] = {
-    riakKeys.keysOrRange match {
-      case Left(keys: Seq[K]) =>
-        if( riakKeys.index.isDefined){
+  def apply[K](bucket: BucketDef, readConf:ReadConf, queryData: QueryData[K]): Query[_] = {
+
+    val ce = queryData.coverageEntries match {
+      case None => None
+      case Some(entries) =>
+        require(entries.size == 1)
+        Some(entries.head)
+    }
+
+    queryData.keysOrRange match {
+      case Some(Left(keys: Seq[K])) =>
+        if( queryData.index.isDefined){
           // Query 2i Keys
-          new Query2iKeys[K](bucket, readConf, riakKeys.index.get, keys).asInstanceOf[Query[K]]
+          new Query2iKeys[K](bucket, readConf, queryData.index.get, keys)
         }else{
-          new QueryBucketKeys(bucket, readConf, keys.asInstanceOf[Seq[String]] ).asInstanceOf[Query[K]]
+          // Query Bucket Keys
+          new QueryBucketKeys(bucket, readConf, keys.asInstanceOf[Seq[String]])
         }
 
-      case Right(range: Seq[(K, Option[K])]) =>
-        require(riakKeys.index.isDefined)
+      case Some(Right(range: Seq[(K, Option[K])])) =>
+        // Query 2i Range, local (queryData.coverageEntries is provided) or not
+        require(queryData.index.isDefined)
         require(range.size == 1)
         val r = range.head
-        new Query2iKeySingleOrRange[K](bucket, readConf, riakKeys.index.get, r._1, r._2).asInstanceOf[Query[K]]
+        new Query2iKeySingleOrRange[K](bucket, readConf, queryData.index.get, r._1, r._2, ce)
+
+      case None =>
+        // Full Bucket Read
+        require(queryData.index.isDefined)
+        require(queryData.coverageEntries.isDefined)
+
+        val ce = queryData.coverageEntries.get
+        require(!ce.isEmpty)
+
+        new Query2iKeys[CoverageEntry](bucket, readConf, queryData.index.get, ce)
     }
   }
 }

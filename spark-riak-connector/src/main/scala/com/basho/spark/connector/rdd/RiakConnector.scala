@@ -20,8 +20,8 @@ package com.basho.spark.connector.rdd
 import java.io.IOException
 
 import com.basho.riak.client.api.RiakClient
+import com.basho.riak.client.core.util.HostAndPort
 import com.basho.riak.client.core.{RiakNode, RiakCluster}
-import com.google.common.net.HostAndPort
 
 import scala.collection.JavaConversions
 
@@ -47,8 +47,23 @@ class RiakConnector(conf: RiakConnectorConf)
   /** Known cluster hosts. This is going to return all cluster hosts after at least one successful connection has been made */
   def hosts: Set[HostAndPort] = _config.hosts
 
-  def openSession(): RiakClient = {
-    createSession(_config)
+  /** Minimum number of connections per one RiakNode */
+  def minConnections: Int = _config.minConnections
+
+  /** Maximum number of connections per one RiakNode */
+  def maxConnections: Int = _config.maxConnections
+
+  def openSession(hosts: Option[Seq[HostAndPort]] = None): RiakClient = {
+    val cfg = hosts match {
+      case None =>
+        _config
+
+      case Some(h:Seq[HostAndPort]) =>
+        new RiakConnectorConf(hosts=Set(h: _*), minConnections = _config.minConnections,
+          maxConnections = _config.maxConnections)
+    }
+
+    createSession(cfg)
   }
 
   def withSessionDo[T](code: RiakClient => T): T = {
@@ -64,8 +79,6 @@ class RiakConnector(conf: RiakConnectorConf)
 }
 
 object RiakConnector extends Logging {
-  val DEFAULT_MIN_NUMBER_OF_CONNECTIONS = 20
-  private val DEFAULT_MAX_NUMBER_OF_CONNECTIONS = 100
   private val sessionCache = new TrieMap[RiakConnectorConf, RiakClient]()
 
   private def createSession(conf: RiakConnectorConf): RiakClient = {
@@ -76,13 +89,12 @@ object RiakConnector extends Logging {
     try {
       logDebug(s"Attempting to create riak client at $addresses")
       val builder = new RiakNode.Builder()
-        .withMinConnections(DEFAULT_MIN_NUMBER_OF_CONNECTIONS)
-        .withMaxConnections(DEFAULT_MAX_NUMBER_OF_CONNECTIONS)
-
+        .withMinConnections(conf.minConnections)
+        .withMaxConnections(conf.maxConnections)
 
 
       val nodes = conf.hosts.map { (h: HostAndPort) =>
-        builder.withRemoteAddress(h.getHostText)
+        builder.withRemoteAddress(h.getHost)
         builder.withRemotePort(h.getPort)
         builder.build()
       }
@@ -117,9 +129,10 @@ object RiakConnector extends Logging {
   }
 
   /** Returns a RiakConnector created from explicitly given connection configuration. */
-  def apply(hosts: Set[HostAndPort]): RiakConnector = {
+  def apply(hosts: Set[HostAndPort], minConnections: Int = RiakConnectorConf.DEFAULT_MIN_CONNECTIONS,
+            maxConnections: Int = RiakConnectorConf.DEFAULT_MAX_CONNECTIONS): RiakConnector = {
 
-    val config = RiakConnectorConf(hosts)
+    val config = RiakConnectorConf(hosts, minConnections, maxConnections)
     new RiakConnector(config)
   }
 }

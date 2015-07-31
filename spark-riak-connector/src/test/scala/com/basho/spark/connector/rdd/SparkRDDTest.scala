@@ -107,7 +107,6 @@ class SparkRDDTest extends AbstractRDDTest {
       foreachKeyInBucket(session, DEFAULT_NAMESPACE_4STORE, (RiakConnector, l: Location) =>{
         val v = readByLocation[Long](session, l)
         data += ((l.getKeyAsString,v))
-        false
       })
     }}
     assertEquals(3, data.size)

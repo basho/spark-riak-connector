@@ -30,7 +30,7 @@ private case class QueryBucketKeys(bucket: BucketDef, readConf:ReadConf, keys: I
 
     val ns = bucket.asNamespace()
 
-    keys.exists(k =>{
+    keys.forall(k =>{
       dataBuffer += new Location(ns, k)
       dataBuffer.size < readConf.fetchSize} )
     dataBuffer
