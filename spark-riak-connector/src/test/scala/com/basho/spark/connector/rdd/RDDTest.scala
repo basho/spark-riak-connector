@@ -20,7 +20,7 @@ package com.basho.spark.connector.rdd
 import org.apache.spark.TaskContext
 import com.basho.riak.client.core.query.{Location, RiakObject}
 import com.basho.spark.connector.util.RiakObjectConversionUtil
-import org.junit.{Test, Assert}
+import org.junit.{Ignore, Test, Assert}
 import com.basho.spark.connector._
 import org.mockito.Mockito
 
@@ -60,6 +60,7 @@ class RDDTest extends AbstractRDDTest{
 
   }
 
+  @Ignore("Ignored until the fix for '2i inconsistency reads' will be released")
   @Test
   def check2IPageableProcessing() = {
     val rdd = sc.riakBucket[Map[String,_]](DEFAULT_NAMESPACE)
