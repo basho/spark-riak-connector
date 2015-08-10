@@ -34,7 +34,7 @@ mvn clean install
 Once connector is built there are several jars that are produced:
 spark-riak-connector/target/ contains spark-riak-connector-0.8.0.jar - this is the main connector jar. 
 
-if you're planning to develop Spark applications in Java there is an additional jar
+If you're planning to develop Spark applications in Java there is an additional jar
 spark-riak-connector-java-0.8.0.jar in spark-riak-connector-java/target/ 
 
 Also connector depends on the following jars:
