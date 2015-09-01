@@ -19,14 +19,12 @@ package com.basho.riak.spark.query
 
 import com.basho.riak.client.api.cap.Quorum
 import org.apache.spark.Logging
-
 import scala.collection.JavaConversions._
-
 import com.basho.riak.client.api.RiakClient
 import com.basho.riak.client.api.commands.kv.{FetchValue, MultiFetch}
 import com.basho.riak.client.core.query.{RiakObject, Location}
-
 import scala.collection.mutable.ArrayBuffer
+import org.apache.spark.metrics.RiakConnectorSource
 
 class DataQueryingIterator(query: Query[_], riakSession: RiakClient, minConnectionsPerNode: Int)
   extends Iterator[(Location, RiakObject)] with Logging {
@@ -108,13 +106,19 @@ class DataQueryingIterator(query: Query[_], riakSession: RiakClient, minConnecti
     }
 
   override def next(): (Location, RiakObject) = {
+    val metricCtx = RiakConnectorSource.instance.map(_.dataQueryingIteratorTimer.time())
+    
     if( !hasNext ){
       throw new NoSuchElementException("next on iterator")
     }
 
     bufferIndex += 1
     isThereNextValue = None
-    _iterator.get.next()
+    val item = _iterator.get.next()
+    
+    metricCtx.foreach(_.stop())
+    
+    item
   }
 }
 
