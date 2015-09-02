@@ -1,0 +1,105 @@
+<!--
+
+    Copyright (c) 2015 Basho Technologies, Inc.
+
+    This file is provided to you under the Apache License,
+    Version 2.0 (the "License"); you may not use this file
+    except in compliance with the License.  You may obtain
+    a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<assembly xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2 http://maven.apache.org/xsd/assembly-1.1.2.xsd">
+  <id>REPL</id>
+
+  <formats>
+    <format>zip</format>
+  </formats>
+
+  <dependencySets>
+
+    <!-- put all binary prerequisites to /lib -->
+    <dependencySet>
+      <outputDirectory>lib</outputDirectory>
+      <includes>
+        <include>com.basho.riak:spark-riak-connector</include>
+        <include>com.basho.riak:spark-riak-connector-java</include>
+        <include>com.basho.riak:spark-riak-connector-test-utils</include>
+        <include>com.google.guava:guava</include>
+        <include>com.basho.riak:dataplatform-riak-client</include>
+        <include>com.fasterxml.jackson.module:jackson-module-scala_${scala.major.version}</include>
+        <include>com.fasterxml.jackson.datatype:jackson-datatype-joda</include>
+        <include>org.scala-lang.modules:scala-java8-compat_${scala.major.version}</include>
+        <include>org.scala-lang:scala-swing</include>
+        <include>org.jfree:jfreechart</include>
+        <include>org.jfree:jcommon</include>
+        <include>com.github.wookietreiber:scala-chart_${scala.major.version}</include>
+        <include>joda-time:joda-time</include>
+      </includes>
+    </dependencySet>
+
+    <!-- put all binary examples & prerequisites to /examples-jar -->
+    <dependencySet>
+      <outputDirectory>examples-jar</outputDirectory>
+      <includes>
+        <include>com.basho.riak:spark-riak-connector-examples</include>
+      </includes>
+    </dependencySet>
+  </dependencySets>
+
+  <fileSets>
+    <!-- put helper script to / -->
+    <fileSet>
+      <directory>src/main/repl</directory>
+      <outputDirectory>./</outputDirectory>
+      <includes>
+        <include>*</include>
+      </includes>
+      <excludes>
+        <exclude>spark-repl-assembly.xml</exclude>
+      </excludes>
+    </fileSet>
+
+    <!-- put all demos and examples to /examples -->
+    <fileSet>
+      <directory>src/main/java/com/basho/riak/spark/examples</directory>
+      <outputDirectory>examples</outputDirectory>
+      <includes>
+        <include>*.java</include>
+      </includes>
+    </fileSet>
+    <fileSet>
+      <directory>src/main/scala/com/basho/riak/spark/examples</directory>
+      <outputDirectory>examples</outputDirectory>
+      <includes>
+        <include>*.scala</include>
+      </includes>
+    </fileSet>
+    <fileSet>
+      <directory>src/main/scala/com/basho/riak/spark/examples/demos</directory>
+      <outputDirectory>examples/demos</outputDirectory>
+      <includes>
+        <include>**/**</include>
+      </includes>
+    </fileSet>
+
+      <!-- put readme.md to /examples -->
+      <fileSet>
+          <directory>./</directory>
+          <outputDirectory>examples</outputDirectory>
+          <includes>
+              <include>README.md</include>
+          </includes>
+      </fileSet>
+  </fileSets>
+</assembly>
