@@ -28,7 +28,7 @@ class RiakClient(
   def resetAndLoadDataset(namespace: Namespace, dataset: AmplabDataset) = {
     resetAndEmptyBucket(namespace)
 
-    val filePaths = dataset.listDataPaths.take(5)
+    val filePaths = dataset.listDataPaths.take(1)
 
     withRiakDo { session =>
       filePaths foreach { path =>

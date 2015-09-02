@@ -1,16 +1,18 @@
 package com.basho.spark.connector.perf.config
 
 import org.apache.spark.SparkConf
+import scala.collection.JavaConversions._
 
 /**
  * @author anekhaev
  */
-trait SparkConfig extends RiakConfig {
+trait SparkConfig extends Config {
 
-  val sparkConfig = new SparkConf(true)
-    .setAppName(getClass.getSimpleName)
-    .set("spark.riak.connection.host", riakHost + ":" + riakPort)
-    .set("spark.riak.output.wquorum", "1")
-    .set("spark.riak.input.fetch-size", "5000")
+  lazy val sparkConfig = {
+    val sparkKeySection = config.getConfig("perf-test.spark").entrySet().toList.map("spark." + _.getKey)
+    val configSection = config.getConfig("perf-test")
+    sparkKeySection.foldLeft(new SparkConf(true).setAppName(getClass.getSimpleName))((cfg, key) => cfg.set(key, configSection.getString(key)))
+  }
+   
 
 }

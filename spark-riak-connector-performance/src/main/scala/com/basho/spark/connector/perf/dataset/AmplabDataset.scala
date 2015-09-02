@@ -8,17 +8,13 @@ import java.util.UUID
 /**
  * @author anekhaev
  */
-class AmplabDataset(
-    val dataSize: String = "tiny",          // available options: 'tiny', '1node', '5nodes'
-    val dataSetName: String = "uservisits"  // available options: 'rankings', 'uservisits', 'documents'
-  ) {
+class AmplabDataset(s3Bucket: String, s3Path: String) {
 
-  val testDataS3Bucket = "big-data-benchmark"
 
   def listDataPaths: List[(String, String)] = {
     S3Client
-      .listChildrenKeys(testDataS3Bucket, s"pavlo/text/$dataSize/$dataSetName")
-      .map(key => (testDataS3Bucket, key))
+      .listChildrenKeys(s3Bucket, s3Path)
+      .map(key => (s3Bucket, key))
   }
    
   def extractRiakRowsToAdd(dataPath: (String, String)): Iterator[String] = {
