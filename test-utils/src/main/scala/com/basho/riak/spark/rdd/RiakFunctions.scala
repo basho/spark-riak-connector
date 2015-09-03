@@ -51,7 +51,7 @@ case class RiakObjectData( value: Object, key: String, indexes: mutable.Map[Stri
 trait RiakFunctions {
   protected def riakHosts: Set[HostAndPort]
   protected def numberOfParallelRequests:Int
-  private val logger: Logger = LoggerFactory.getLogger(this.getClass)
+  protected val logger: Logger = LoggerFactory.getLogger(this.getClass)
   protected val nodeBuilder: RiakNode.Builder
 
   protected val tolerantMapper = new ObjectMapper()

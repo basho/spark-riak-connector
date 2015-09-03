@@ -1,14 +1,19 @@
 package com.basho.spark.connector.perf.dataset
 
+import com.typesafe.scalalogging.slf4j.LazyLogging
+
 /**
  * @author anekhaev
  */
-class S3AmplabDataset(s3Bucket: String, s3Path: String) extends AmplabDataset[(String, String)] {
+class S3AmplabDataset(s3Bucket: String, s3Path: String) extends AmplabDataset[(String, String)] with LazyLogging {
   
   def listDataPaths: List[(String, String)] = {
-    S3Client
+    logger.debug(s"Grabbing dataset file paths from s3://$s3Bucket/$s3Path*...")
+    val paths = S3Client
       .listChildrenKeys(s3Bucket, s3Path)
       .map(key => (s3Bucket, key))
+    logger.info(s"Discovered ${paths.size} files in the dataset")
+    paths
   }
    
   def extractRiakRowsToAdd(dataPath: (String, String)): Iterator[String] = {
