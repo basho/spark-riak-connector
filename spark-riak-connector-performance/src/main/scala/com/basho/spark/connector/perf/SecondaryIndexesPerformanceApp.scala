@@ -10,6 +10,7 @@ import com.basho.riak.client.core.util.HostAndPort
 import com.basho.spark.connector.perf.config.RiakConfig
 import com.basho.spark.connector.perf.config.SparkConfig
 import com.basho.spark.connector.perf.config.AmplabConfig
+import com.basho.spark.connector.perf.dataset.FileAmplabDataset
 
 
 
@@ -18,7 +19,7 @@ import com.basho.spark.connector.perf.config.AmplabConfig
  */
 object SecondaryIndexesPerformanceApp extends App with RiakConfig with SparkConfig with AmplabConfig {
   
-  val dataset = new AmplabDataset(amplabBucket, amplabPath)
+  val dataset = new FileAmplabDataset(amplabLocalPath, 10)
      
   val riakNameSpace = new Namespace("default", "r2i-perf-test")
   val riakClient = new RiakClient(riakHost, riakPort, riakMinConnections)
