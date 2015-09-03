@@ -25,7 +25,7 @@ class RiakClient(
       .withRemotePort(riakPort)
 
       
-  def resetAndLoadDataset(namespace: Namespace, dataset: AmplabDataset) = {
+  def resetAndLoadDataset[T](namespace: Namespace, dataset: AmplabDataset[T]) = {
     resetAndEmptyBucket(namespace)
 
     val filePaths = dataset.listDataPaths.take(1)
