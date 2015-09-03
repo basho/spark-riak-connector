@@ -37,12 +37,12 @@ abstract class AbstractRiakTest extends RiakFunctions{
 
   trait RegressionTests {}
 
-  private val logger: Logger = LoggerFactory.getLogger(this.getClass)
+  //private val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   protected val DEFAULT_NAMESPACE = new Namespace("default","test-bucket")
   protected val DEFAULT_NAMESPACE_4STORE = new Namespace("default", "test-bucket-4store")
   protected val DEFAULT_RIAK_HOST = "localhost"
-  protected val DEFAULT_RIAK_PORT = 10017
+  protected val DEFAULT_RIAK_PORT = 8087
 
   protected override val riakHosts:Set[HostAndPort] = null
   protected override val numberOfParallelRequests: Int = 4
