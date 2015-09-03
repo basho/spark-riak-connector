@@ -32,10 +32,10 @@ mvn clean install
 ```
 
 Once connector is built there are several jars that are produced:
-spark-riak-connector/target/ contains spark-riak-connector-0.8.0.jar - this is the main connector jar. 
+spark-riak-connector/target/ contains spark-riak-connector-1.0.0.jar - this is the main connector jar. 
 
 If you're planning to develop Spark applications in Java there is an additional jar
-spark-riak-connector-java-0.8.0.jar in spark-riak-connector-java/target/ 
+spark-riak-connector-java-1.0.0.jar in spark-riak-connector-java/target/ 
 
 Also connector depends on the following jars:
 guava-14.0.1.jar
@@ -44,7 +44,7 @@ joda-time-2.1.jar
 jackson-module-scala_2.10-2.4.4.jar
 jcommon-1.0.23.jar
 scala-java8-compat_2.10-0.3.0.jar
-dataplatform-riak-client-2.0.2-SNAPSHOT.jar
+dataplatform-riak-client-1.0.0.jar
 
 All of these need to be referenced by your Spark application and accessible through driver program classpath
 
