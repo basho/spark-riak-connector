@@ -3,7 +3,7 @@ package com.basho.spark.connector.perf.config
 /**
  * @author anekhaev
  */
-trait RiakConfig extends Config{
+trait RiakConfig extends Config{ self: App =>
   
   lazy val riakHost = config.getString("perf-test.riak.host")
   lazy val riakPort = config.getInt("perf-test.riak.port")

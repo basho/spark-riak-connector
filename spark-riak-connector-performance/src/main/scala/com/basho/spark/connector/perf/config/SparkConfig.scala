@@ -6,7 +6,7 @@ import scala.collection.JavaConversions._
 /**
  * @author anekhaev
  */
-trait SparkConfig extends Config {
+trait SparkConfig extends Config { self: App =>
 
   lazy val sparkConfig = {
     val sparkKeySection = config.getConfig("perf-test.spark").entrySet().toList.map("spark." + _.getKey)
