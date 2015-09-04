@@ -112,10 +112,12 @@ class RiakRDD[R] private[spark] (
                    readConf: ReadConf = readConf, connector: RiakConnector = connector): RiakRDD[R] =
     new RiakRDD(sc, connector, bucketType, bucketName, convert, queryData, readConf)
 
+  @DeveloperApi
   def query2iRange[K](index: String, from: K, to: K): RiakRDD[R] = {
     copy(queryData = Some(QueryData.create2iKeyRanges[K](index, (from, Some(to)))))
   }
 
+  @DeveloperApi
   def query2iKeys[K](index: String, keys: K* ): RiakRDD[R] = {
     copy(queryData = Some(QueryData.create2iKeys[K](index, keys:_*)))
   }
@@ -126,21 +128,24 @@ class RiakRDD[R] private[spark] (
 
   /**
    * Perform query all data from the bucket.
-   * Utilizes Coverage Plan to perform bunch of local read
+   * Utilizes Coverage Plan to perform bunch of direct reads to read.
    *
    * @see RiakCoveragePlanBasedPartitioner
    */
-  def queryAll(): RiakRDD[R] ={
+  def queryAll(): RiakRDD[R] = {
     copy(queryData = Some(QueryData.createReadLocal()))
   }
 
+  @DeveloperApi
   def queryBucketKeys(keys: String*): RiakRDD[R] = {
     copy(queryData = Some(QueryData.createBucketKeys(keys:_*)))
   }
 
   /**
+   * :: DeveloperApi ::
    * Create separate partition for each 2i key range
    */
+  @DeveloperApi
   def partitionBy2iRanges[K](index: String, ranges: (K, K)*): RiakRDD[R] = {
     val r = ranges map( x => (x._1, Some(x._2)) )
     copy(queryData = Some(QueryData.create2iKeyRanges[K](index, r:_*)))
@@ -149,6 +154,7 @@ class RiakRDD[R] private[spark] (
   /**
    * Create separate partition for each key
    */
+  @DeveloperApi
   def partitionBy2iKeys[K](index: String, keys: K*): RiakRDD[R] = {
     val r = keys map( k=> (k, None) )
     copy(queryData = Some(QueryData.create2iKeyRanges[K](index, r:_*)))

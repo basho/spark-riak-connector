@@ -32,7 +32,7 @@ import java.util.NoSuchElementException;
 
 /**
  * Really simple demo program which calculates the number of records loaded
- * from the Riak using 2i range query
+ * from the Riak bucket
  */
 public class SimpleJavaRiakExample implements Serializable {
     private static final Namespace SOURCE_DATA = new Namespace("test-data");
@@ -58,8 +58,8 @@ public class SimpleJavaRiakExample implements Serializable {
         creteTestData(sparkConf);
 
         final JavaSparkContext jsc = new JavaSparkContext(sparkConf);
-        final RiakJavaRDD<String> rdd = SparkJavaUtil.javaFunctions(jsc).riakBucket(SOURCE_DATA, String.class).
-                                  query2iRange("creationNo", 0L, 100L);
+        final RiakJavaRDD<String> rdd = SparkJavaUtil.javaFunctions(jsc).riakBucket(SOURCE_DATA, String.class)
+                .queryAll();
 
         System.out.println(String.format("Execution result: %s", rdd.count()));
     }

@@ -34,7 +34,11 @@ abstract class AbstractRiakSparkTest extends AbstractRiakTest {
   override def initialize(): Unit = {
     super.initialize()
 
-    sc = new SparkContext(initSparkConf())
+    sc = createSparkContext(initSparkConf())
+  }
+
+  protected def createSparkContext(conf: SparkConf): SparkContext = {
+    new SparkContext(conf)
   }
 
   @After
