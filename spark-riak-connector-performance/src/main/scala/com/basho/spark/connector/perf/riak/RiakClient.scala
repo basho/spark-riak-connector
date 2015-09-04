@@ -33,7 +33,7 @@ class RiakClient(
     resetAndEmptyBucket(namespace)
     logger.info(s"Resetting of Riak bucket $namespace completed")
 
-    val filePaths = dataset.listDataPaths//.take(1)
+    val filePaths = dataset.listDataPaths
     
     logger.info(s"Loading dataset to Riak bucket $namespace...")
     withRiakDo { session =>

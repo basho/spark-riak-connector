@@ -20,7 +20,7 @@ import com.basho.spark.connector.perf.dataset.S3AmplabDataset
  */
 object FullBucketReadPerformanceApp extends App with RiakConfig with SparkConfig with AmplabConfig {
   
-  val dataset = new S3AmplabDataset(amplabS3Bucket, amplabS3Path)
+  val dataset = new S3AmplabDataset(amplabS3Bucket, amplabS3Path, amplabFilesLimit)
      
   val riakNameSpace = new Namespace("default", "fbr-perf-test")
   val riakClient = new RiakClient(riakHost, riakPort, riakMinConnections)
