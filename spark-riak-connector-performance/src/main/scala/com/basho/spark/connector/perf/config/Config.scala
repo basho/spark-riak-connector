@@ -10,7 +10,7 @@ trait Config { self: App =>
      
   lazy val config = ConfigFactory
       .parseFile(new File(args(0)))
-      .withFallback(ConfigFactory.defaultReference())
+      .withFallback(ConfigFactory.parseResources("reference.conf"))
       .resolve()
   
 }
