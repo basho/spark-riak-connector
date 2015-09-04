@@ -162,7 +162,7 @@ trait RiakFunctions {
         logger.trace(s"Creating value [$i]...")
         val (requestedKey, ro) = createRiakObjectFrom(rodOjects.get(i))
         val key = createValueRaw(session, ns, ro, requestedKey, true)
-        logger.info(s"Value [$i] was created: key: '$key', ${rodOjects.get(i).value}")
+        logger.debug(s"Value [$i] was created: key: '$key', ${rodOjects.get(i).value}")
       }
     })
   }

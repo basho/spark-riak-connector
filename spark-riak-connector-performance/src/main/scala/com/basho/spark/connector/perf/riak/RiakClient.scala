@@ -29,10 +29,13 @@ class RiakClient(
 
       
   def resetAndLoadDataset[T](namespace: Namespace, dataset: AmplabDataset[T]) = {
+    logger.info(s"Resetting Riak bucket $namespace...")
     resetAndEmptyBucket(namespace)
+    logger.info(s"Resetting of Riak bucket $namespace completed")
 
-    val filePaths = dataset.listDataPaths.take(1)
-
+    val filePaths = dataset.listDataPaths//.take(1)
+    
+    logger.info(s"Loading dataset to Riak bucket $namespace...")
     withRiakDo { session =>
       filePaths foreach { path =>
         val riakRows = dataset.extractRiakRowsToAdd(path)
@@ -40,7 +43,7 @@ class RiakClient(
         createValues(session, namespace, jsonData)
       }
     }
-
+    logger.info(s"Loading dataset to Riak bucket $namespace completed")
   }
 
 }
