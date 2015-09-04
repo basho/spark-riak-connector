@@ -3,7 +3,7 @@
 Spark Riak Connector allows you to expose the data stored in Riak buckets as Spark RDDs as well as to output data from Spark RDDs into Riak buckets. 
 
 ### Compatibility
-* Compatible with Riak version 2.0 or higher
+* Compatible with BDP 1.0
 * Compatible with Apache Spark 1.4 or higher
 * Compatible with Scala 2.10
 * Compatible with Java 8
@@ -31,6 +31,13 @@ Clone this repository, then build the Spark Riak Connector:
 mvn clean install
 ```
 
+Integration tests will be executed during the build, therefore the build may fail if there is no BDP Riak node running on localhost:8087. 
+The following command should be used to skip integration tests:
+
+```
+mvn clean install -DskipTests
+```
+ 
 Once connector is built there are several jars that are produced:
 spark-riak-connector/target/ contains spark-riak-connector-1.0.0.jar - this is the main connector jar. 
 
