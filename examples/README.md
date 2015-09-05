@@ -26,7 +26,7 @@ We'll support our answers by drawing appropriate charts. 
 
 ### Running demo on Scala
 
-1. This demo assumes that you have a Riak cluster installed and running on localhost:8087. If not, follow this guide to install Riak: [Installing and Upgrading Riak](http://docs.basho.com/riak/latest/ops/building/installing/)
+1. This demo assumes that you have a BDP-enhanced version of Riak KV cluster installed and running on localhost:8087. If not, follow this guide to install Riak: [Installing and Upgrading Riak](http://docs.basho.com/riak/latest/ops/building/installing/). Note that currently only Riak KV bundled with BDP 1.0 is supported with Spark Connector.
 
 2. If you don't have Maven yet, go to [Maven download page](https://maven.apache.org/download.cgi) and follow installation instructions for your OS.
 
