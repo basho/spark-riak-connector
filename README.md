@@ -3,18 +3,18 @@
 Spark Riak Connector allows you to expose the data stored in Riak buckets as Spark RDDs as well as to output data from Spark RDDs into Riak buckets. 
 
 ### Compatibility
-* Compatible with BDP 1.0
-* Compatible with Apache Spark 1.4 or higher
-* Compatible with Scala 2.10
+* Compatible with Riak KV, bundled inside BDP 1.x
+* Compatible with Apache Spark 1.4 or later
+* Compatible with Scala 2.10 or later
 * Compatible with Java 8
 
 
 ### Features
-* Exposes data in Riak bucket as Spark RDD
-* Provides ability to construct an RDD form a given set of keys
+* Exposes data in Riak KV bucket as Spark RDD
+* Provides ability to construct an RDD from a given set of keys
 * Provides ability to construct an RDD by using a 2i string index or a set of indexes
 * Provides ability to construct an RDD by using a 2i range query or a set of ranges
-* Provides ability to construct an RDD using a full bucket read 
+* Provides ability to construct an RDD using an enahnced 2i query (a.k.a. full bucket read) 
 * Allows saving of an RDD into a specified Riak bucket and indexing results with 2i indexes
 * Provides mapping and data conversion for JSON formatted values
 * Allows parallel ful bucket reads into multiple partitions
@@ -44,14 +44,14 @@ spark-riak-connector/target/ contains spark-riak-connector-1.0.0.jar - this is t
 If you're planning to develop Spark applications in Java there is an additional jar
 spark-riak-connector-java-1.0.0.jar in spark-riak-connector-java/target/ 
 
-Also connector depends on the following jars:
-guava-14.0.1.jar
-jackson-datatype-joda-2.2.2.jar
-joda-time-2.1.jar
-jackson-module-scala_2.10-2.4.4.jar
-jcommon-1.0.23.jar
-scala-java8-compat_2.10-0.3.0.jar
-dataplatform-riak-client-1.0.0.jar
+Also connector depends on the following libraries:
+* guava-14.0.1.jar
+* jackson-datatype-joda-2.2.2.jar
+* joda-time-2.1.jar
+* jackson-module-scala_2.10-2.4.4.jar
+* jcommon-1.0.23.jar
+* scala-java8-compat_2.10-0.3.0.jar
+* dataplatform-riak-client-1.0.0.jar
 
 All of these need to be referenced by your Spark application and accessible through driver program classpath
 
@@ -145,7 +145,7 @@ the simplest one would be to count all elements and print out the count
 println(s"Element count: ${rdd.count()}")
 ```
 
-### Saving results into Riak
+### Saving results into Riak KV
 
 To be able to write data out from an RDD into a Riak bucket the following import for a writer is needed:
 
