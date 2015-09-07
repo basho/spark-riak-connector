@@ -51,8 +51,7 @@ public class JavaRDDReadTest extends AbstractJavaSparkTest {
         RiakJavaRDD<String> rdd = SparkJavaUtil.javaFunctions(jsc).riakBucket(DEFAULT_NAMESPACE(), String.class).
                 query2iRange(CREATION_INDEX, 1l, 4l);
 
-        rdd.count();
-        List<String> results = rdd.collect();
+        final List<String> results = rdd.takeOrdered(100);
         assertEquals(4, results.size());
 
         assertEquals("{\n" +
