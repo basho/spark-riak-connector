@@ -1,26 +1,26 @@
-## Spark Riak Connector
+# Spark Riak Connector
 
 Spark Riak Connector allows you to expose the data stored in Riak buckets as Spark RDDs as well as to output data from Spark RDDs into Riak buckets. 
 
-### Compatibility
+## Compatibility
 * Compatible with Riak KV, bundled inside BDP 1.x
 * Compatible with Apache Spark 1.4 or later
 * Compatible with Scala 2.10 or later
 * Compatible with Java 8
 
 
-### Features
+## Features
 * Exposes data in Riak KV bucket as Spark RDD
 * Provides ability to construct an RDD from a given set of keys
-* Provides ability to construct an RDD by using a 2i string index or a set of indexes
-* Provides ability to construct an RDD by using a 2i range query or a set of ranges
-* Provides ability to construct an RDD using an enahnced 2i query (a.k.a. full bucket read) 
+* Provides ability to construct an RDD using an enhanced 2i query (a.k.a. full bucket read) 
+* Allows parallel ful bucket reads into multiple partitions
 * Allows saving of an RDD into a specified Riak bucket and indexing results with 2i indexes
 * Provides mapping and data conversion for JSON formatted values
-* Allows parallel ful bucket reads into multiple partitions
+* Provides ability to construct an RDD by using a 2i string index or a set of indexes
+* Provides ability to construct an RDD by using a 2i range query or a set of ranges 
 
 
-### Building
+## Building
 Prerequisite: Java 8 JDK must be installed
 
 If you don't have Maven yet, go to [Maven download page](https://maven.apache.org/download.cgi) and follow installation instructions for your OS.
@@ -41,6 +41,8 @@ mvn clean install -DskipTests
 Once connector is built there are several jars that are produced:
 spark-riak-connector/target/ contains spark-riak-connector-1.0.0.jar - this is the main connector jar. 
 
+## Developing 
+
 If you're planning to develop Spark applications in Java there is an additional jar
 spark-riak-connector-java-1.0.0.jar in spark-riak-connector-java/target/ 
 
@@ -53,7 +55,8 @@ Also connector depends on the following libraries:
 * scala-java8-compat_2.10-0.3.0.jar
 * dataplatform-riak-client-1.0.0.jar
 
-All of these need to be referenced by your Spark application and accessible through driver program classpath
+All of these need to be referenced by your Spark application and accessible through driver program classpath. 
+Please see below code snippets in Scala, or explore the source code of bundled examples in Java and Scala.
 
 ### Necessary imports
 
@@ -162,7 +165,7 @@ val MY_OUTPUT_BUCKET = new Namespace("output-data")
 rdd.saveToRiak(MY_OUTPUT_BUCKET)
 ```
 
-
-An example of usage can be found in the [demo folder](https://github.com/basho/spark-riak-connector/tree/master/spark-riak-connector-demos)
+**TO DO - fix the link below**
+An example of usage can be found in the [e**xamples** folder](https://github.com/basho/spark-riak-connector/tree/master/spark-riak-connector-demos)
 
 
