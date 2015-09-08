@@ -166,6 +166,6 @@ rdd.saveToRiak(MY_OUTPUT_BUCKET)
 ```
 
 **TO DO - fix the link below**
-An example of usage can be found in the [e**xamples** folder](https://github.com/basho/spark-riak-connector/tree/master/spark-riak-connector-demos)
+An example of usage can be found in the [**examples** folder](https://github.com/basho/spark-riak-connector/tree/master/spark-riak-connector-demos)
 
 
