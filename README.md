@@ -31,7 +31,7 @@ Clone this repository, then build the Spark Riak Connector:
 mvn clean install
 ```
 
-Integration tests will be executed during the build, therefore the build may fail if there is no BDP Riak node running on localhost:8087. 
+Integration tests will be executed during the build, therefore the build may fail if there is no BDP Riak node running on `localhost:8087`. 
 The following command should be used to skip integration tests:
 
 ```
@@ -39,12 +39,12 @@ mvn clean install -DskipTests
 ```
  
 Once connector is built there are several jars that are produced:
-spark-riak-connector/target/ contains spark-riak-connector-1.0.0.jar - this is the main connector jar. 
+`spark-riak-connector/target/` contains `spark-riak-connector-1.0.0.jar` - this is the main connector jar. 
 
 ## Developing 
 
 If you're planning to develop Spark applications in Java there is an additional jar
-spark-riak-connector-java-1.0.0.jar in spark-riak-connector-java/target/ 
+`spark-riak-connector-java-1.0.0.jar` in `spark-riak-connector-java/target/`
 
 Also connector depends on the following libraries:
 * guava-14.0.1.jar
@@ -140,7 +140,7 @@ val rdd = sc.riakBucket(SOURCE_DATA).query2iKeys("mon_data", "wed_data", "fri_da
 
 ### Doing something useful with the data
 
-once the RDD is constructed all standard Scala Spark transformations and actions can be applied.
+Once the RDD is constructed all standard Scala Spark transformations and actions can be applied.
 the simplest one would be to count all elements and print out the count
 
 ```scala
@@ -157,7 +157,7 @@ To be able to write data out from an RDD into a Riak bucket the following import
 import com.basho.riak.spark.writer.{WriteDataMapper, WriteDataMapperFactory}
 ```
 
-define the output bucket and issue `saveToRiak` method on an RDD
+Define the output bucket and issue `saveToRiak` method on an RDD
 
 ```scala
 val MY_OUTPUT_BUCKET = new Namespace("output-data")
@@ -165,7 +165,10 @@ val MY_OUTPUT_BUCKET = new Namespace("output-data")
 rdd.saveToRiak(MY_OUTPUT_BUCKET)
 ```
 
+## Examples
+
 **TO DO - fix the link below**
+
 An example of usage can be found in the [**examples** folder](https://github.com/basho/spark-riak-connector/tree/master/spark-riak-connector-demos)
 
 
