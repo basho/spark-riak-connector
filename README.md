@@ -57,6 +57,24 @@ Also connector depends on the following libraries:
 
 All of these need to be referenced by your Spark application and accessible through driver program classpath. 
 Please see below code snippets in Scala, or explore the source code of bundled examples in Java and Scala.
+ 
+The following link might be used to manual download [dataplatform-riak-client-1.0.0.jar](https://bintray.com/basho/data-platform/com.basho.riak/view)
+from the Bintray repository.
+
+To download dataplatform-riak-client.jar automatically during the build the following repository should be added to pom.xml:
+
+```xml
+<repository>
+    <id>bintray</id>
+    <url>https://dl.bintray.com/basho/data-platform</url>
+    <releases>
+        <enabled>true</enabled>
+    </releases>
+    <snapshots>
+        <enabled>false</enabled>
+    </snapshots>
+</repository>
+```
 
 ### Necessary imports
 
@@ -167,8 +185,6 @@ rdd.saveToRiak(MY_OUTPUT_BUCKET)
 
 ## Examples
 
-**TO DO - fix the link below**
-
-An example of usage can be found in the [**examples** folder](https://github.com/basho/spark-riak-connector/tree/master/spark-riak-connector-demos)
+Riak Spark connector comes with several sample programs and demos that can be found in the [**examples** folder](./examples)
 
 
