@@ -63,7 +63,7 @@
       <directory>src/main/repl</directory>
       <outputDirectory>./</outputDirectory>
       <includes>
-        <include>*</include>
+        <include>**/**</include>
       </includes>
       <excludes>
         <exclude>spark-repl-assembly.xml</exclude>
@@ -96,7 +96,7 @@
       <!-- put readme.md to /examples -->
       <fileSet>
           <directory>./</directory>
-          <outputDirectory>examples</outputDirectory>
+          <outputDirectory>./</outputDirectory>
           <includes>
               <include>README.md</include>
           </includes>

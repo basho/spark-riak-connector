@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+
+#
+# Copyright (c) 2015 Basho Technologies, Inc.
+#
+# This file is provided to you under the Apache License,
+# Version 2.0 (the "License"); you may not use this file
+# except in compliance with the License.  You may obtain
+# a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+FWDIR="$(cd "`dirname "$0"`"/..; pwd)"
+export EXAMPLES_HOME="$FWDIR"
+
+. "$FWDIR"/conf/config.sh
+
+if [ -n "$1" ]; then
+  EXAMPLE_CLASS="$1"
+  shift
+else
+  echo "Usage: run-example <example-class> [example-args]" 1>&2
+  echo "  - can use abbreviated example class name relative to com.basho.riak.spark.examples" 1>&2
+  echo "     (e.g. SimpleScalaRiakExample, demos.ofac.OFACDemo)" 1>&2
+  exit 1
+fi
+
+
+if [[ ! $EXAMPLE_CLASS == com.basho.riak.spark.examples* ]]; then
+  EXAMPLE_CLASS="com.basho.riak.spark.examples.$EXAMPLE_CLASS"
+fi
+
+spark-submit --jars $(echo $FWDIR/lib/*.jar | tr ' ' ',') \
+	--master $MASTER_URL \
+	--conf spark.riak.connection.host=$RIAK_HOST:$RIAK_PORT \
+	--class $EXAMPLE_CLASS \
+	--driver-memory $DRIVER_MEM \
+	--executor-memory $EXECUTOR_MEM \
+	$@ \
+	$(echo $FWDIR/examples-jar/*.jar | tr ' ' ',')
