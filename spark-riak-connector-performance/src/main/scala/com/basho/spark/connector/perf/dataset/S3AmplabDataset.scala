@@ -13,7 +13,7 @@ class S3AmplabDataset(s3Bucket: String, s3Path: String, fileLimit: Option[Int]) 
       .listChildrenKeys(s3Bucket, s3Path)
       .map(key => (s3Bucket, key))
     logger.info(s"Discovered ${paths.size} files in the dataset, the limit is: $fileLimit")
-    fileLimit.map(paths.take(_)).getOrElse(paths)
+    fileLimit.map(paths.take).getOrElse(paths)
   }
    
   def extractRiakRowsToAdd(dataPath: (String, String)): Iterator[String] = {
