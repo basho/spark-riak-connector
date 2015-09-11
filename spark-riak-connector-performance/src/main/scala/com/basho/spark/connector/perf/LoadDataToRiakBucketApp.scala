@@ -5,6 +5,7 @@ import com.basho.spark.connector._
 import com.basho.spark.connector.perf.config.{AmplabConfig, RiakConfig, SparkConfig}
 import com.basho.spark.connector.perf.dataset.S3AmplabDataset
 import com.basho.spark.connector.perf.riak.RiakClient
+import org.apache.commons.lang3.StringUtils
 import org.apache.spark.SparkContext
 
 object LoadDataToRiakBucketApp extends App with RiakConfig with SparkConfig with AmplabConfig {
@@ -22,6 +23,7 @@ object LoadDataToRiakBucketApp extends App with RiakConfig with SparkConfig with
   hadoopCfg.set("fs.s3n.impl", "org.apache.hadoop.fs.s3native.NativeS3FileSystem")
 
   val s3Rdd = sc.textFile(s"s3n://$amplabS3Bucket/$amplabS3Path/*")
+    .map(line => StringUtils.replace(line, "'", "\\'"))
 
   println(s"Loaded ${s3Rdd.count()} entities from S3")
 
