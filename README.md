@@ -52,9 +52,9 @@ All of these need to be referenced by your Spark application and accessible thro
 
 ```scala
 import com.basho.riak.client.core.query.Namespace
-import com.basho.spark.connector.rdd.RiakFunctions
+import com.basho.riak.spark.rdd.RiakFunctions
 import org.apache.spark.{SparkContext, SparkConf}
-import com.basho.spark.connector._
+import com.basho.riak.spark._
 ```
 
 ### Configuration
@@ -144,7 +144,7 @@ To be able to write data out from an RDD into a Riak bucket the following import
 
 ```scala
 
-import com.basho.spark.connector.writer.{WriteDataMapper, WriteDataMapperFactory}
+import com.basho.riak.spark.writer.{WriteDataMapper, WriteDataMapperFactory}
 ```
 
 define the output bucket and issue `saveToRiak` method on an RDD

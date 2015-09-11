@@ -1,0 +1,72 @@
+/**
+ * Copyright (c) 2015 Basho Technologies, Inc.
+ *
+ * This file is provided to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file
+ * except in compliance with the License.  You may obtain
+ * a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package com.basho.riak.spark.examples
+
+import com.basho.riak.client.core.query.Namespace
+import com.basho.riak.spark.rdd.RiakFunctions
+import org.apache.spark.{SparkContext, SparkConf}
+import com.basho.riak.spark._
+
+/**
+ * Really simple demo program which calculates the number of records loaded
+ * from the Riak using 2i range query
+ */
+object SimpleScalaRiakExample {
+  private val SOURCE_DATA = new Namespace("test-data")
+
+  private val TEST_DATA: String =
+    "[" +
+        "  {key: 'key-1', indexes: {creationNo: 1}, value: 'value1'}" +
+        ", {key: 'key-2', indexes: {creationNo: 2}, value: 'value2'}" +
+        ", {key: 'key-3', indexes: {creationNo: 3}, value: 'value3'}" +
+        ", {key: 'key-4', indexes: {creationNo: 4}, value: 'value4'}" +
+        ", {key: 'key-5', indexes: {creationNo: 5}, value: 'value5'}" +
+        ", {key: 'key-6', indexes: {creationNo: 6}, value: 'value6'}" +
+    "]"
+
+  def main(args: Array[String]) {
+
+    val sparkConf = new SparkConf()
+      .setAppName("Simple Scala Riak Demo")
+
+    setSparkOpt(sparkConf, "spark.master", "local")
+    setSparkOpt(sparkConf, "spark.riak.connection.host", "127.0.0.1:8087")
+    //setSparkOpt(sparkConf, "spark.riak.connection.host", "127.0.0.1:10017")
+
+
+    createTestData(sparkConf)
+      val sc = new SparkContext(sparkConf)
+      val rdd = sc.riakBucket(SOURCE_DATA)
+        .query2iRange("creationNo", 0L, 1000L)
+
+      println(s"Execution result: ${rdd.count()}")
+  }
+
+  private def createTestData(sparkConf: SparkConf): Unit = {
+    val rf = RiakFunctions(sparkConf)
+
+    rf.withRiakDo(session => {
+      rf.createValues(session, SOURCE_DATA, TEST_DATA, true )
+    })
+  }
+
+  private def setSparkOpt(sparkConf: SparkConf, option: String, defaultOptVal: String): SparkConf = {
+    val optval = sparkConf.getOption(option).getOrElse(defaultOptVal)
+    sparkConf.set(option, optval)
+  }
+}

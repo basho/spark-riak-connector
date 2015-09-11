@@ -2,11 +2,11 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.basho</groupId>
+    <groupId>com.basho.riak</groupId>
     <artifactId>spark-riak-connector-parent</artifactId>
     <version>1.0.0</version>
     <packaging>pom</packaging>
-    <description>Spark Connector for Riak 2.0</description>
+    <description>Spark Connector for Riak 2.3</description>
     <url>https://github.com/basho/spark-riak-connector</url>
 
     <licenses>
@@ -18,19 +18,92 @@
         </license>
     </licenses>
 
+    <developers>
+        <developer>
+            <name>Sergey Galkin</name>
+            <email>sgalkin@basho.com</email>
+            <organization>Basho Technologies, Inc</organization>
+            <organizationUrl>http://www.basho.com</organizationUrl>
+        </developer>
+        <developer>
+            <name>Oleg Rocklin</name>
+            <email>orocklin@basho.com</email>
+            <organization>Basho Technologies, Inc</organization>
+            <organizationUrl>http://www.basho.com</organizationUrl>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:https://github.com/basho/spark-riak-connector.git</connection>
+        <developerConnection>scm:git:ssh://github.com/basho/spark-riak-connector.git</developerConnection>
+        <url>https://github.com/basho/spark-riak-connector</url>
+        <tag>HEAD</tag>
+    </scm>
+
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spark.version>1.4.0</spark.version>
         <scala.version>2.10.5</scala.version>
         <scala.major.version>2.10</scala.major.version>
+        <java.target.version>1.8</java.target.version>
         <fasterxml.jackson.version>2.4.4</fasterxml.jackson.version>
     </properties>
-    
+
+    <distributionManagement>
+        <snapshotRepository>
+            <id>sonatype-nexus-snapshots</id>
+            <name>Sonatype Nexus Snapshots</name>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
+        <repository>
+            <id>sonatype-nexus-staging</id>
+            <name>Nexus Release Repository</name>
+            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
+        </repository>
+    </distributionManagement>
+
+    <profiles>
+        <profile>
+            <id>release</id>
+            <activation>
+                <property>
+                    <name>performRelease</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>1.6</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <artifactId>maven-release-plugin</artifactId>
+                        <version>2.5.2</version>
+                        <configuration>
+                            <mavenExecutorId>forked-path</mavenExecutorId>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
     <modules>
-        <module>spark-riak-connector</module>
-        <module>spark-riak-connector-demos</module>
-        <module>spark-riak-connector-java</module>
-        <module>spark-riak-connector-test</module>
+        <module>connector</module>
+        <module>examples</module>
+        <module>java-connector</module>
+        <module>test-utils</module>
     </modules>
     
     <build>
@@ -67,8 +140,8 @@
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>3.1</version>
                     <configuration>
-                        <source>1.8</source>
-                        <target>1.8</target>
+                        <source>${java.target.version}</source>
+                        <target>${java.target.version}</target>
                         <encoding>${project.build.sourceEncoding}</encoding>
                     </configuration>
                 </plugin>
@@ -97,6 +170,7 @@
                                 <goal>enforce</goal>
                             </goals>
                             <configuration>
+                                <fail>true</fail>
                                 <rules>
                                     <bannedDependencies>
                                         <searchTransitive>true</searchTransitive>
@@ -108,8 +182,11 @@
                                     <requireMavenVersion>
                                         <version>3.0</version>
                                     </requireMavenVersion>
+
+                                    <requireJavaVersion>
+                                        <version>${java.target.version}</version>
+                                    </requireJavaVersion>
                                 </rules>
-                                <fail>true</fail>
                             </configuration>
                         </execution>
                     </executions>
@@ -134,6 +211,11 @@
                         </execution>
                     </executions>
                 </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>2.9.1</version>
+                </plugin>
             </plugins>            
         </pluginManagement>
         <plugins>
@@ -149,6 +231,10 @@
                 <groupId>org.scala-tools</groupId>
                 <artifactId>maven-scala-plugin</artifactId>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+            </plugin>
         </plugins>
     </build>
     <dependencyManagement>
@@ -156,7 +242,7 @@
             <dependency>
                 <groupId>com.basho.riak</groupId>
                 <artifactId>dataplatform-riak-client</artifactId>
-                <version>1.0.0.beta2</version>
+                <version>1.0.0</version>
             </dependency>
             <dependency>
                 <groupId>org.scala-lang</groupId>
@@ -208,5 +294,17 @@
                 <version>1.5.1</version>
             </dependency>
         </dependencies>
-    </dependencyManagement>    
+    </dependencyManagement>
+    <repositories>
+        <repository>
+            <id>bintray</id>
+            <url>https://dl.bintray.com/basho/data-platform</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
 </project>
