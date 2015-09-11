@@ -24,7 +24,7 @@ import com.basho.riak.spark._
 
 /**
  * Really simple demo program which calculates the number of records loaded
- * from the Riak using 2i range query
+ * from the Riak bucket
  */
 object SimpleScalaRiakExample {
   private val SOURCE_DATA = new Namespace("test-data")
@@ -52,7 +52,7 @@ object SimpleScalaRiakExample {
     createTestData(sparkConf)
       val sc = new SparkContext(sparkConf)
       val rdd = sc.riakBucket(SOURCE_DATA)
-        .query2iRange("creationNo", 0L, 1000L)
+        .queryAll()
 
       println(s"Execution result: ${rdd.count()}")
   }

@@ -57,4 +57,8 @@ public class RiakJavaRDD<T> extends JavaRDD<T> {
     public RiakJavaRDD<T> queryBucketKeys(String... keys){
         return wrap(rdd().queryBucketKeys(JavaApiHelper.toScalaSeq(keys)));
     }
+
+    public RiakJavaRDD<T> queryAll(){
+        return wrap(rdd().queryAll());
+    }
 }

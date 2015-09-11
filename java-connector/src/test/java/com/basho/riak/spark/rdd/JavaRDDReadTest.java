@@ -60,4 +60,14 @@ public class JavaRDDReadTest extends AbstractJavaSparkTest {
             "  \"timestamp\" : \"2014-11-24T13:14:04.823Z\"\n" +
             "}", results.get(0));
     }
+
+    @Test
+    public void readAll(){
+        RiakJavaRDD<String> rdd = SparkJavaUtil.javaFunctions(jsc).riakBucket(DEFAULT_NAMESPACE(), String.class).
+                queryAll();
+
+        final List<String> results = rdd.takeOrdered(100);
+        assertEquals(6, results.size());
+    }
+
 }
