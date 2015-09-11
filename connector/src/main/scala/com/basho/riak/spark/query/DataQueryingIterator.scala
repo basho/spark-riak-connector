@@ -17,16 +17,18 @@
  */
 package com.basho.riak.spark.query
 
-import com.basho.riak.client.api.cap.Quorum
-import org.apache.spark.Logging
-import scala.collection.JavaConversions._
 import com.basho.riak.client.api.RiakClient
+import com.basho.riak.client.api.cap.Quorum
 import com.basho.riak.client.api.commands.kv.{FetchValue, MultiFetch}
-import com.basho.riak.client.core.query.{RiakObject, Location}
-import scala.collection.mutable.ArrayBuffer
+import com.basho.riak.client.core.query.{Location, RiakObject}
+import org.apache.spark.Logging
 import org.apache.spark.metrics.RiakConnectorSource
+import org.perf4j.log4j.Log4JStopWatch
 
-class DataQueryingIterator(query: Query[_], riakSession: RiakClient, minConnectionsPerNode: Int)
+import scala.collection.JavaConversions._
+import scala.collection.mutable.ArrayBuffer
+
+class DataQueryingIterator(query: Query[_], riakSession: RiakClient, minConnectionsPerNode: Int, partitionIdx: Int)
   extends Iterator[(Location, RiakObject)] with Logging {
 
   type ResultT = (Location, RiakObject)
@@ -57,39 +59,53 @@ class DataQueryingIterator(query: Query[_], riakSession: RiakClient, minConnecti
 
     logTrace(s"Performing 2i query(token=$nextToken)")
 
-    val r = query.nextLocationBulk(nextToken, riakSession )
-    logDebug(s"2i query(token=$nextToken) returns:\n  token: ${r._1}\n  locations: ${r._2}")
-    nextToken = r._1
+    val stopWatch = new Log4JStopWatch(s"$partitionIdx.prefetch")
+    try {
+      val r = query.nextLocationBulk(nextToken, riakSession)
+      stopWatch.lap(s"$partitionIdx.prefetch.keys", s"Get next bulk of locations from Riak")
+      logDebug(s"2i query(token=$nextToken) returns:\n  token: ${r._1}\n  locations: ${r._2}")
+      nextToken = r._1
 
-    dataBuffer.clear()
-    bufferIndex = 0
+      dataBuffer.clear()
+      bufferIndex = 0
 
-    r match {
-      case (_, Nil) =>
-        /**
-         * It is Absolutely possible situation, for instance:
-         *     in case when the last data page will be returned as a result of  2i continuation query and
-         *     this page will be fully filled with data then the valid continuation token wile be also returned (it will be not null),
-         *     therefore additional/subsequent data fetch request will be required.
-         *     As a result of such call the empty locations list and Null continuation token will be returned
-         */
-        logDebug("prefetch is not required, all data was processed (location list is empty)")
-        _iterator = Some(Iterator.empty)
-      case (_, locations: Iterable[Location]) =>
-        /**
-         * To be 100% sure that massive fetch doesn't lead to the connection pool starvation,
-         * fetch will be performed by the smaller chunks of keys.
-         *
-         * Ideally the chunk size should be equal to min number of connections to the RiakNode
-         */
-        val itChunkedLocations = locations.grouped(minConnectionsPerNode)
-        DataQueryingIterator.fetchData(riakSession, itChunkedLocations, dataBuffer)
+      r match {
+        case (_, Nil) =>
 
-        logDebug(s"Next data buffer was fetched:\n" +
-          s"\tnextToken: $nextToken\n" +
-          s"\tbuffer: $dataBuffer")
+          /**
+           * It is Absolutely possible situation, for instance:
+           * in case when the last data page will be returned as a result of  2i continuation query and
+           * this page will be fully filled with data then the valid continuation token wile be also returned (it will be not null),
+           * therefore additional/subsequent data fetch request will be required.
+           * As a result of such call the empty locations list and Null continuation token will be returned
+           */
+          logDebug("prefetch is not required, all data was processed (location list is empty)")
+          _iterator = Some(Iterator.empty)
+          stopWatch.lap(s"$partitionIdx.prefetch.empty", "List of locations is empty")
+        case (_, locations: Iterable[Location]) =>
 
-        _iterator = Some(dataBuffer.iterator)
+          /**
+           * To be 100% sure that massive fetch doesn't lead to the connection pool starvation,
+           * fetch will be performed by the smaller chunks of keys.
+           *
+           * Ideally the chunk size should be equal to min number of connections to the RiakNode
+           */
+          val itChunkedLocations = locations.grouped(minConnectionsPerNode)
+          DataQueryingIterator.fetchData(riakSession, itChunkedLocations, dataBuffer)
+
+          logDebug(s"Next data buffer was fetched:\n" +
+            s"\tnextToken: $nextToken\n" +
+            s"\tbuffer: $dataBuffer")
+
+          _iterator = Some(dataBuffer.iterator)
+          stopWatch.lap(s"$partitionIdx.prefetch.values", s"Fetch data by locations, size - ${locations.size}")
+      }
+      stopWatch.stop(s"$partitionIdx.prefetch")
+    }
+    catch {
+      case e: Throwable =>
+        stopWatch.stop(s"$partitionIdx.prefetch.error", e)
+        throw e
     }
     true
   }

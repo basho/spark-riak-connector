@@ -1,8 +1,7 @@
 package org.apache.spark.metrics
 
-
-import org.apache.spark.metrics.source.Source
 import com.codahale.metrics
+import org.apache.spark.metrics.source.Source
 
 
 
