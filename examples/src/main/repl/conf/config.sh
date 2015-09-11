@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+
 #
 # Copyright (c) 2015 Basho Technologies, Inc.
 #
@@ -29,4 +30,3 @@ RIAK_PORT="8087"
 
 DRIVER_MEM="512M"
 EXECUTOR_MEM="512M"
-MAIN_CLASS="com.basho.riak.spark.examples.demos.ofac.OFACDemo"
