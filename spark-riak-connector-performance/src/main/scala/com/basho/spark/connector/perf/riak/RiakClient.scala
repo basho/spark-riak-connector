@@ -5,6 +5,7 @@ import com.basho.riak.client.core.query.Namespace
 import com.basho.riak.client.core.util.HostAndPort
 import com.basho.riak.spark.rdd.RiakFunctions
 import com.basho.spark.connector.perf.dataset.AmplabDataset
+import org.slf4j.{LoggerFactory, Logger}
 
 /**
  * @author anekhaev
@@ -13,6 +14,8 @@ class RiakClient(
     val riakHost: String,
     val riakPort: Int,
     override val numberOfParallelRequests: Int = 4) extends RiakFunctions {
+
+  private val logger: Logger = LoggerFactory.getLogger(this.getClass)
   
   logger.info(s"Creating Riak client on $riakHost:$riakPort...")
  
