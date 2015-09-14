@@ -20,12 +20,11 @@ package com.basho.riak.spark.query
 import com.basho.riak.client.api.RiakClient
 import com.basho.riak.client.core.query.Location
 import com.basho.riak.spark.rdd.{ReadConf, BucketDef}
-import org.apache.spark.Logging
 
 import scala.collection.mutable.ArrayBuffer
 
-private case class QueryBucketKeys(bucket: BucketDef, readConf:ReadConf, keys: Iterable[String]) extends QuerySubsetOfKeys[String] with Logging{
-  override def locationsByKeys(keys: Iterator[String], session: RiakClient): Iterable[Location] = {
+private case class QueryBucketKeys(bucket: BucketDef, readConf:ReadConf, keys: Iterable[String]) extends QuerySubsetOfKeys[String] {
+  override def locationsByKeys(keys: Iterator[String], session: RiakClient): (Boolean, Iterable[Location]) = {
     val dataBuffer = new ArrayBuffer[Location](readConf.fetchSize)
 
     val ns = bucket.asNamespace()
@@ -33,6 +32,6 @@ private case class QueryBucketKeys(bucket: BucketDef, readConf:ReadConf, keys: I
     keys.forall(k =>{
       dataBuffer += new Location(ns, k)
       dataBuffer.size < readConf.fetchSize} )
-    dataBuffer
+    false -> dataBuffer
   }
 }

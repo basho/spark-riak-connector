@@ -31,3 +31,8 @@ class CountingIterator[T](iterator: Iterator[T]) extends Iterator[T] {
     item
   }
 }
+
+object CountingIterator {
+  def apply[T](iterator: Iterator[T]) =
+    new CountingIterator[T](iterator)
+}

@@ -82,7 +82,7 @@ class RiakRDD[R] private[spark] (
 
     val iterator: Iterator[(Location, RiakObject)] = new DataQueryingIterator(query, session, connector.minConnections)
     val convertingIterator = new DataConvertingIterator[R](iterator, convert)
-    val countingIterator = new CountingIterator[R](convertingIterator)
+    val countingIterator = CountingIterator[R](convertingIterator)
     context.addTaskCompletionListener { (context) =>
       val endTime = System.currentTimeMillis()
       val duration = (endTime - startTime) / 1000.0
