@@ -30,7 +30,7 @@ import scala.collection.JavaConversions._
 
 private case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadConf, index: String, from: K,
         to: Option[K] = None, coverageEntry: Option[CoverageEntry] = None )
-    extends Query[String] {
+    extends LocationQuery[String] {
 
   private def isSuitableForIntIndex(v:K): Boolean = v match {
     case _: Long => true
@@ -56,7 +56,7 @@ private case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadC
 
   // This method is looks ugly, but to fix that we need to introduce changes in Riak Java Client
     // scalastyle:off cyclomatic.complexity method.length
-  override def nextLocationBulk(nextToken: Option[_], session: RiakClient): (Option[String], Iterable[Location]) = {
+  override def nextLocationChunk(nextToken: Option[_], session: RiakClient): (Option[String], Iterable[Location]) = {
     val ns = new Namespace(bucket.bucketType, bucket.bucketName)
     val builder = from match {
 

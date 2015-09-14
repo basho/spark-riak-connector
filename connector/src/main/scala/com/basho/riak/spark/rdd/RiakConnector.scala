@@ -135,4 +135,15 @@ object RiakConnector extends Logging {
     val config = RiakConnectorConf(hosts, minConnections, maxConnections)
     new RiakConnector(config)
   }
+
+  /**
+   * Returns minConnection from the first available Riak node.
+   * Since all Riak Nodes use the same value it should work fine
+   */
+  def getMinConnectionsPerNode(riakClient: RiakClient): Int = {
+    val nodes = riakClient.getRiakCluster.getNodes
+
+    require(nodes.size() > 0, "At least 1 node required to obtain minConnection info")
+    nodes.get(0).getMinConnections
+  }
 }
