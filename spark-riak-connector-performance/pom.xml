@@ -31,17 +31,17 @@
         <dependency>
             <groupId>com.basho.riak</groupId>
             <artifactId>dataplatform-riak-client</artifactId>
-            <version>${riak.version}</version>
+            <version>1.0.0.beta2</version>
         </dependency>
         <dependency>
-            <groupId>com.basho</groupId>
+            <groupId>com.basho.riak</groupId>
             <artifactId>spark-riak-connector</artifactId>
-            <version>${riak.version}</version>
+            <version>1.0.0</version>
         </dependency>
         <dependency>
-            <groupId>com.basho</groupId>
-            <artifactId>spark-riak-connector-test</artifactId>
-            <version>${riak.version}</version>
+            <groupId>com.basho.riak</groupId>
+            <artifactId>spark-riak-connector-test-utils</artifactId>
+            <version>1.0.0</version>
         </dependency>
         <dependency>
             <groupId>com.amazonaws</groupId>

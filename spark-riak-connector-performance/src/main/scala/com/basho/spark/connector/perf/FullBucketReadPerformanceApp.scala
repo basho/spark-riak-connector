@@ -1,7 +1,7 @@
 package com.basho.spark.connector.perf
 
 import com.basho.riak.client.core.query.Namespace
-import com.basho.spark.connector._
+import com.basho.riak.spark._
 import com.basho.spark.connector.perf.config.{AmplabConfig, RiakConfig, SparkConfig}
 import org.apache.spark.SparkContext
 
