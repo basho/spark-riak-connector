@@ -41,7 +41,7 @@ class BucketWriter[T] private (
   /** Main entry point */
   def write(taskContext: TaskContext, data: Iterator[T]): Unit = {
     connector.withSessionDo { session =>
-      val rowIterator = new CountingIterator(data)
+      val rowIterator = CountingIterator(data)
       val startTime = System.currentTimeMillis()
       val namespace = new Namespace(bucketDef.bucketType, bucketDef.bucketName)
 
