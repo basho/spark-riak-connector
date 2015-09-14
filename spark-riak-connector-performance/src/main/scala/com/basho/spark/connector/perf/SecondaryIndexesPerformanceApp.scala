@@ -1,17 +1,11 @@
 package com.basho.spark.connector.perf
 
 import com.basho.riak.client.core.query.Namespace
-import com.basho.spark.connector.perf.riak.RiakClient
-import com.basho.spark.connector.perf.dataset.AmplabDataset
-import org.apache.spark.SparkConf
-import org.apache.spark.SparkContext
-import com.basho.spark.connector._
-import com.basho.riak.client.core.util.HostAndPort
-import com.basho.spark.connector.perf.config.RiakConfig
-import com.basho.spark.connector.perf.config.SparkConfig
-import com.basho.spark.connector.perf.config.AmplabConfig
-import com.basho.spark.connector.perf.dataset.FileAmplabDataset
+import com.basho.riak.spark._
+import com.basho.spark.connector.perf.config.{AmplabConfig, RiakConfig, SparkConfig}
 import com.basho.spark.connector.perf.dataset.S3AmplabDataset
+import com.basho.spark.connector.perf.riak.RiakClient
+import org.apache.spark.SparkContext
 
 
 

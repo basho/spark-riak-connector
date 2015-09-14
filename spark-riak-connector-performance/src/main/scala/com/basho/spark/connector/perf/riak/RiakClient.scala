@@ -1,12 +1,10 @@
 package com.basho.spark.connector.perf.riak
 
-import com.basho.spark.connector.perf.dataset.S3Client
-import com.basho.spark.connector.rdd.RiakFunctions
-import com.basho.riak.client.core.query.Namespace
-import com.basho.spark.connector.perf.dataset.AmplabDataset
-import com.basho.riak.client.core.util.HostAndPort
 import com.basho.riak.client.core.RiakNode
-import com.typesafe.scalalogging.slf4j.LazyLogging
+import com.basho.riak.client.core.query.Namespace
+import com.basho.riak.client.core.util.HostAndPort
+import com.basho.riak.spark.rdd.RiakFunctions
+import com.basho.spark.connector.perf.dataset.AmplabDataset
 
 /**
  * @author anekhaev
