@@ -22,7 +22,7 @@ import com.basho.riak.spark._
 import org.junit.Assert._
 
 class FullBucketReadTest extends AbstractRDDTest {
-  private val NUMBER_OF_TEST_VALUES = 20
+  private val NUMBER_OF_TEST_VALUES = 1000
 
   @Override
   protected override def jsonData(): String = {

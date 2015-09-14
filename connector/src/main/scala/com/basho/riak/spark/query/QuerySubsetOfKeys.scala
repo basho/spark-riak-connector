@@ -19,20 +19,25 @@ package com.basho.riak.spark.query
 
 import com.basho.riak.client.api.RiakClient
 import com.basho.riak.client.core.query.Location
+import com.basho.riak.spark.util.CountingIterator
 
+/**
+ *
+ * @tparam K may represents Bucket keys, 2i keys or Coverage entries
+ */
 private trait QuerySubsetOfKeys[K] extends LocationQuery[Int] {
   def keys: Iterable[K]
   private var _iterator: Option[Iterator[K]] = None
   private var _nextPos: Int = -1
 
-  def locationsByKeys(keys: Iterator[K], session: RiakClient): (Iterable[Location])
+  protected def locationsByKeys(keys: Iterator[K], session: RiakClient): (Boolean, Iterable[Location])
 
   // scalastyle:off cyclomatic.complexity
   final override def nextLocationChunk(nextToken: Option[_], session: RiakClient): (Option[Int], Iterable[Location]) = {
     nextToken match {
       case None | Some(0) =>
-        // it is either the first call or a kind of "random" read request of reading the first chunk
-        _iterator = Some(keys.iterator)
+        // it is either the first call or a kind of "random" read request of reading the first bulk
+        _iterator = Some(CountingIterator(keys.iterator))
         _nextPos = 0
 
       case Some(requested: Int) if requested == _nextPos =>
@@ -43,7 +48,7 @@ private trait QuerySubsetOfKeys[K] extends LocationQuery[Int] {
         logWarning(s"nextLocationChunk: RANDOM READ WAS REQUESTED, it may cause performance issue:\n" +
           s"\texpected position: ${_nextPos}, while the requested read position is $requested")
         _nextPos = requested -1
-        _iterator = Some(keys.iterator.drop(_nextPos))
+        _iterator = Some(CountingIterator(keys.iterator.drop(_nextPos)))
 
       case _ =>
         throw new IllegalArgumentException("Wrong nextToken")
@@ -51,15 +56,17 @@ private trait QuerySubsetOfKeys[K] extends LocationQuery[Int] {
 
     assert(_iterator.isDefined)
 
-    if(!_iterator.get.hasNext){
-      // TODO: Add proper error handling
-      throw new IllegalStateException()
-    }
+    val iterator: CountingIterator[K] = _iterator.get.asInstanceOf[CountingIterator[K]]
+    val (hasContinuation,locations) = locationsByKeys(iterator, session)
 
-    val locations = locationsByKeys(_iterator.get, session)
-    _nextPos += locations.size
+    /**
+     * Since there is no 1 to 1 relation between keys and locations, multiple locations might be returned for the one key
+     *
+     * For example in case when the same 2i key is used to index multiple values
+     */
+    _nextPos = iterator.count
 
-    ( _iterator.get.hasNext match {
+    ( hasContinuation || iterator.hasNext match {
       case true => Some(_nextPos)
       case _ => None
     }, locations)
