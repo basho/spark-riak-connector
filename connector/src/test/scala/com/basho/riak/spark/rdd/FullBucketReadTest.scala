@@ -17,9 +17,9 @@
  */
 package com.basho.riak.spark.rdd
 
+import org.junit.Test
 import com.basho.riak.spark._
 import org.junit.Assert._
-import org.junit.Test
 
 class FullBucketReadTest extends AbstractRDDTest {
   private val NUMBER_OF_TEST_VALUES = 1000
@@ -54,10 +54,18 @@ class FullBucketReadTest extends AbstractRDDTest {
       .groupByKey()
       .collect()
 
-    val count = data.length
+    // TODO: needs to verify number of created partitions
+    val numberOfPartitions = data.size
 
-    // TODO: needs to verify the number of the created partitions
-    val allValues = data.flatMap { case (k, v) => v }
-    assertEquals(NUMBER_OF_TEST_VALUES, allValues.length)
+    val allValues = data.map{case (k,v)=> v}
+      .flatten
+      .sortBy(x=>x.substring(1).toLong )
+
+    assertEquals(NUMBER_OF_TEST_VALUES, allValues.size)
+
+    // verify returned values
+    for(i <- 1 to NUMBER_OF_TEST_VALUES){
+      assertEquals( "v"+i, allValues(i-1))
+    }
   }
 }

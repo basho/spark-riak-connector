@@ -67,10 +67,10 @@ trait LocationQuery[T] extends Query[T] {
          * To be 100% sure that massive fetch doesn't lead to the connection pool starvation,
          * fetch will be performed by the smaller chunks of keys.
          *
-         * Ideally the chunk size should be equal to the min number of connections for the RiakNode
+         * Ideally the chunk size should be equal to the max number of connections for the RiakNode
          */
         val itChunkedLocations = locations.grouped(RiakConnector.getMinConnectionsPerNode(session))
-        fetchData(session, itChunkedLocations, dataBuffer)
+        fetchValues(session, itChunkedLocations, dataBuffer)
 
         logDebug(s"Next data buffer was fetched:\n" +
           s"\tnextToken: $nextToken\n" +
@@ -80,7 +80,7 @@ trait LocationQuery[T] extends Query[T] {
     }
   }
 
-  private def fetchData(riakSession: RiakClient, chunkedLocations: Iterator[Iterable[Location]], buffer: ArrayBuffer[(Location, RiakObject)]) ={
+  private def fetchValues(riakSession: RiakClient, chunkedLocations: Iterator[Iterable[Location]], buffer: ArrayBuffer[(Location, RiakObject)]) ={
 
     while(chunkedLocations.hasNext){
       val builder = new MultiFetch.Builder()
@@ -116,7 +116,7 @@ trait LocationQuery[T] extends Query[T] {
         }
       }
     }
-    logDebug(s"${buffer.size} were fetched")
+    logDebug(s"${buffer.size} values were fetched")
   }
 }
 

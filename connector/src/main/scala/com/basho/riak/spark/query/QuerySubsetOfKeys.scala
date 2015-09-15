@@ -30,6 +30,10 @@ private trait QuerySubsetOfKeys[K] extends LocationQuery[Int] {
   private var _iterator: Option[Iterator[K]] = None
   private var _nextPos: Int = -1
 
+  /**
+   * @return _1 true, in case when additional values for the last key are available. Additional means that values
+   *         are not fit into the current chunk due to the chunk size limit.
+   */
   protected def locationsByKeys(keys: Iterator[K], session: RiakClient): (Boolean, Iterable[Location])
 
   // scalastyle:off cyclomatic.complexity
