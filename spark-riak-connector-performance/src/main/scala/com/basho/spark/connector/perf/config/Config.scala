@@ -8,9 +8,13 @@ import java.io.File
  */
 trait Config { self: App =>
      
-  lazy val config = ConfigFactory
+  lazy val config = if (args.length == 0) {
+    ConfigFactory.parseResources("reference.conf").resolve()
+  } else {
+    ConfigFactory
       .parseFile(new File(args(0)))
       .withFallback(ConfigFactory.parseResources("reference.conf"))
       .resolve()
+  }
   
 }

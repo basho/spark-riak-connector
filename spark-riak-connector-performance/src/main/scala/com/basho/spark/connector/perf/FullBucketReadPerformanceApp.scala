@@ -18,7 +18,6 @@ object FullBucketReadPerformanceApp extends App with RiakConfig with SparkConfig
   
   val records = sc.riakBucket[String](riakNameSpace)
     .queryAll()
-  records.persist()
 
   println(s"Received ${records.count()} records")
   

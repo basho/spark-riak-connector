@@ -1,6 +1,7 @@
 package com.basho.spark.connector.perf.config
 
 import org.apache.spark.SparkConf
+
 import scala.collection.JavaConversions._
 
 /**
