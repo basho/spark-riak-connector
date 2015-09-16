@@ -19,17 +19,15 @@ package com.basho.riak.spark.rdd
 
 import com.basho.riak.client.core.query.{Location, RiakObject}
 import com.basho.riak.client.core.util.HostAndPort
-import com.basho.riak.spark.query._
-import com.basho.riak.spark.query.{DataQueryingIterator, QueryData, Query}
-import com.basho.riak.spark.rdd.partitioner.{RiakCoveragePlanBasedPartitioner, RiakLocalCoveragePartition, RiakKeysPartition, RiakKeysPartitioner}
-import com.basho.riak.spark.util.{DataConvertingIterator, CountingIterator}
+import com.basho.riak.spark.query.{DataQueryingIterator, Query, QueryData}
+import com.basho.riak.spark.rdd.partitioner.{RiakCoveragePlanBasedPartitioner, RiakKeysPartition, RiakKeysPartitioner, RiakLocalCoveragePartition}
+import com.basho.riak.spark.util.{CountingIterator, DataConvertingIterator}
 import org.apache.spark.annotation.DeveloperApi
-
-import scala.reflect.ClassTag
-import scala.language.existentials
-
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{Logging, Partition, SparkContext, TaskContext}
+
+import scala.language.existentials
+import scala.reflect.ClassTag
 
 class RiakRDD[R] private[spark] (
     @transient sc: SparkContext,
@@ -80,7 +78,7 @@ class RiakRDD[R] private[spark] (
 
     val query = Query(BucketDef(bucketType, bucketName), readConf, queryData)
 
-    val iterator: Iterator[(Location, RiakObject)] = new DataQueryingIterator(query, session, connector.minConnections, partitionIdx)
+    val iterator: Iterator[(Location, RiakObject)] = new DataQueryingIterator(query, session, connector.minConnections)
     val convertingIterator = new DataConvertingIterator[R](iterator, convert)
     val countingIterator = CountingIterator[R](convertingIterator)
     context.addTaskCompletionListener { (context) =>

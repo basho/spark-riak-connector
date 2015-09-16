@@ -23,6 +23,7 @@ import com.basho.riak.client.api.commands.kv.{FetchValue, MultiFetch}
 import com.basho.riak.client.core.operations.CoveragePlanOperation.Response.CoverageEntry
 import com.basho.riak.client.core.query.{RiakObject, Location}
 import com.basho.riak.spark.rdd.{RiakConnector, ReadConf, BucketDef}
+import org.perf4j.log4j.Log4JStopWatch
 import scala.collection.JavaConversions._
 
 import scala.collection.mutable.ArrayBuffer
@@ -46,37 +47,62 @@ trait LocationQuery[T] extends Query[T] {
   def nextLocationChunk(nextToken: Option[_], session: RiakClient): (Option[T], Iterable[Location])
 
   def nextChunk(token: Option[_], session: RiakClient): (Option[T], Iterable[ResultT]) = {
-    val r = nextLocationChunk(token, session )
-    logDebug(s"query(token=$token) returns:\n  token: ${r._1}\n  locations: ${r._2}")
+    val entireTimeSw = new Log4JStopWatch()
+    val sw = new Log4JStopWatch()
+    try {
+      val r = nextLocationChunk(token, session)
+      if (r._2.size == readConf.fetchSize) {
+        sw.lap(s"data-chunk.locations.${readConf.fetchSize}", "Getting next chunk of locations (keys)")
+      } else {
+        sw.lap("data-chunk.locations.notFull", s"Getting next chunk of locations (keys), size = ${r._2.size}")
+      }
+      logDebug(s"query(token=$token) returns:\n  token: ${r._1}\n  locations: ${r._2}")
 
-    dataBuffer.clear()
+      dataBuffer.clear()
 
-    r match {
-      case (_, Nil) =>
-        /**
-         * It is Absolutely possible situation, for instance:
-         *     in case when the last data page will be returned as a result of  2i continuation query and
-         *     this page will be fully filled with data then the valid continuation token wile be also returned (it will be not null),
-         *     therefore additional/subsequent data fetch request will be required.
-         *     As a result of such call the empty locations list and Null continuation token will be returned
-         */
-        logDebug("All data was processed (location list is empty)")
-        (None, Nil)
-      case (nextToken: T, locations: Iterable[Location]) =>
-        /**
-         * To be 100% sure that massive fetch doesn't lead to the connection pool starvation,
-         * fetch will be performed by the smaller chunks of keys.
-         *
-         * Ideally the chunk size should be equal to the max number of connections for the RiakNode
-         */
-        val itChunkedLocations = locations.grouped(RiakConnector.getMinConnectionsPerNode(session))
-        fetchValues(session, itChunkedLocations, dataBuffer)
+      r match {
+        case (_, Nil) =>
 
-        logDebug(s"Next data buffer was fetched:\n" +
-          s"\tnextToken: $nextToken\n" +
-          s"\tbuffer: $dataBuffer")
+          /**
+           * It is Absolutely possible situation, for instance:
+           * in case when the last data page will be returned as a result of  2i continuation query and
+           * this page will be fully filled with data then the valid continuation token wile be also returned (it will be not null),
+           * therefore additional/subsequent data fetch request will be required.
+           * As a result of such call the empty locations list and Null continuation token will be returned
+           */
+          logDebug("All data was processed (location list is empty)")
+          sw.lap("data-chunk.empty", "Chunk of locations (keys) is empty")
+          entireTimeSw.stop()
+          (None, Nil)
+        case (nextToken: T, locations: Iterable[Location]) =>
 
-        (nextToken, dataBuffer.toList)
+          /**
+           * To be 100% sure that massive fetch doesn't lead to the connection pool starvation,
+           * fetch will be performed by the smaller chunks of keys.
+           *
+           * Ideally the chunk size should be equal to the max number of connections for the RiakNode
+           */
+          val itChunkedLocations = locations.grouped(RiakConnector.getMinConnectionsPerNode(session))
+          fetchValues(session, itChunkedLocations, dataBuffer)
+
+          logDebug(s"Next data buffer was fetched:\n" +
+            s"\tnextToken: $nextToken\n" +
+            s"\tbuffer: $dataBuffer")
+          if (readConf.fetchSize == locations.size) {
+            entireTimeSw.stop(s"data-chunk.${readConf.fetchSize}", "Entire data chunk loaded")
+            sw.stop(s"data-chunk.values.${readConf.fetchSize}", s"Getting full list of values (fetchSize = ${readConf.fetchSize})")
+          } else {
+            entireTimeSw.stop("data-chunk.notFull", s"Not full data chunk loaded ${locations.size}")
+            sw.stop(s"data-chunk.values.notFull", s"Less then ${readConf.fetchSize} keys returned")
+          }
+
+          (nextToken, dataBuffer.toList)
+      }
+    }
+    catch {
+      case e: Throwable =>
+        entireTimeSw.stop("data-chunk.error", e)
+        throw e
     }
   }
 
