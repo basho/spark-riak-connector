@@ -22,7 +22,7 @@ import com.basho.riak.spark._
 import org.junit.Assert._
 
 class FullBucketReadTest extends AbstractRDDTest {
-  private val NUMBER_OF_TEST_VALUES = 20
+  private val NUMBER_OF_TEST_VALUES = 1000
 
   @Override
   protected override def jsonData(): String = {
@@ -54,10 +54,18 @@ class FullBucketReadTest extends AbstractRDDTest {
       .groupByKey()
       .collect()
 
-    val count = data.size
+    // TODO: needs to verify number of created partitions
+    val numberOfPartitions = data.size
 
-    // TODO: needs to verify the number of the created partitions
-    val allValues = data.map{case (k,v)=> v}.flatten
+    val allValues = data.map{case (k,v)=> v}
+      .flatten
+      .sortBy(x=>x.substring(1).toLong )
+
     assertEquals(NUMBER_OF_TEST_VALUES, allValues.size)
+
+    // verify returned values
+    for(i <- 1 to NUMBER_OF_TEST_VALUES){
+      assertEquals( "v"+i, allValues(i-1))
+    }
   }
 }
