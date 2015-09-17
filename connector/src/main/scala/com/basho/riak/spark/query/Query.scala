@@ -21,13 +21,14 @@ import com.basho.riak.client.api.RiakClient
 import com.basho.riak.client.api.cap.Quorum
 import com.basho.riak.client.api.commands.kv.{FetchValue, MultiFetch}
 import com.basho.riak.client.core.operations.CoveragePlanOperation.Response.CoverageEntry
-import com.basho.riak.client.core.query.{RiakObject, Location}
-import com.basho.riak.spark.rdd.{RiakConnector, ReadConf, BucketDef}
-import org.perf4j.log4j.Log4JStopWatch
-import scala.collection.JavaConversions._
-
-import scala.collection.mutable.ArrayBuffer
+import com.basho.riak.client.core.query.{Location, RiakObject}
+import com.basho.riak.spark.rdd.{BucketDef, ReadConf, RiakConnector}
 import org.apache.spark.Logging
+import org.apache.spark.metrics.RiakConnectorSource
+import org.perf4j.log4j.Log4JStopWatch
+
+import scala.collection.JavaConversions._
+import scala.collection.mutable.ArrayBuffer
 
 /**
  * Generic Riak Query
@@ -47,14 +48,24 @@ trait LocationQuery[T] extends Query[T] {
   def nextLocationChunk(nextToken: Option[_], session: RiakClient): (Option[T], Iterable[Location])
 
   def nextChunk(token: Option[_], session: RiakClient): (Option[T], Iterable[ResultT]) = {
-    val entireTimeSw = new Log4JStopWatch()
-    val sw = new Log4JStopWatch()
+    //perf4j stop watches
+    val fullChunkSw = new Log4JStopWatch()
+    val lapSw = new Log4JStopWatch()
+
+    //codahale timers
+    val fullChunkCtx = RiakConnectorSource.instance.map(_.dataChunkFull.time())
+    val notFullChunlCtx = RiakConnectorSource.instance.map(_.dataChunkNotFull.time())
+    val locationsFull = RiakConnectorSource.instance.map(_.locationsFull.time())
+    val locationsNotFull = RiakConnectorSource.instance.map(_.locationsNotFull.time())
+
     try {
       val r = nextLocationChunk(token, session)
       if (r._2.size == readConf.fetchSize) {
-        sw.lap(s"data-chunk.locations.${readConf.fetchSize}", "Getting next chunk of locations (keys)")
+        lapSw.lap(s"data-chunk.locations.${readConf.fetchSize}", "Getting next chunk of locations (keys)")
+        locationsFull.map(_.stop())
       } else {
-        sw.lap("data-chunk.locations.notFull", s"Getting next chunk of locations (keys), size = ${r._2.size}")
+        lapSw.lap("data-chunk.locations.notFull", s"Getting next chunk of locations (keys), size = ${r._2.size}")
+        locationsNotFull.map(_.stop())
       }
       logDebug(s"query(token=$token) returns:\n  token: ${r._1}\n  locations: ${r._2}")
 
@@ -71,11 +82,12 @@ trait LocationQuery[T] extends Query[T] {
            * As a result of such call the empty locations list and Null continuation token will be returned
            */
           logDebug("All data was processed (location list is empty)")
-          sw.lap("data-chunk.empty", "Chunk of locations (keys) is empty")
-          entireTimeSw.stop()
+          lapSw.lap("data-chunk.empty", "Chunk of locations (keys) is empty")
+          RiakConnectorSource.instance.foreach(_.emptyChunk.mark())
           (None, Nil)
         case (nextToken: T, locations: Iterable[Location]) =>
-
+          val valuesFull = RiakConnectorSource.instance.map(_.valuesFull.time())
+          val valuesNotFull = RiakConnectorSource.instance.map(_.valuesNotFull.time())
           /**
            * To be 100% sure that massive fetch doesn't lead to the connection pool starvation,
            * fetch will be performed by the smaller chunks of keys.
@@ -89,11 +101,13 @@ trait LocationQuery[T] extends Query[T] {
             s"\tnextToken: $nextToken\n" +
             s"\tbuffer: $dataBuffer")
           if (readConf.fetchSize == locations.size) {
-            entireTimeSw.stop(s"data-chunk.${readConf.fetchSize}", "Entire data chunk loaded")
-            sw.stop(s"data-chunk.values.${readConf.fetchSize}", s"Getting full list of values (fetchSize = ${readConf.fetchSize})")
+            fullChunkSw.stop(s"data-chunk.${readConf.fetchSize}", "Entire data chunk loaded")
+            lapSw.stop(s"data-chunk.values.${readConf.fetchSize}", s"Getting full list of values (fetchSize = ${readConf.fetchSize})")
+            valuesFull.map(_.stop())
           } else {
-            entireTimeSw.stop("data-chunk.notFull", s"Not full data chunk loaded ${locations.size}")
-            sw.stop(s"data-chunk.values.notFull", s"Less then ${readConf.fetchSize} keys returned")
+            fullChunkSw.stop("data-chunk.notFull", s"Not full data chunk loaded ${locations.size}")
+            lapSw.stop(s"data-chunk.values.notFull", s"Less then ${readConf.fetchSize} keys returned")
+            valuesNotFull.map(_.stop())
           }
 
           (nextToken, dataBuffer.toList)
@@ -101,7 +115,9 @@ trait LocationQuery[T] extends Query[T] {
     }
     catch {
       case e: Throwable =>
-        entireTimeSw.stop("data-chunk.error", e)
+        fullChunkSw.stop("data-chunk.error", e)
+        lapSw.stop("data-chunk.error", e)
+        RiakConnectorSource.instance.foreach(_.erroredChunk.mark())
         throw e
     }
   }

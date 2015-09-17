@@ -10,10 +10,4 @@ trait AmplabConfig extends Config { self: App =>
   
   lazy val amplabLocalPath = config.getString("perf-test.amplab.local-path")
   
-  lazy val amplabFilesLimit = 
-    if (config.getBoolean("perf-test.amplab.limit-dataset"))
-      Some(config.getInt("perf-test.amplab.load-files-limit"))
-    else
-      None
-  
 }

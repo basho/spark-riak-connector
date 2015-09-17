@@ -24,11 +24,11 @@ object LoadDataToRiakBucketApp extends App with RiakConfig with SparkConfig with
   val rdd = sc.textFile(s"s3n://$amplabS3Bucket/$amplabS3Path/*")
     .zipWithIndex()
     .map { case (line, index) =>
-    val obj = RiakObjectConversionUtil.to(line)
-    obj.getIndexes.getIndex[LongIntIndex, LongIntIndex.Name](LongIntIndex.named("creationNo"))
-      .add(index)
-    obj
-  }
+      val obj = RiakObjectConversionUtil.to(line)
+      obj.getIndexes.getIndex[LongIntIndex, LongIntIndex.Name](LongIntIndex.named("creationNo"))
+        .add(index)
+      obj
+    }
 
   println(s"Loaded ${rdd.count()} entities from S3")
 
