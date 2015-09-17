@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.basho.riak</groupId>
-    <artifactId>spark-riak-connector-performance-tests</artifactId>
+    <artifactId>spark-riak-connector-performance-metrics</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
 
@@ -15,7 +15,6 @@
         <scala.major.version>2.10</scala.major.version>
 
         <spark.version>1.4.0</spark.version>
-        <riak.version>1.0.0.beta2</riak.version>
         <aws-java-sdk.version>1.9.37</aws-java-sdk.version>
         <slf4j.version>1.7.7</slf4j.version>
         <logback.version>1.1.2</logback.version>
@@ -28,32 +27,6 @@
     </properties>
 
     <dependencies>
-        <dependency>
-            <groupId>com.basho.riak</groupId>
-            <artifactId>dataplatform-riak-client</artifactId>
-            <version>1.0.0</version>
-        </dependency>
-        <dependency>
-            <groupId>com.basho.riak</groupId>
-            <artifactId>spark-riak-connector</artifactId>
-            <version>1.0.0</version>
-        </dependency>
-        <dependency>
-            <groupId>com.basho.riak</groupId>
-            <artifactId>spark-riak-connector-test-utils</artifactId>
-            <version>1.0.0</version>
-        </dependency>
-        <dependency>
-            <groupId>com.amazonaws</groupId>
-            <artifactId>aws-java-sdk-s3</artifactId>
-            <version>${aws-java-sdk.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>commons-logging</groupId>
-                    <artifactId>commons-logging</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-core_${scala.major.version}</artifactId>
@@ -91,22 +64,6 @@
             <groupId>com.typesafe.scala-logging</groupId>
             <artifactId>scala-logging-slf4j_${scala.major.version}</artifactId>
             <version>${scala-logging.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.hadoop</groupId>
-            <artifactId>hadoop-aws</artifactId>
-            <version>${hadoop-aws.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>com.amazonaws</groupId>
-                    <artifactId>aws-java-sdk</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.json4s</groupId>
-            <artifactId>json4s-native_${scala.major.version}</artifactId>
-            <version>${json4s.version}</version>
         </dependency>
     </dependencies>
     <build>
