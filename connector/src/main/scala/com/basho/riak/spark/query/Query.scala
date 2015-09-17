@@ -54,7 +54,7 @@ trait LocationQuery[T] extends Query[T] {
 
     //codahale timers
     val fullChunkCtx = RiakConnectorSource.instance.map(_.dataChunkFull.time())
-    val notFullChunlCtx = RiakConnectorSource.instance.map(_.dataChunkNotFull.time())
+    val notFullChunkCtx = RiakConnectorSource.instance.map(_.dataChunkNotFull.time())
     val locationsFull = RiakConnectorSource.instance.map(_.locationsFull.time())
     val locationsNotFull = RiakConnectorSource.instance.map(_.locationsNotFull.time())
 
@@ -104,10 +104,12 @@ trait LocationQuery[T] extends Query[T] {
             fullChunkSw.stop(s"data-chunk.${readConf.fetchSize}", "Entire data chunk loaded")
             lapSw.stop(s"data-chunk.values.${readConf.fetchSize}", s"Getting full list of values (fetchSize = ${readConf.fetchSize})")
             valuesFull.map(_.stop())
+            fullChunkCtx.map(_.stop())
           } else {
             fullChunkSw.stop("data-chunk.notFull", s"Not full data chunk loaded ${locations.size}")
             lapSw.stop(s"data-chunk.values.notFull", s"Less then ${readConf.fetchSize} keys returned")
             valuesNotFull.map(_.stop())
+            notFullChunkCtx.map(_.stop())
           }
 
           (nextToken, dataBuffer.toList)
