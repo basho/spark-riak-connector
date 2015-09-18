@@ -1,6 +1,11 @@
 #!/bin/bash
 set -e
 
+#---------------
+# Initialization
+#---------------
+
+
 JOB_CONFIG=$1
 APP_ID=$2
 
@@ -22,9 +27,15 @@ fi
 [ -z "$CODAHALE_LOG_DST" ] && CODAHALE_LOG_DST="/home/ubuntu/codahale-collected-logs"
 
 PERF4J_JAR="perf4j-0.9.16.jar"
+CODAHALE_JAR="spark-riak-connector-performance-metrics-1.0.0.jar"
 COLLECT_TIME=$(date +"%Y-%m-%d_%T")
 
 echo "Collecting performance logs from workers: ${WORKER_IPS[@]}..."
+
+
+#--------------------------------------
+# Collecting and processing Perf4j logs
+#--------------------------------------
 
 for WORKER_IP in "${WORKER_IPS[@]}"
 do
@@ -41,21 +52,29 @@ done
 java -jar "$PERF4J_JAR" "$PERF4J_LOG_DST/$COLLECT_TIME/all-workers-perf.log"  -t 900000000 > "$PERF4J_LOG_DST/$COLLECT_TIME/all-workers-perf.log.stat"
 java -jar "$PERF4J_JAR" --graph "$PERF4J_LOG_DST/$COLLECT_TIME/all-workers-perf.log.html" "$PERF4J_LOG_DST/$COLLECT_TIME/all-workers-perf.log"
 
+if [ "$JOB_CONFIG" != "" ]; then
+ 	echo "$JOB_CONFIG" >> "$PERF4J_LOG_DST/$COLLECT_TIME/all-workers-perf.log.stat"
+fi
+
+
+
+#----------------------------------------
+# Collecting and processing CodaHale logs
+#----------------------------------------
 
 for WORKER_IP in "${WORKER_IPS[@]}"
 do
 	TARGET_DIR="$CODAHALE_LOG_DST/$COLLECT_TIME"
         mkdir -p "$TARGET_DIR"
-	SOURCE_FILES=($(ssh -i "$SSH_KEY_PATH" "$SSH_USER_NAME@$WORKER_IP" "ls $CODAHALE_LOG_SRC | grep data-chunk | grep $APP_ID"))
+	SOURCE_FILES=($(ssh -i "$SSH_KEY_PATH" "$SSH_USER_NAME@$WORKER_IP" "ls $CODAHALE_LOG_SRC | grep riak-connector | grep $APP_ID"))
 	for SOURCE_FILE in "${SOURCE_FILES[@]}"
 	do
 		echo "Copying performance log from $WORKER_IP: $SOURCE_FILE..."
 		scp -i "$SSH_KEY_PATH" "$SSH_USER_NAME@$WORKER_IP:/$CODAHALE_LOG_SRC/$SOURCE_FILE" "$TARGET_DIR"
 	done
-        echo "Performance log from $WORKER_IP saved to $TARGET_DIR"
-#        cat "$TARGET_FILE" >> "$PERF4J_LOG_DST/$COLLECT_TIME/all-workers-perf.log"
+  echo "Performance log from $WORKER_IP saved to $TARGET_DIR"
 done
 
-if [ "$JOB_CONFIG" != "" ]; then
- 	echo "$JOB_CONFIG" >> "$PERF4J_LOG_DST/$COLLECT_TIME/all-workers-perf.log.stat"
-fi
+java -jar "$CODAHALE_JAR" "$CODAHALE_LOG_DST/$COLLECT_TIME" "$JOB_CONFIG"
+
+
