@@ -6,10 +6,11 @@ import com.basho.riak.spark._
 import com.basho.riak.spark.util.RiakObjectConversionUtil
 import com.basho.spark.connector.perf.config.{AmplabConfig, RiakConfig, SparkConfig}
 import com.basho.spark.connector.perf.riak.RiakClient
+import com.basho.spark.connector.perf.util.ConfigurationDump
 import org.apache.spark.SparkContext
 import com.basho.spark.connector.perf.dataset.S3Client
 
-object LoadDataToRiakBucketApp extends App with RiakConfig with SparkConfig with AmplabConfig {
+object LoadDataToRiakBucketApp extends App with RiakConfig with SparkConfig with AmplabConfig with ConfigurationDump {
 
   val riakBucket = config.getString("perf-test.riak.bucket")
   val riakNameSpace = new Namespace("default", riakBucket)
@@ -24,6 +25,8 @@ object LoadDataToRiakBucketApp extends App with RiakConfig with SparkConfig with
   hadoopCfg.set("fs.s3n.impl", "org.apache.hadoop.fs.s3native.NativeS3FileSystem")
   hadoopCfg.set("fs.s3n.awsAccessKeyId", awsCredentials.getAWSAccessKeyId)
   hadoopCfg.set("fs.s3n.awsSecretAccessKey", awsCredentials.getAWSSecretKey)
+
+  dump(sc)
 
   val s3DataPaths = S3Client.listChildrenKeys(amplabS3Bucket, amplabS3Path) map { key =>
     s"s3n://$amplabS3Bucket/$key"
