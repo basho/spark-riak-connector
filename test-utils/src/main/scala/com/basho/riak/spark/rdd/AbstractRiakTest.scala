@@ -99,24 +99,11 @@ abstract class AbstractRiakTest extends RiakFunctions{
   }
 
   private def assertEqualsUsingJSONImpl(jsonExpected: AnyRef, actual: AnyRef, configuration: Configuration) {
-    var expected: Object  = null
-
-    jsonExpected match {
-      case str: String =>
-        try {
-          expected = tolerantMapper.readValue(str, classOf[java.lang.Object])
-        } catch {
-          case ex: IOException => throw new RuntimeException(ex)
-        }
-      case _ =>
-        expected = jsonExpected
-    }
-
     var strExpected: String = null
     var strActual: String = null
     try{
-      strExpected = tolerantMapper.writerWithDefaultPrettyPrinter().writeValueAsString(expected)
-      strActual = tolerantMapper.writerWithDefaultPrettyPrinter().writeValueAsString(actual)
+      strExpected = tolerantMapper.writerWithDefaultPrettyPrinter().writeValueAsString(parseIfString(jsonExpected))
+      strActual = tolerantMapper.writerWithDefaultPrettyPrinter().writeValueAsString(parseIfString(actual))
     }catch{
       case ex: JsonProcessingException => throw new RuntimeException(ex)
     }
@@ -125,6 +112,18 @@ abstract class AbstractRiakTest extends RiakFunctions{
       JsonAssert.assertJsonEquals(strExpected, strActual, configuration)
     } else {
       JsonAssert.assertJsonEquals(strExpected, strActual)
+    }
+  }
+  
+  private def parseIfString(raw: AnyRef): Object = {
+    raw match {
+      case str: String =>
+        try {
+          tolerantMapper.readValue(str, classOf[java.lang.Object])
+        } catch {
+          case ex: IOException => throw new RuntimeException(ex)
+        }
+      case _ => raw
     }
   }
 }
