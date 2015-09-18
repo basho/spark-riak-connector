@@ -104,6 +104,7 @@
         <module>examples</module>
         <module>java-connector</module>
         <module>test-utils</module>
+        <module>performance-metrics</module>
     </modules>
     
     <build>
