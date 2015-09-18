@@ -40,7 +40,7 @@ do
     shift
 done
 
-[ -z "$JAR" ] && JAR="/home/ubuntu/spark-riak-connector-performance-1.0.0.beta2-jar-with-dependencies.jar"
+[ -z "$JAR" ] && JAR="/home/ubuntu/spark-riak-connector-performance-tests-1.0.0-jar-with-dependencies.jar"
 [ -z "$JAVA_CLASS" ] && JAVA_CLASS="com.basho.spark.connector.perf.FullBucketReadPerformanceApp"
 [ -z "$SPARK_MASTER" ] && SPARK_MASTER="spark://ip-172-31-57-179:7077"
 [ -z "$JAR_ARGS" ] && JAR_ARGS="/home/ubuntu/perf-tests.config"
@@ -69,6 +69,8 @@ echo "cmd -> $spark_submit"
 
 $spark_submit &> ./master_stdout.log
 
+sed -n "/Job configuration/,/End of job configuration/p" master_stdout.log
+
 echo "Spark job finished. Gathering performance logs..."
 
-./collect-perf4j-logs.sh
+# ./collect-perf4j-logs.sh
