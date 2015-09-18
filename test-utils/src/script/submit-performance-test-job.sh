@@ -69,8 +69,10 @@ echo "cmd -> $spark_submit"
 
 $spark_submit &> ./master_stdout.log
 
-sed -n "/Job configuration/,/End of job configuration/p" master_stdout.log
+config=$(sed -n "/Job configuration/,/End of job configuration/p" master_stdout.log)
+echo "$config"
+appId=$(echo "$config" | grep "spark.app.id" | awk -F"= " '{ print $2 }')
 
 echo "Spark job finished. Gathering performance logs..."
 
-# ./collect-perf4j-logs.sh
+./collect-perf4j-logs.sh $config $appId

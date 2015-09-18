@@ -1,6 +1,13 @@
 #!/bin/bash
 set -e
 
+JOB_CONFIG=$1
+APP_ID=$2
+
+if [ $APP_ID = "" ]; then
+	APP_ID="app-"
+fi
+
 [ -z "$WORKER_IPS" ] && WORKER_IPS=(
 '172.31.57.177'
 '172.31.57.178'
@@ -39,7 +46,7 @@ for WORKER_IP in "${WORKER_IPS[@]}"
 do
 	TARGET_DIR="$CODAHALE_LOG_DST/$COLLECT_TIME"
         mkdir -p "$TARGET_DIR"
-	SOURCE_FILES=($(ssh -i "$SSH_KEY_PATH" "$SSH_USER_NAME@$WORKER_IP" "ls $CODAHALE_LOG_SRC | grep data-chunk | grep app-"))
+	SOURCE_FILES=($(ssh -i "$SSH_KEY_PATH" "$SSH_USER_NAME@$WORKER_IP" "ls $CODAHALE_LOG_SRC | grep data-chunk | grep $APP_ID"))
 	for SOURCE_FILE in "${SOURCE_FILES[@]}"
 	do
 		echo "Copying performance log from $WORKER_IP: $SOURCE_FILE..."
@@ -49,3 +56,6 @@ do
 #        cat "$TARGET_FILE" >> "$PERF4J_LOG_DST/$COLLECT_TIME/all-workers-perf.log"
 done
 
+if [ "$JOB_CONFIG" != "" ]; then
+ 	echo "$JOB_CONFIG" >> "$PERF4J_LOG_DST/$COLLECT_TIME/all-workers-perf.log.stat"
+fi
