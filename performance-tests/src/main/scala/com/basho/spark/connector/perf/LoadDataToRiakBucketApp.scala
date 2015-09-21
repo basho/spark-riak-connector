@@ -12,11 +12,9 @@ import com.basho.spark.connector.perf.dataset.S3Client
 
 object LoadDataToRiakBucketApp extends App with RiakConfig with SparkConfig with AmplabConfig with ConfigurationDump {
 
-  val riakBucket = config.getString("perf-test.riak.bucket")
-  val riakNameSpace = new Namespace("default", riakBucket)
   val riakClient = new RiakClient(riakHost, riakPort, riakMinConnections)
 
-  riakClient.resetAndEmptyBucket(riakNameSpace)
+  riakClient.resetAndEmptyBucket(amplabRiakNamespace)
 
   val sc = new SparkContext(sparkConfig)
 
@@ -43,7 +41,7 @@ object LoadDataToRiakBucketApp extends App with RiakConfig with SparkConfig with
 
   println(s"Loaded ${rdd.count()} entities from S3")
 
-  rdd.saveToRiak(riakNameSpace)
+  rdd.saveToRiak(amplabRiakNamespace)
 
-  println(s"Entities saved to Riak Bucket $riakBucket")
+  println(s"Entities saved to Riak Bucket $amplabRiakNamespace")
 }

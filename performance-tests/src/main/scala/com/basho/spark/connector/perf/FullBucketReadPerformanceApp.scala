@@ -13,12 +13,10 @@ import org.apache.spark.SparkContext
  */
 object FullBucketReadPerformanceApp extends App with RiakConfig with SparkConfig with AmplabConfig with ConfigurationDump {
   
-  val riakNameSpace = new Namespace("default", config.getString("perf-test.riak.bucket"))
-
   val sc = new SparkContext(sparkConfig)
   dump(sc)
 
-  val records = sc.riakBucket[String](riakNameSpace)
+  val records = sc.riakBucket[String](amplabRiakNamespace)
     .queryAll()
 
   println(s"Received ${records.count()} records")
