@@ -22,8 +22,7 @@ import org.apache.spark.Logging
 import com.basho.riak.client.api.RiakClient
 import com.basho.riak.client.core.query.{RiakObject, Location}
 
-class DataQueryingIterator(query: Query[_], riakSession: RiakClient, minConnectionsPerNode: Int)
-  extends Iterator[(Location, RiakObject)] with Logging {
+class DataQueryingIterator(query: Query[_], riakSession: RiakClient) extends Iterator[(Location, RiakObject)] with Logging {
 
   type ResultT = (Location, RiakObject)
 
@@ -32,25 +31,17 @@ class DataQueryingIterator(query: Query[_], riakSession: RiakClient, minConnecti
 
   private var _iterator: Option[Iterator[ResultT]] = None
 
-  protected[this] def prefetchIfNeeded(): Boolean = {
-    // scalastyle:off return
-    if (this._iterator.isDefined) {
-      if(this._iterator.get.hasNext){
-        // Nothing to do, we still have at least one result
-        logTrace(s"prefetch is not required, at least one value was pre-fetched")
-        return false
-      }else if(nextToken.isEmpty){
-        // Nothing to do, we already got all the data
-        logTrace("prefetch is not required, all data has been processed")
-        return false
-      }
-    }
-    // scalastyle:on return
-
-    logTrace(s"Performing query(token=$nextToken)")
+  protected[this] def prefetch(): Boolean = {
+    logTrace(s"Prefetching chunk of data: query(token=$nextToken)")
 
     val r = query.nextChunk(nextToken, riakSession )
-    logDebug(s"query(token=$nextToken) returns:\n  token: ${r._1}\n  data: ${r._2}")
+
+    if( isTraceEnabled() ) {
+      logTrace(s"query(token=$nextToken) returns:\n  token: ${r._1}\n  data:\n\t ${r._2}")
+    } else {
+      logDebug(s"query(token=$nextToken) returns:\n  token: ${r._1}\n  data.size: ${r._2.size}")
+    }
+
     nextToken = r._1
 
     r match {
@@ -60,26 +51,41 @@ class DataQueryingIterator(query: Query[_], riakSession: RiakClient, minConnecti
          *     in case when the last data page will be returned as a result of  2i continuation query and
          *     this page will be fully filled with data then the valid continuation token wile be also returned (it will be not null),
          *     therefore additional/subsequent data fetch request will be required.
-         *     As a result of such call the empty locations list and Null continuation token will be returned
+         *     As a result of such call the empty chunk and Null continuation token will be returned
          */
-        logDebug("prefetch is not required, all data was processed (location list is empty)")
-        _iterator = Some(Iterator.empty)
+        logDebug("prefetch returned Nothing, all data was already processed (empty chunk was returned)")
+        _iterator = DataQueryingIterator.OPTION_EMPTY_ITERATOR
+
       case (_, data: Iterable[(Location,RiakObject)]) =>
+        if(nextToken.isEmpty){
+          logDebug("prefetch returned the last chunk, all data was processed")
+        }
+
         _iterator = Some(data.iterator)
     }
-    true
+
+    _iterator.get.hasNext
   }
 
-  override def hasNext: Boolean =
+  override def hasNext: Boolean = {
     isThereNextValue match {
       case Some(b: Boolean) =>
-        b
+        // cached value will be returned
+
+      case None if _iterator.isDefined && _iterator.get.hasNext =>
+        logTrace(s"prefetch is not required, at least one pre-fetched value available")
+        isThereNextValue = DataQueryingIterator.OPTION_TRUE
+
+      case None if _iterator.isDefined && _iterator.get.isEmpty && nextToken.isEmpty =>
+        logTrace("prefetch is not required, all data was already processed")
+        isThereNextValue = DataQueryingIterator.OPTION_FALSE
+
       case None =>
-        prefetchIfNeeded()
-        val r= _iterator.get.hasNext
-        isThereNextValue = Some(r)
-        r
+        isThereNextValue = Some(prefetch())
     }
+
+    isThereNextValue.get
+  }
 
   override def next(): (Location, RiakObject) = {
     if( !hasNext ){
@@ -88,5 +94,15 @@ class DataQueryingIterator(query: Query[_], riakSession: RiakClient, minConnecti
 
     isThereNextValue = None
     _iterator.get.next()
+  }
+}
+
+object DataQueryingIterator {
+  private val OPTION_EMPTY_ITERATOR = Some(Iterator.empty)
+  private val OPTION_TRUE = Some(true)
+  private val OPTION_FALSE = Some(false)
+
+  def apply(query: Query[_], riakSession: RiakClient): DataQueryingIterator = {
+    new DataQueryingIterator(query, riakSession)
   }
 }
