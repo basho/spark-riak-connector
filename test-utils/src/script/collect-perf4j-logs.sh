@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+#set -x
 
 #---------------
 # Initialization
@@ -12,6 +13,8 @@ APP_ID=$2
 if [ $APP_ID = "" ]; then
 	APP_ID="app-"
 fi
+
+echo "Current Spark job ID: $APP_ID"
 
 [ -z "$WORKER_IPS" ] && WORKER_IPS=(
 '172.31.57.177'
@@ -27,7 +30,7 @@ fi
 [ -z "$CODAHALE_LOG_DST" ] && CODAHALE_LOG_DST="/home/ubuntu/codahale-collected-logs"
 
 PERF4J_JAR="perf4j-0.9.16.jar"
-CODAHALE_JAR="spark-riak-connector-performance-metrics-1.0.0.jar"
+CODAHALE_JAR="performance-metrics.jar"
 COLLECT_TIME=$(date +"%Y-%m-%d_%T")
 
 echo "Collecting performance logs from workers: ${WORKER_IPS[@]}..."

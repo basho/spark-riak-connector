@@ -1,4 +1,6 @@
 #!/bin/bash
+set -e
+#set -x
 
 function usage()
 {
@@ -40,7 +42,7 @@ do
     shift
 done
 
-[ -z "$JAR" ] && JAR="/home/ubuntu/spark-riak-connector-performance-tests-1.0.0-jar-with-dependencies.jar"
+[ -z "$JAR" ] && JAR="/home/ubuntu/performance-tests.jar"
 [ -z "$JAVA_CLASS" ] && JAVA_CLASS="com.basho.spark.connector.perf.FullBucketReadPerformanceApp"
 [ -z "$SPARK_MASTER" ] && SPARK_MASTER="spark://ip-172-31-57-179:7077"
 [ -z "$JAR_ARGS" ] && JAR_ARGS="/home/ubuntu/perf-tests.config"
@@ -75,4 +77,4 @@ appId=$(echo "$config" | grep "spark.app.id" | awk -F"= " '{ print $2 }')
 
 echo "Spark job finished. Gathering performance logs..."
 
-./collect-perf4j-logs.sh $config $appId
+./collect-perf4j-logs.sh "$config" "$appId"
