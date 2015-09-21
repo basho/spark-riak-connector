@@ -110,7 +110,7 @@ object MetricsAggregatorApp extends App {
       
       // Report header
       report.append(header)
-      report.append("\n")
+      report.append("\n\n\n")
       
       // Table header
       report.append(fmt(nameLen, "METRIC"))
