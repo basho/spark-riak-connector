@@ -20,7 +20,6 @@ package com.basho.riak.spark.query
 import com.basho.riak.client.api.RiakClient
 import com.basho.riak.client.api.cap.Quorum
 import com.basho.riak.client.api.commands.kv.{FetchValue, MultiFetch}
-import com.basho.riak.client.core.operations.CoveragePlanOperation.Response.CoverageEntry
 import com.basho.riak.client.core.query.{RiakObject, Location}
 import com.basho.riak.spark.rdd.{RiakConnector, ReadConf, BucketDef}
 import scala.collection.JavaConversions._
@@ -47,20 +46,12 @@ trait LocationQuery[T] extends Query[T] {
 
   def nextChunk(token: Option[_], session: RiakClient): (Option[T], Iterable[ResultT]) = {
     val r = nextLocationChunk(token, session )
-    logDebug(s"query(token=$token) returns:\n  token: ${r._1}\n  locations: ${r._2}")
+    logDebug(s"nextLocationChunk(token=$token) returns:\n  token: ${r._1}\n  locations: ${r._2}")
 
     dataBuffer.clear()
 
     r match {
       case (_, Nil) =>
-        /**
-         * It is Absolutely possible situation, for instance:
-         *     in case when the last data page will be returned as a result of  2i continuation query and
-         *     this page will be fully filled with data then the valid continuation token wile be also returned (it will be not null),
-         *     therefore additional/subsequent data fetch request will be required.
-         *     As a result of such call the empty locations list and Null continuation token will be returned
-         */
-        logDebug("All data was processed (location list is empty)")
         (None, Nil)
       case (nextToken: T, locations: Iterable[Location]) =>
         /**
@@ -71,11 +62,6 @@ trait LocationQuery[T] extends Query[T] {
          */
         val itChunkedLocations = locations.grouped(RiakConnector.getMinConnectionsPerNode(session))
         fetchValues(session, itChunkedLocations, dataBuffer)
-
-        logDebug(s"Next data buffer was fetched:\n" +
-          s"\tnextToken: $nextToken\n" +
-          s"\tbuffer: $dataBuffer")
-
         (nextToken, dataBuffer.toList)
     }
   }
@@ -155,7 +141,11 @@ object Query{
         val ce = queryData.coverageEntries.get
         require(!ce.isEmpty)
 
-        new Query2iKeys[CoverageEntry](bucket, readConf, queryData.index.get, ce)
+        if(readConf.useStreamingValuesForFBRead){
+          new QueryFullBucket(bucket, readConf, ce)
+        } else {
+          new Query2iKeys(bucket, readConf, queryData.index.get, ce)
+        }
     }
   }
 }

@@ -80,7 +80,7 @@ class RiakRDD[R] private[spark] (
 
     val query = Query(BucketDef(bucketType, bucketName), readConf, queryData)
 
-    val iterator: Iterator[(Location, RiakObject)] = new DataQueryingIterator(query, session, connector.minConnections)
+    val iterator: Iterator[(Location, RiakObject)] = DataQueryingIterator(query, session)
     val convertingIterator = new DataConvertingIterator[R](iterator, convert)
     val countingIterator = CountingIterator[R](convertingIterator)
     context.addTaskCompletionListener { (context) =>
