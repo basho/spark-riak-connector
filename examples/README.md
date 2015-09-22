@@ -53,7 +53,7 @@ Run it locally:
 ```
 ./bin/run-example SimpleJavaRiakExample
 ```
-Sources [SimpleJavaRiakExample.scala](./src/main/java/com/basho/riak/spark/examples/SimpleJavaRiakExample.java)
+Sources [SimpleJavaRiakExample.java](./src/main/java/com/basho/riak/spark/examples/SimpleJavaRiakExample.java)
 
 ## OFAC demo
 This demo shows how Riak and Spark can be used to analyze semi-structured data using Scala.
