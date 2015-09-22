@@ -23,10 +23,12 @@ import com.basho.riak.client.api.RiakClient
 import com.basho.riak.client.core.util.HostAndPort
 import com.basho.riak.client.core.{RiakNode, RiakCluster}
 
-import scala.collection.JavaConversions
+import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 import org.apache.spark.{Logging, SparkConf}
 
+import scala.collection.JavaConverters
 import scala.collection.concurrent.TrieMap
 ;
 
@@ -42,7 +44,7 @@ class RiakConnector(conf: RiakConnectorConf)
   import RiakConnector.createSession
   // scalastyle:on import.grouping
 
-  private[this] var _config = conf
+  private[this] val _config = conf
 
   /** Known cluster hosts. This is going to return all cluster hosts after at least one successful connection has been made */
   def hosts: Set[HostAndPort] = _config.hosts
@@ -99,7 +101,7 @@ object RiakConnector extends Logging {
         builder.build()
       }
 
-      val ns = JavaConversions.bufferAsJavaList(nodes.toBuffer)
+      val ns = nodes.toBuffer
       val cluster = RiakCluster.builder(ns).build()
       cluster.start()
 
@@ -140,21 +142,19 @@ object RiakConnector extends Logging {
    * Returns minConnection from the first available Riak node.
    * Since all Riak Nodes use the same value it should work fine
    */
-  def getMinConnectionsPerNode(riakClient: RiakClient): Int = {
-    val nodes = riakClient.getRiakCluster.getNodes
-
-    require(nodes.size() > 0, "At least 1 node required to obtain minConnection info")
-    nodes.get(0).getMinConnections
-  }
+  def getMinConnectionsPerNode(riakClient: RiakClient): Int =
+    riakClient.getRiakCluster.getNodes.asScala match {
+      case Seq(first: RiakNode, rest @ _ *) => first.getMinConnections
+      case _ => throw new IllegalArgumentException("requirement failed: At least 1 node required to obtain minConnection info")
+    }
 
   /**
    * Returns maxConnection from the first available Riak node.
    * Since all Riak Nodes use the same value it should work fine
    */
-  def getMaxConnectionsPerNode(riakClient: RiakClient): Int = {
-    val nodes = riakClient.getRiakCluster.getNodes
-
-    require(nodes.size() > 0, "At least 1 node required to obtain maxConnection info")
-    nodes.get(0).getMaxConnections
-  }
+  def getMaxConnectionsPerNode(riakClient: RiakClient): Int =
+    riakClient.getRiakCluster.getNodes.asScala match {
+      case Seq(first: RiakNode, rest @ _ *) => first.getMaxConnections
+      case _ => throw new IllegalArgumentException("requirement failed: At least 1 node required to obtain maxConnection info")
+    }
 }

@@ -20,7 +20,6 @@ package com.basho.riak.spark.query
 import com.basho.riak.client.api.RiakClient
 import com.basho.riak.client.api.cap.Quorum
 import com.basho.riak.client.api.commands.kv.{FetchValue, MultiFetch}
-import com.basho.riak.client.core.operations.CoveragePlanOperation.Response.CoverageEntry
 import com.basho.riak.client.core.query.{Location, RiakObject}
 import com.basho.riak.spark.rdd.{BucketDef, ReadConf, RiakConnector}
 import org.apache.spark.Logging
@@ -58,6 +57,7 @@ trait LocationQuery[T] extends Query[T] {
     val locationsFull = RiakConnectorSource.instance.map(_.locationsFull.time())
     val locationsNotFull = RiakConnectorSource.instance.map(_.locationsNotFull.time())
 
+
     try {
       val r = nextLocationChunk(token, session)
       if (r._2.size == readConf.fetchSize) {
@@ -67,21 +67,12 @@ trait LocationQuery[T] extends Query[T] {
         lapSw.lap("data-chunk.locations.notFull", s"Getting next chunk of locations (keys), size = ${r._2.size}")
         locationsNotFull.map(_.stop())
       }
-      logDebug(s"query(token=$token) returns:\n  token: ${r._1}\n  locations: ${r._2}")
+      logDebug(s"nextLocationChunk(token=$token) returns:\n  token: ${r._1}\n  locations: ${r._2}")
 
       dataBuffer.clear()
 
       r match {
         case (_, Nil) =>
-
-          /**
-           * It is Absolutely possible situation, for instance:
-           * in case when the last data page will be returned as a result of  2i continuation query and
-           * this page will be fully filled with data then the valid continuation token wile be also returned (it will be not null),
-           * therefore additional/subsequent data fetch request will be required.
-           * As a result of such call the empty locations list and Null continuation token will be returned
-           */
-          logDebug("All data was processed (location list is empty)")
           lapSw.lap("data-chunk.empty", "Chunk of locations (keys) is empty")
           RiakConnectorSource.instance.foreach(_.emptyChunk.mark())
           (None, Nil)
@@ -97,9 +88,6 @@ trait LocationQuery[T] extends Query[T] {
           val itChunkedLocations = locations.grouped(RiakConnector.getMinConnectionsPerNode(session))
           fetchValues(session, itChunkedLocations, dataBuffer)
 
-          logDebug(s"Next data buffer was fetched:\n" +
-            s"\tnextToken: $nextToken\n" +
-            s"\tbuffer: $dataBuffer")
           if (readConf.fetchSize == locations.size) {
             fullChunkSw.stop(s"data-chunk.${readConf.fetchSize}", "Entire data chunk loaded")
             lapSw.stop(s"data-chunk.values.${readConf.fetchSize}", s"Getting full list of values (fetchSize = ${readConf.fetchSize})")
@@ -111,7 +99,7 @@ trait LocationQuery[T] extends Query[T] {
             valuesNotFull.map(_.stop())
             notFullChunkCtx.map(_.stop())
           }
-
+          
           (nextToken, dataBuffer.toList)
       }
     }
@@ -197,9 +185,13 @@ object Query{
         require(queryData.coverageEntries.isDefined)
 
         val ce = queryData.coverageEntries.get
-        require(!ce.isEmpty)
+        require(ce.nonEmpty)
 
-        new Query2iKeys[CoverageEntry](bucket, readConf, queryData.index.get, ce)
+        if(readConf.useStreamingValuesForFBRead){
+          new QueryFullBucket(bucket, readConf, ce)
+        } else {
+          new Query2iKeys(bucket, readConf, queryData.index.get, ce)
+        }
     }
   }
 }

@@ -25,7 +25,13 @@ import org.apache.spark.SparkConf
  */
 case class ReadConf (
   fetchSize: Int = ReadConf.DefaultFetchSize,
-  splitCount: Int = ReadConf.DefaultSplitCount
+  splitCount: Int = ReadConf.DefaultSplitCount,
+
+  /**
+   * DO NOT CHANGE THIS VALUES MANUALLY
+   * IT MAY CAUSE PERFORMANCE DEGRADATION
+    */
+  useStreamingValuesForFBRead: Boolean = ReadConf.DefaultUseStreamingValues4FBRead
 )
 
 object ReadConf {
@@ -34,10 +40,13 @@ object ReadConf {
   // TODO: Need to think about the proper default value
   val DefaultSplitCount = 10
 
+  val DefaultUseStreamingValues4FBRead = true
+
   def fromSparkConf(conf: SparkConf): ReadConf = {
     ReadConf(
       fetchSize = conf.getInt("spark.riak.input.fetch-size", DefaultFetchSize),
-      splitCount = conf.getInt("spark.riak.input.split.count", DefaultSplitCount)
+      splitCount = conf.getInt("spark.riak.input.split.count", DefaultSplitCount),
+      useStreamingValuesForFBRead = conf.getBoolean("spark.riak.fullbucket.use-streaming-values", DefaultUseStreamingValues4FBRead)
     )
   }
 }
