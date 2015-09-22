@@ -39,7 +39,7 @@ calculates the number of values loaded from the Riak bucket.
 
 Run it locally: 
 ```
-`./bin/run-example SimpleScalaRiakExample`
+./bin/run-example SimpleScalaRiakExample
 ```
 
 Sources [SimpleScalaRiakExample.scala](./src/main/scala/com/basho/riak/spark/examples/SimpleScalaRiakExample.scala)
@@ -51,7 +51,7 @@ calculates the number of values loaded from the Riak bucket.
 
 Run it locally: 
 ```
-`./bin/run-example SimpleJavaRiakExample`
+./bin/run-example SimpleJavaRiakExample
 ```
 Sources [SimpleJavaRiakExample.scala](./src/main/java/com/basho/riak/spark/examples/SimpleJavaRiakExample.java)
 
@@ -81,7 +81,7 @@ We'll support our answers by drawing appropriate charts.
 
 You can run the demo locally by:
 ```
-`./bin/run-example OFACDemo`
+./bin/run-example OFACDemo
 ```
 
 Sources [OFACDemo.scala](./src/main/scala/com/basho/riak/spark/examples/demos/ofac/OFACDemo.scala)
