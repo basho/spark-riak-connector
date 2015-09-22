@@ -10,9 +10,13 @@ import scala.collection.JavaConversions._
 trait SparkConfig extends Config { self: App =>
 
   lazy val sparkConfig = {
-    val sparkKeySection = config.getConfig("perf-test.spark").entrySet().toList.map("spark." + _.getKey)
+    val sparkConfigSelection = config.getConfig("perf-test.spark")
+    val sparkKeySection = sparkConfigSelection.entrySet().toList.map("spark." + _.getKey)
     val configSection = config.getConfig("perf-test")
+
     sparkKeySection.foldLeft(new SparkConf(true).setAppName(getClass.getSimpleName))((cfg, key) => cfg.set(key, configSection.getString(key)))
+      .set("spark.riak.connection.host.connections.min", sparkConfigSelection.getString("riak.connection-min"))
+      .set("spark.riak.connection.host.connections.max", sparkConfigSelection.getString("riak.connection-max"))
   }
    
 

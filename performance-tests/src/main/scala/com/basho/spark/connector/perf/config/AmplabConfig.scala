@@ -13,5 +13,6 @@ trait AmplabConfig extends Config { self: App =>
   lazy val amplabLocalPath = config.getString("perf-test.amplab.local-path")
   
   lazy val amplabRiakNamespace = new Namespace("default", config.getString("perf-test.amplab.target-riak-bucket")) 
-  
+
+  lazy val filesLimit = config.getInt("perf-test.amplab.dataset-files-limit")
 }
