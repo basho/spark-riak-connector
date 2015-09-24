@@ -13,22 +13,26 @@ class RiakConnectorSource extends Source {
   override val sourceName = "riak-connector"
 
   override val metricRegistry = new metrics.MetricRegistry
-  
-  val locationsFull = metricRegistry.timer("data-chunk.locations.full")
 
-  val valuesFull = metricRegistry.timer("data-chunk.values.full")
+  val fbr1Full = metricRegistry.timer("fbr-one-query.full")
 
-  val locationsNotFull = metricRegistry.timer("data-chunk.locations.notFull")
+  val fbr1NotFull = metricRegistry.timer("fbr-one-query.notFull")
 
-  val valuesNotFull = metricRegistry.timer("data-chunk.values.notFull")
+  val fbr2LocationsFull = metricRegistry.timer("fbr-two-queries.locations.full")
 
-  val dataChunkFull = metricRegistry.timer("data-chunk.full")
+  val fbr2ValuesFull = metricRegistry.timer("fbr-two-queries.values.full")
 
-  val dataChunkNotFull = metricRegistry.timer("data-chunk.notFull")
+  val fbr2LocationsNotFull = metricRegistry.timer("fbr-two-queries.locations.notFull")
 
-  val emptyChunk = metricRegistry.meter("data-chunk.empty")
+  val fbr2ValuesNotFull = metricRegistry.timer("fbr-two-queries.values.notFull")
 
-  val erroredChunk = metricRegistry.meter("data-chunk.error")
+  val fbr2Full = metricRegistry.timer("fbr-two-queries.full")
+
+  val fbr2NotFull = metricRegistry.timer("fbr-two-queries.notFull")
+
+  val fbr2EmptyChunk = metricRegistry.meter("fbr-two-queries.empty")
+
+  val fbr2ErrorChunk = metricRegistry.meter("fbr-two-queries.error")
 
   RiakConnectorSource.registerInstance(this)
   

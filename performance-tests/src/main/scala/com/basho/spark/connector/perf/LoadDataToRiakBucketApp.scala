@@ -29,16 +29,15 @@ object LoadDataToRiakBucketApp extends App with RiakConfig with SparkConfig with
   logInfo(s"There are ${allS3Files.size} files on S3")
 
   val filesToLoad = if (filesLimit == 0) allS3Files else allS3Files.take(filesLimit)
-  logInfo(s"${filesToLoad.size} files will be loaded")
 
   val rdd = sc.union(filesToLoad.map(sc.textFile(_)))
     .zipWithIndex()
     .map { case (line, index) =>
-      val obj = RiakObjectConversionUtil.to(line)
-      obj.getIndexes.getIndex[LongIntIndex, LongIntIndex.Name](LongIntIndex.named("creationNo"))
-        .add(index)
-      obj
-    }
+    val obj = RiakObjectConversionUtil.to(line)
+    obj.getIndexes.getIndex[LongIntIndex, LongIntIndex.Name](LongIntIndex.named("creationNo"))
+      .add(index)
+    obj
+  }
 
   logInfo(s"Loaded ${rdd.count()} entities from S3")
 

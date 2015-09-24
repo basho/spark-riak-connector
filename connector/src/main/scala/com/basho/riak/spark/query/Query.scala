@@ -52,19 +52,19 @@ trait LocationQuery[T] extends Query[T] {
     val lapSw = new Log4JStopWatch()
 
     //codahale timers
-    val fullChunkCtx = RiakConnectorSource.instance.map(_.dataChunkFull.time())
-    val notFullChunkCtx = RiakConnectorSource.instance.map(_.dataChunkNotFull.time())
-    val locationsFull = RiakConnectorSource.instance.map(_.locationsFull.time())
-    val locationsNotFull = RiakConnectorSource.instance.map(_.locationsNotFull.time())
+    val fullChunkCtx = RiakConnectorSource.instance.map(_.fbr2Full.time())
+    val notFullChunkCtx = RiakConnectorSource.instance.map(_.fbr2NotFull.time())
+    val locationsFull = RiakConnectorSource.instance.map(_.fbr2LocationsFull.time())
+    val locationsNotFull = RiakConnectorSource.instance.map(_.fbr2LocationsNotFull.time())
 
 
     try {
       val r = nextLocationChunk(token, session)
       if (r._2.size == readConf.fetchSize) {
-        lapSw.lap(s"data-chunk.locations.${readConf.fetchSize}", "Getting next chunk of locations (keys)")
+        lapSw.lap(s"fbr-two-queries.locations.full", "Getting next chunk of locations (keys)")
         locationsFull.map(_.stop())
       } else {
-        lapSw.lap("data-chunk.locations.notFull", s"Getting next chunk of locations (keys), size = ${r._2.size}")
+        lapSw.lap("fbr-two-queries.locations.notFull", s"Getting next chunk of locations (keys), size = ${r._2.size}")
         locationsNotFull.map(_.stop())
       }
       logDebug(s"nextLocationChunk(token=$token) returns:\n  token: ${r._1}\n  locations: ${r._2}")
@@ -73,12 +73,12 @@ trait LocationQuery[T] extends Query[T] {
 
       r match {
         case (_, Nil) =>
-          lapSw.lap("data-chunk.empty", "Chunk of locations (keys) is empty")
-          RiakConnectorSource.instance.foreach(_.emptyChunk.mark())
+          lapSw.lap("fbr-two-queries.empty", "Chunk of locations (keys) is empty")
+          RiakConnectorSource.instance.foreach(_.fbr2EmptyChunk.mark())
           (None, Nil)
         case (nextToken: T, locations: Iterable[Location]) =>
-          val valuesFull = RiakConnectorSource.instance.map(_.valuesFull.time())
-          val valuesNotFull = RiakConnectorSource.instance.map(_.valuesNotFull.time())
+          val valuesFull = RiakConnectorSource.instance.map(_.fbr2ValuesFull.time())
+          val valuesNotFull = RiakConnectorSource.instance.map(_.fbr2ValuesNotFull.time())
           /**
            * To be 100% sure that massive fetch doesn't lead to the connection pool starvation,
            * fetch will be performed by the smaller chunks of keys.
@@ -89,13 +89,13 @@ trait LocationQuery[T] extends Query[T] {
           fetchValues(session, itChunkedLocations, dataBuffer)
 
           if (readConf.fetchSize == locations.size) {
-            fullChunkSw.stop(s"data-chunk.${readConf.fetchSize}", "Entire data chunk loaded")
-            lapSw.stop(s"data-chunk.values.${readConf.fetchSize}", s"Getting full list of values (fetchSize = ${readConf.fetchSize})")
+            fullChunkSw.stop(s"fbr-two-queries.full", "Entire data chunk loaded")
+            lapSw.stop(s"fbr-two-queries.values.full", s"Getting full list of values (fetchSize = ${readConf.fetchSize})")
             valuesFull.map(_.stop())
             fullChunkCtx.map(_.stop())
           } else {
-            fullChunkSw.stop("data-chunk.notFull", s"Not full data chunk loaded ${locations.size}")
-            lapSw.stop(s"data-chunk.values.notFull", s"Less then ${readConf.fetchSize} keys returned")
+            fullChunkSw.stop("fbr-two-queries.notFull", s"Not full data chunk loaded ${locations.size}")
+            lapSw.stop(s"fbr-two-queries.values.notFull", s"Less then ${readConf.fetchSize} keys returned")
             valuesNotFull.map(_.stop())
             notFullChunkCtx.map(_.stop())
           }
@@ -107,7 +107,7 @@ trait LocationQuery[T] extends Query[T] {
       case e: Throwable =>
         fullChunkSw.stop("data-chunk.error", e)
         lapSw.stop("data-chunk.error", e)
-        RiakConnectorSource.instance.foreach(_.erroredChunk.mark())
+        RiakConnectorSource.instance.foreach(_.fbr2ErrorChunk.mark())
         throw e
     }
   }

@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.basho.riak</groupId>
         <artifactId>spark-riak-connector-parent</artifactId>
-        <version>1.0.0</version>
+        <version>1.1.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>spark-riak-connector-performance-tests</artifactId>
@@ -24,12 +24,12 @@
         <dependency>
             <groupId>com.basho.riak</groupId>
             <artifactId>spark-riak-connector</artifactId>
-            <version>1.0.0</version>
+            <version>1.1.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>com.basho.riak</groupId>
             <artifactId>spark-riak-connector-test-utils</artifactId>
-            <version>1.0.0</version>
+            <version>1.1.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.spark</groupId>

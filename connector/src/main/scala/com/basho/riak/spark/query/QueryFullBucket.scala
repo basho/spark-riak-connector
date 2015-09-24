@@ -6,6 +6,8 @@ import com.basho.riak.client.core.operations.CoveragePlanOperation.Response.Cove
 import com.basho.riak.client.core.query.{RiakObject, Location}
 import com.basho.riak.client.core.util.BinaryValue
 import com.basho.riak.spark.rdd.{BucketDef, ReadConf}
+import org.apache.spark.metrics.RiakConnectorSource
+import org.perf4j.log4j.Log4JStopWatch
 
 import scala.collection.JavaConversions._
 
@@ -30,7 +32,20 @@ case class QueryFullBucket(bucket: BucketDef, readConf: ReadConf, coverageEntrie
         throw new IllegalArgumentException("Wrong nextToken")
     }
 
+    val sw = new Log4JStopWatch()
+    val fullCtx = RiakConnectorSource.instance.map(_.fbr1Full.time())
+    val notFullCtx = RiakConnectorSource.instance.map(_.fbr1NotFull.time())
+
     val r: FullBucketRead.Response = session.execute(builder.build())
+
+    if (r.getEntries.size() == readConf.fetchSize) {
+      sw.stop("fbr-one-query.full", s"Got ${readConf.fetchSize} entities")
+      fullCtx.map(_.stop())
+    } else {
+      sw.stop("fbr-one-query.notFull", s"Got ${readConf.fetchSize} entities")
+      notFullCtx.map(_.stop())
+    }
+
     val data = for {
       e <- r.getEntries
       n = (e.getLocation, e.getFetchedValue.getValue(classOf[RiakObject]))
