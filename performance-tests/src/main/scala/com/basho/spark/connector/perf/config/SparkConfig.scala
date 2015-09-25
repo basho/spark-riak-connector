@@ -14,9 +14,9 @@ trait SparkConfig extends Config { self: App =>
     val sparkKeySection = sparkConfigSelection.entrySet().toList.map("spark." + _.getKey)
     val configSection = config.getConfig("perf-test")
 
-    sparkKeySection.foldLeft(new SparkConf(true).setAppName(getClass.getSimpleName))((cfg, key) => cfg.set(key, configSection.getString(key)))
-      .set("spark.riak.connection.host.connections.min", sparkConfigSelection.getString("riak.connection-min"))
-      .set("spark.riak.connection.host.connections.max", sparkConfigSelection.getString("riak.connection-max"))
+    sparkKeySection.foldLeft(new SparkConf(true).setAppName(getClass.getSimpleName)) { (cfg, key) => 
+      cfg.set(key, configSection.getString(key))
+    }
   }
    
 
