@@ -14,24 +14,30 @@ function usage()
     echo ""
 }
 
-while [[ "$1" != "" ]]
+while [[ $# > 1 ]]
 do
-    case "$1" in
+key="$1"
+
+    case $key in
         -h | --help)
             usage
             exit 0
             ;;
         --jar)
             JAR="$2"
+            shift # past argument
             ;;
         --class)
             JAVA_CLASS="$2"
+            shift # past argument
             ;;
         --master)
             SPARK_MASTER="$2"
+            shift # past argument
             ;;
         --args)
             JAR_ARGS="$2"
+            shift # past argument
             ;;
         *)
             echo "ERROR: unknown parameter \"$1\""
@@ -42,10 +48,10 @@ do
     shift
 done
 
-[ -z "$JAR" ] && JAR="/home/ubuntu/performance-tests.jar"
+[ -z "$JAR" ] && JAR="/home/ubuntu/performance-tests/performance-tests.jar"
 [ -z "$JAVA_CLASS" ] && JAVA_CLASS="com.basho.spark.connector.perf.FullBucketReadPerformanceApp"
-[ -z "$SPARK_MASTER" ] && SPARK_MASTER="spark://ip-172-31-57-179:7077"
-[ -z "$JAR_ARGS" ] && JAR_ARGS="/home/ubuntu/perf-tests.config"
+#[ -z "$SPARK_MASTER" ] && SPARK_MASTER="spark://ip-172-31-57-179:7077"
+[ -z "$JAR_ARGS" ] && JAR_ARGS="/home/ubuntu/performance-tests/perf-tests.config"
 [ -z "$SPARK_HOME" ] && SPARK_HOME="/opt/spark"
 
 if [ ! -f $JAR ]; then
@@ -59,7 +65,8 @@ echo "    Java class $JAVA_CLASS"
 echo "    Spark master $SPARK_MASTER"
 echo "    Jar argumets $JAR_ARGS"
 
-spark_submit="$SPARK_HOME/bin/spark-submit --class $JAVA_CLASS --master $SPARK_MASTER $JAR $JAR_ARGS"
+# --master $SPARK_MASTER
+spark_submit="$SPARK_HOME/bin/spark-submit --class $JAVA_CLASS $JAR $JAR_ARGS"
 
 if [ -f master_stdout.log ]; then
     rm master_stdout.log

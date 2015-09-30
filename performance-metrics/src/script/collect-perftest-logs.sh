@@ -24,12 +24,12 @@ echo "Current Spark job ID: $APP_ID"
 
 [ -z "$SSH_USER_NAME" ] && SSH_USER_NAME="ubuntu"
 [ -z "$SSH_KEY_PATH" ] && SSH_KEY_PATH="/home/ubuntu/.ssh/bdp.pem"
-[ -z "$PERF4J_LOG_SRC" ] && PERF4J_LOG_SRC="/home/ubuntu/perf-stats.log"
-[ -z "$PERF4J_LOG_DST" ] && PERF4J_LOG_DST="/home/ubuntu/perf4j-collected-logs"
-[ -z "$CODAHALE_LOG_SRC" ] && CODAHALE_LOG_SRC="/home/ubuntu/codahale-metrics"
-[ -z "$CODAHALE_LOG_DST" ] && CODAHALE_LOG_DST="/home/ubuntu/codahale-collected-logs"
+[ -z "$PERF4J_LOG_SRC" ] && PERF4J_LOG_SRC="/home/ubuntu/performance-tests/perf4j-raw-logs/perf-stats.log"
+[ -z "$PERF4J_LOG_DST" ] && PERF4J_LOG_DST="/home/ubuntu/performance-tests/perf4j-collected-logs"
+[ -z "$CODAHALE_LOG_SRC" ] && CODAHALE_LOG_SRC="/home/ubuntu/performance-tests/codahale-raw-logs"
+[ -z "$CODAHALE_LOG_DST" ] && CODAHALE_LOG_DST="/home/ubuntu/performance-tests/codahale-collected-logs"
 
-PERF4J_JAR="perf4j-0.9.16.jar"
+PERF4J_JAR="perf4j.jar"
 CODAHALE_JAR="performance-metrics.jar"
 COLLECT_TIME=$(date +"%Y-%m-%d_%T")
 
