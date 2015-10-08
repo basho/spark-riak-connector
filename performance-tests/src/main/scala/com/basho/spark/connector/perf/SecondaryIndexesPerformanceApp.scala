@@ -15,12 +15,12 @@ object SecondaryIndexesPerformanceApp extends App with RiakConfig with SparkConf
   val sc = new SparkContext(sparkConfig)
   dump(sc)
 
-  val from = args(1).toInt
-  val to = args(2).toInt
+  val from = config.getInt("perf-test.2i-query.from")
+  val to = config.getInt("perf-test.2i-query.to")
 
   val records = sc.riakBucket[String](amplabRiakNamespace)
     .query2iRange("creationNo", from, to)
 
   println(s"Received ${records.count()} records")
-  
+
 }

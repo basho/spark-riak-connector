@@ -30,7 +30,10 @@ object LoadDataToRiakBucketApp extends App with RiakConfig with SparkConfig with
 
   val filesToLoad = if (filesLimit == 0) allS3Files else allS3Files.take(filesLimit)
 
+  val partitions = config.getInt("perf-test.load-data.partitions")
+
   val rdd = sc.union(filesToLoad.map(sc.textFile(_)))
+    .repartition(partitions)
     .zipWithIndex()
     .map { case (line, index) =>
     val obj = RiakObjectConversionUtil.to(line)
