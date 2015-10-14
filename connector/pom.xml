@@ -67,6 +67,34 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>2.1</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <shadedArtifactAttached>true</shadedArtifactAttached>
+                            <createDependencyReducedPom>true</createDependencyReducedPom>
+                            <artifactSet>
+                                <includes>
+                                    <include>com.google.guava:guava</include>
+                                    <include>com.fasterxml.jackson.datatype:jackson-datatype-joda</include>
+                                    <include>joda-time:joda-time</include>
+                                    <include>com.fasterxml.jackson.module:jackson-module-scala_${scala.major.version}</include>
+                                    <!--<include>org.jfree:jcommon</include>-->
+                                    <include>org.scala-lang.modules:scala-java8-compat_${scala.major.version}</include>
+                                    <inlude>com.basho.riak:riak-client</inlude>
+                                </includes>
+                            </artifactSet>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 </project>
