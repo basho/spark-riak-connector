@@ -20,12 +20,14 @@ package com.basho.riak.spark.query
 import com.basho.riak.client.api.RiakClient
 import com.basho.riak.client.api.cap.Quorum
 import com.basho.riak.client.api.commands.kv.{FetchValue, MultiFetch}
-import com.basho.riak.client.core.query.{RiakObject, Location}
-import com.basho.riak.spark.rdd.{RiakConnector, ReadConf, BucketDef}
-import scala.collection.JavaConversions._
-
-import scala.collection.mutable.ArrayBuffer
+import com.basho.riak.client.core.query.{Location, RiakObject}
+import com.basho.riak.spark.rdd.{BucketDef, ReadConf, RiakConnector}
 import org.apache.spark.Logging
+import org.apache.spark.metrics.RiakConnectorSource
+import org.perf4j.log4j.Log4JStopWatch
+
+import scala.collection.JavaConversions._
+import scala.collection.mutable.ArrayBuffer
 
 /**
  * Generic Riak Query
@@ -45,24 +47,68 @@ trait LocationQuery[T] extends Query[T] {
   def nextLocationChunk(nextToken: Option[_], session: RiakClient): (Option[T], Iterable[Location])
 
   def nextChunk(token: Option[_], session: RiakClient): (Option[T], Iterable[ResultT]) = {
-    val r = nextLocationChunk(token, session )
-    logDebug(s"nextLocationChunk(token=$token) returns:\n  token: ${r._1}\n  locations: ${r._2}")
+    //perf4j stop watches
+    val fullChunkSw = new Log4JStopWatch()
+    val lapSw = new Log4JStopWatch()
 
-    dataBuffer.clear()
+    //codahale timers
+    val fullChunkCtx = RiakConnectorSource.instance.map(_.fbr2Full.time())
+    val notFullChunkCtx = RiakConnectorSource.instance.map(_.fbr2NotFull.time())
+    val locationsFull = RiakConnectorSource.instance.map(_.fbr2LocationsFull.time())
+    val locationsNotFull = RiakConnectorSource.instance.map(_.fbr2LocationsNotFull.time())
 
-    r match {
-      case (_, Nil) =>
-        (None, Nil)
-      case (nextToken: T, locations: Iterable[Location]) =>
-        /**
-         * To be 100% sure that massive fetch doesn't lead to the connection pool starvation,
-         * fetch will be performed by the smaller chunks of keys.
-         *
-         * Ideally the chunk size should be equal to the max number of connections for the RiakNode
-         */
-        val itChunkedLocations = locations.grouped(RiakConnector.getMinConnectionsPerNode(session))
-        fetchValues(session, itChunkedLocations, dataBuffer)
-        (nextToken, dataBuffer.toList)
+
+    try {
+      val r = nextLocationChunk(token, session)
+      if (r._2.size == readConf.fetchSize) {
+        lapSw.lap(s"fbr-two-queries.locations.full", "Getting next chunk of locations (keys)")
+        locationsFull.map(_.stop())
+      } else {
+        lapSw.lap("fbr-two-queries.locations.notFull", s"Getting next chunk of locations (keys), size = ${r._2.size}")
+        locationsNotFull.map(_.stop())
+      }
+      logDebug(s"nextLocationChunk(token=$token) returns:\n  token: ${r._1}\n  locations: ${r._2}")
+
+      dataBuffer.clear()
+
+      r match {
+        case (_, Nil) =>
+          lapSw.lap("fbr-two-queries.empty", "Chunk of locations (keys) is empty")
+          RiakConnectorSource.instance.foreach(_.fbr2EmptyChunk.mark())
+          (None, Nil)
+        case (nextToken: T, locations: Iterable[Location]) =>
+          val valuesFull = RiakConnectorSource.instance.map(_.fbr2ValuesFull.time())
+          val valuesNotFull = RiakConnectorSource.instance.map(_.fbr2ValuesNotFull.time())
+          /**
+           * To be 100% sure that massive fetch doesn't lead to the connection pool starvation,
+           * fetch will be performed by the smaller chunks of keys.
+           *
+           * Ideally the chunk size should be equal to the max number of connections for the RiakNode
+           */
+          val itChunkedLocations = locations.grouped(RiakConnector.getMinConnectionsPerNode(session))
+          fetchValues(session, itChunkedLocations, dataBuffer)
+
+          if (readConf.fetchSize == locations.size) {
+            fullChunkSw.stop(s"fbr-two-queries.full", "Entire data chunk loaded")
+            lapSw.stop(s"fbr-two-queries.values.full", s"Getting full list of values (fetchSize = ${readConf.fetchSize})")
+            valuesFull.map(_.stop())
+            fullChunkCtx.map(_.stop())
+          } else {
+            fullChunkSw.stop("fbr-two-queries.notFull", s"Not full data chunk loaded ${locations.size}")
+            lapSw.stop(s"fbr-two-queries.values.notFull", s"Less then ${readConf.fetchSize} keys returned")
+            valuesNotFull.map(_.stop())
+            notFullChunkCtx.map(_.stop())
+          }
+          
+          (nextToken, dataBuffer.toList)
+      }
+    }
+    catch {
+      case e: Throwable =>
+        fullChunkSw.stop("data-chunk.error", e)
+        lapSw.stop("data-chunk.error", e)
+        RiakConnectorSource.instance.foreach(_.fbr2ErrorChunk.mark())
+        throw e
     }
   }
 
@@ -139,7 +185,7 @@ object Query{
         require(queryData.coverageEntries.isDefined)
 
         val ce = queryData.coverageEntries.get
-        require(!ce.isEmpty)
+        require(ce.nonEmpty)
 
         if(readConf.useStreamingValuesForFBRead){
           new QueryFullBucket(bucket, readConf, ce)
