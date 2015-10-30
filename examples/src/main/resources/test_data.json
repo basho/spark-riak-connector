@@ -1,0 +1,6 @@
+{"user_id": "u1", "name": "Ben", "age": 23, "category": "CategoryA"},
+{"user_id": "u2", "name": "Clair", "age": 19, "category": "CategoryB"},
+{"user_id": "u3", "name": "John", "age": 21}, 
+{"user_id": "u4", "name": "Chris", "age": 50, "category": "CategoryC"},
+{"user_id": "u5", "name": "Mary", "age": 15, "category": "CategoryB"},
+{"user_id": "u6", "name": "George", "age": 31, "category": "CategoryC"}

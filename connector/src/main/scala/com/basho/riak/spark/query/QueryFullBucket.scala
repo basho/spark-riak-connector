@@ -8,7 +8,6 @@ import com.basho.riak.client.core.util.BinaryValue
 import com.basho.riak.spark.rdd.{BucketDef, ReadConf}
 import org.apache.spark.metrics.RiakConnectorSource
 import org.perf4j.log4j.Log4JStopWatch
-
 import scala.collection.JavaConversions._
 
 case class QueryFullBucket(bucket: BucketDef, readConf: ReadConf, coverageEntries: Iterable[CoverageEntry]) extends Query[String] {
@@ -32,6 +31,7 @@ case class QueryFullBucket(bucket: BucketDef, readConf: ReadConf, coverageEntrie
         throw new IllegalArgumentException("Wrong nextToken")
     }
 
+
     val sw = new Log4JStopWatch()
     val fullCtx = RiakConnectorSource.instance.map(_.fbr1Full.time())
     val notFullCtx = RiakConnectorSource.instance.map(_.fbr1NotFull.time())
@@ -45,6 +45,7 @@ case class QueryFullBucket(bucket: BucketDef, readConf: ReadConf, coverageEntrie
       sw.stop("fbr-one-query.notFull", s"Got ${readConf.fetchSize} entities")
       notFullCtx.map(_.stop())
     }
+
 
     val data = for {
       e <- r.getEntries

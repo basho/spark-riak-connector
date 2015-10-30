@@ -25,7 +25,6 @@ import com.basho.riak.spark.rdd.{BucketDef, ReadConf, RiakConnector}
 import org.apache.spark.Logging
 import org.apache.spark.metrics.RiakConnectorSource
 import org.perf4j.log4j.Log4JStopWatch
-
 import scala.collection.JavaConversions._
 import scala.collection.mutable.ArrayBuffer
 

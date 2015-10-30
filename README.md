@@ -97,6 +97,7 @@ Property name                                  | Description                    
 spark.riak.connection.host                     | IP:port of a Riak node protobuf interface         | 127.0.0.1:8087
 spark.riak.connection.host.connections.min     | Minimum number of parallel connections to Riak    | 10
 spark.riak.connection.host.connections.max     | Maximum number of parallel connections to Riak    | 30
+spark.riak.input.fetch-size                    | Number of keys to fetch in a single round-trip to Riak | 1000
 
 
 Example:
