@@ -95,8 +95,8 @@ The following options are available on `SparkConf` object:
 Property name                                  | Description                                       | Default value
 -----------------------------------------------|---------------------------------------------------|--------------------
 spark.riak.connection.host                     | IP:port of a Riak node protobuf interface         | 127.0.0.1:8087
-spark.riak.connection.host.connections.min     | Minimum number of parallel connections to Riak    | 10
-spark.riak.connection.host.connections.max     | Maximum number of parallel connections to Riak    | 30
+spark.riak.connections.min                     | Minimum number of parallel connections to Riak    | 10
+spark.riak.connections.max                     | Maximum number of parallel connections to Riak    | 30
 spark.riak.input.fetch-size                    | Number of keys to fetch in a single round-trip to Riak | 1000
 
 
@@ -106,8 +106,8 @@ Example:
 val conf = new SparkConf()
         .setAppName("My Spark Riak App")
         .set("spark.riak.connection.host", "10.0.4.1:8087")
-        .set("spark.riak.connection.host.connections.min", "20")
-        .set("spark.riak.connection.host.connections.max", "50")
+        .set("spark.riak.connections.min", "20")
+        .set("spark.riak.connections.max", "50")
 
 val sc = new SparkContext("spark://10.0.4.1:7077", "test", conf)
 ```

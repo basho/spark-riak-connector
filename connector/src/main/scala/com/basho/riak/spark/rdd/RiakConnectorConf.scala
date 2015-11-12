@@ -36,8 +36,8 @@ object RiakConnectorConf extends Logging {
   val DEFAULT_MIN_CONNECTIONS = 20
   val DEFAULT_MAX_CONNECTIONS = 50
   val RiakConnectionHostProperty = "spark.riak.connection.host"
-  val RiakMinConnectionPerHostProperty = "spark.riak.connection.host.connections.min"
-  val RiakMaxConnectionPerHostProperty = "spark.riak.connection.host.connections.max"
+  val RiakMinConnectionPerHostProperty = "spark.riak.connections.min"
+  val RiakMaxConnectionPerHostProperty = "spark.riak.connections.max"
 
   private def resolveHost(hostName: String): Option[HostAndPort] = {
     try Some(HostAndPort.fromString(hostName, 8087))

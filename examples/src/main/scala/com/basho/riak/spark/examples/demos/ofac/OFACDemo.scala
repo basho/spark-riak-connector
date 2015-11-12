@@ -68,8 +68,8 @@ object OFACDemo {
 
     //setSparkOpt(sparkConf, "spark.riak.connection.host", "127.0.0.1:8087")
     setSparkOpt(sparkConf, "spark.riak.connection.host", "127.0.0.1:10017")
-    setSparkOpt(sparkConf, "spark.riak.connection.host.connections.min", NUMBER_OF_PARALLEL_REQUESTS.toString)
-    setSparkOpt(sparkConf, "spark.riak.connection.host.connections.max", (NUMBER_OF_PARALLEL_REQUESTS * 3).toString)
+    setSparkOpt(sparkConf, "spark.riak.connections.min", NUMBER_OF_PARALLEL_REQUESTS.toString)
+    setSparkOpt(sparkConf, "spark.riak.connections.max", (NUMBER_OF_PARALLEL_REQUESTS * 3).toString)
 
     setSparkOpt(sparkConf, "spark.riak.demo.index", CFG_DEFAULT_INDEX)
     setSparkOpt(sparkConf, "spark.riak.demo.bucket", CFG_DEFAULT_BUCKET)

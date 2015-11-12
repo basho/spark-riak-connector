@@ -417,8 +417,8 @@ object RiakFunctions {
   def apply(conf: SparkConf): RiakFunctions = {
     val hostsStr = conf.get("spark.riak.connection.host", InetAddress.getLocalHost.getHostAddress)
     val hosts = HostAndPort.hostsFromString(hostsStr, 8087).toSet
-    val minConnections = conf.get("spark.riak.connection.host.connections.min", "5").toInt
-    val maxConnections = conf.get("spark.riak.connection.host.connections.max", "15").toInt
+    val minConnections = conf.get("spark.riak.connections.min", "5").toInt
+    val maxConnections = conf.get("spark.riak.connections.max", "15").toInt
 
     apply(hosts, minConnections, maxConnections)
   }
