@@ -27,7 +27,7 @@ abstract class AbstractRiakSparkTest extends AbstractRiakTest {
   protected def initSparkConf():SparkConf = new SparkConf(false)
     .setMaster("local")
     .setAppName(getClass.getSimpleName)
-    .set("spark.riak.connection.host", DEFAULT_RIAK_HOST + ":" + DEFAULT_RIAK_PORT)
+    .set("spark.riak.connection.host", DEFAULT_RIAK_HOST)
     .set("spark.riak.output.wquorum", "1")
     .set("spark.riak.input.fetch-size", "2")
 
