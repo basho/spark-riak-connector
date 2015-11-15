@@ -289,9 +289,9 @@ object OFACDemo {
         )
     }
 
-    implicit val vwf = new WriteDataMapperFactory[DemoRiakRecord] {
-      override def dataMapper(bucket: BucketDef): WriteDataMapper[DemoRiakRecord] = {
-        new WriteDataMapper[DemoRiakRecord] {
+    implicit val vwf = new WriteDataMapperFactory[DemoRiakRecord, (String, RiakObject)] {
+      override def dataMapper(bucket: BucketDef): WriteDataMapper[DemoRiakRecord, (String, RiakObject)] = {
+        new WriteDataMapper[DemoRiakRecord, (String, RiakObject)] {
           override def mapValue(value: DemoRiakRecord): (String, RiakObject) = {
             val ro = RiakObjectConversionUtil.to(value)
             ro.getIndexes.getIndex[LongIntIndex, LongIntIndex.Name](LongIntIndex.named("entNum"))

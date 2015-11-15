@@ -18,9 +18,13 @@
 package com.basho.riak.spark.rdd
 
 import com.basho.riak.client.core.query.Namespace
-import com.basho.riak.spark.writer.{BucketWriter, WriteDataMapperFactory, WriteConf}
+import com.basho.riak.client.core.query.timeseries.{Row => RiakRow}
+import com.basho.riak.spark._
+import com.basho.riak.spark.writer.ts.RowDef
+import com.basho.riak.spark.writer.{RiakWriter, WriteConf, WriteDataMapperFactory}
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.{Row => SparkRow}
 
 class RDDFunctions[T](rdd: RDD[T]) extends Serializable {
 
@@ -33,21 +37,32 @@ class RDDFunctions[T](rdd: RDD[T]) extends Serializable {
                       bucketType: String = "default",
                       writeConf: WriteConf = WriteConf.fromSparkConf(sparkContext.getConf))
                      (implicit connector: RiakConnector = RiakConnector(sparkContext.getConf),
-                      vwf: WriteDataMapperFactory[T]): Unit = {
-    val writer = BucketWriter[T](connector, bucketType, bucketName, writeConf )
+                      vwf: WriteDataMapperFactory[T, KeyValue]): Unit = {
+    val writer = RiakWriter[T](connector, bucketType, bucketName, writeConf )
     rdd.sparkContext.runJob(rdd, writer.write _)
   }
 
   def saveToRiak(ns: Namespace)
-                (implicit vwf: WriteDataMapperFactory[T]): Unit = {
+                (implicit vwf: WriteDataMapperFactory[T, KeyValue]): Unit = {
     saveToRiak(ns.getBucketNameAsString, ns.getBucketTypeAsString)
   }
 
   def saveAsRiakBucket(bucketDef: BucketDef, writeConf: WriteConf = WriteConf.fromSparkConf(sparkContext.getConf))
                       (implicit connector: RiakConnector = RiakConnector(sparkContext.getConf),
-                       vwf: WriteDataMapperFactory[T]): Unit = {
+                       vwf: WriteDataMapperFactory[T, KeyValue]): Unit = {
 
-    val writer = BucketWriter[T](connector, bucketDef, writeConf )
+    val writer = RiakWriter[T](connector, bucketDef, writeConf )
     rdd.sparkContext.runJob(rdd, writer.write _)
   }
+
+  def saveToRiakTS(bucketName: String,
+                   bucketType: String = "default",
+                   writeConf: WriteConf = WriteConf.fromSparkConf(sparkContext.getConf))
+                  (implicit evidence: T <:< SparkRow,
+                   connector: RiakConnector = RiakConnector(sparkContext.getConf),
+                   vwf: WriteDataMapperFactory[T, RowDef]): Unit = {
+    val writer = RiakWriter.tsWriter[T](connector, bucketType, bucketName, writeConf)
+    rdd.sparkContext.runJob(rdd, writer.write _)
+  }
+
 }
