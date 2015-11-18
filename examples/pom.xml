@@ -69,6 +69,7 @@
                     <descriptors>
                         <descriptor>src/main/repl/spark-repl-assembly.xml</descriptor>
                     </descriptors>
+                    <finalName>${artifactId}</finalName>
                 </configuration>
                 <executions>
                     <execution>
