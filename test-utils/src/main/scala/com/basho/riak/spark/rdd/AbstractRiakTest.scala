@@ -30,8 +30,7 @@ import com.fasterxml.jackson.core.JsonProcessingException
 import net.javacrumbs.jsonunit.JsonAssert
 import net.javacrumbs.jsonunit.core.{Configuration, Option}
 import org.junit.{Rule, Before}
-
-
+import scala.collection.JavaConversions._
 
 abstract class AbstractRiakTest extends RiakFunctions{
 
@@ -41,17 +40,14 @@ abstract class AbstractRiakTest extends RiakFunctions{
 
   protected val DEFAULT_NAMESPACE = new Namespace("default","test-bucket")
   protected val DEFAULT_NAMESPACE_4STORE = new Namespace("default", "test-bucket-4store")
-  protected val DEFAULT_RIAK_HOST = "localhost"
-  protected val DEFAULT_RIAK_PORT = 10017
+  protected val DEFAULT_RIAK_HOST = System.getProperty("com.basho.riak.pbchost", RiakNode.Builder.DEFAULT_REMOTE_ADDRESS)
 
-  protected override val riakHosts:Set[HostAndPort] = null
+  protected override val riakHosts:Set[HostAndPort] = HostAndPort.hostsFromString(DEFAULT_RIAK_HOST, RiakNode.Builder.DEFAULT_REMOTE_PORT).toSet
   protected override val numberOfParallelRequests: Int = 4
 
   protected override val nodeBuilder: RiakNode.Builder =
     new RiakNode.Builder()
       .withMinConnections(numberOfParallelRequests)
-      .withRemoteAddress(DEFAULT_RIAK_HOST)
-      .withRemotePort(DEFAULT_RIAK_PORT)
 
   protected def jsonData(): String = null
 
