@@ -109,12 +109,7 @@ trait LocationQuery[T] extends Query[T] {
 object Query{
   def apply[K](bucket: BucketDef, readConf:ReadConf, queryData: QueryData[K]): Query[_] = {
 
-    val ce = queryData.coverageEntries match {
-      case None => None
-      case Some(entries) =>
-        require(entries.size == 1)
-        Some(entries.head)
-    }
+    val ce = queryData.coverageEntries
 
     queryData.keysOrRange match {
       case Some(Left(keys: Seq[K])) =>
