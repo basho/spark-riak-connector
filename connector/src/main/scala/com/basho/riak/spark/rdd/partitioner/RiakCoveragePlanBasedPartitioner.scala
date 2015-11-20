@@ -17,7 +17,11 @@
  */
 package com.basho.riak.spark.rdd.partitioner
 
+import java.util.concurrent.ExecutionException
+
+import com.basho.riak.client.api.commands.kv.CoveragePlan
 import com.basho.riak.client.api.commands.kv.CoveragePlan.Builder
+import com.basho.riak.client.core.netty.RiakResponseException
 import com.basho.riak.client.core.util.HostAndPort
 import com.basho.riak.spark.query.QueryData
 import com.basho.riak.spark.rdd.{RiakConnector, ReadConf, RiakPartition, BucketDef}
@@ -42,7 +46,15 @@ object RiakCoveragePlanBasedPartitioner {
         .withMinPartitions(readConf.splitCount)
         .build()
 
-      val coveragePlan = session.execute(cmd)
+      var coveragePlan: CoveragePlan.Response = null
+      try {
+        coveragePlan = session.execute(cmd)
+      } catch {
+        case e: ExecutionException =>
+          if (e.getCause.isInstanceOf[RiakResponseException] && e.getCause.getMessage.equals("Unknown message code: 70")) {
+            throw new IllegalStateException("Full bucket read is not supproted on your version of riak", e.getCause)
+          } else throw e
+      }
 
       // TODO: add proper Coverage Plan logging
 

@@ -235,6 +235,7 @@
 					<configuration>
 						<systemPropertyVariables>
 							<com.basho.riak.pbchost>${riak.test.connection.string}</com.basho.riak.pbchost>
+							<com.basho.riak-kv.pbchost>${riak-kv.test.connection.string}</com.basho.riak-kv.pbchost>
 						</systemPropertyVariables>
 					</configuration>
 				</plugin>
