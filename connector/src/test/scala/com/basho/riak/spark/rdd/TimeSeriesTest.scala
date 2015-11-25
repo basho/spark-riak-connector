@@ -44,6 +44,12 @@ class TimeSeriesTest extends AbstractRDDTest {
     c
   }
 
+  override def initialize(): Unit = {
+     /* DO NOT CALL IHERITED initialize to avoid reseting non TS bucket*/
+    //super.initialize()
+    sc = createSparkContext(initSparkConf())
+  }
+
   @Before
   def setupData(): Unit = {
 
