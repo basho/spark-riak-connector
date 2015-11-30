@@ -19,7 +19,7 @@ mvn install -DskipTests
 
 4. Extract REPL/Examples:
 ```
-unzip examples/target/spark-riak-connector-examples-1.0.0-REPL.zip
+unzip examples/target/spark-riak-connector-examples-REPL.zip
 ```
 
 5. Run the example or demo that you want by running `./bin/run-example <class> [params]`. For example: `./bin/run-example SimpleScalaRiakExample` will run the SimpleScalaRiakExample example locally.
