@@ -97,7 +97,7 @@ class DataQueryingIterator(query: Query[_], riakSession: RiakClient) extends Ite
   }
 }
 
-object DataQueryingIterator {
+object  DataQueryingIterator {
   private val OPTION_EMPTY_ITERATOR = Some(Iterator.empty)
   private val OPTION_TRUE = Some(true)
   private val OPTION_FALSE = Some(false)

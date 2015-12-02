@@ -183,6 +183,14 @@ val MY_OUTPUT_BUCKET = new Namespace("output-data")
 rdd.saveToRiak(MY_OUTPUT_BUCKET)
 ```
 
+### Reading data from Riak TS bucket
+
+Riak TS buckets can be queried using sql() function:
+
+```scala
+val rdd = sc.riakTSBucket(tableName).sql(s"SELECT * FROM $tableName WHERE time >= $from AND time <= $to")
+```
+
 ## Examples
 
 Riak Spark connector comes with several sample programs and demos that can be found in the [**examples** folder](./examples)

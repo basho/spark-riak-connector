@@ -17,11 +17,12 @@
  */
 package com.basho.riak.spark.util
 
+import com.basho.riak.client.core.query.timeseries.{Row, ColumnDescription}
 import com.basho.riak.client.core.query.{RiakObject, Location}
 
 import scala.reflect.ClassTag
 
-class DataConvertingIterator[R](kvDataIterator: Iterator[(Location,RiakObject)], convert:(Location, RiakObject) => R)
+class DataConvertingIterator[R,S](kvDataIterator: Iterator[S], convert:S => R)
                            (implicit ct : ClassTag[R]) extends Iterator[R]{
   override def hasNext: Boolean = {
     kvDataIterator.hasNext
@@ -29,6 +30,27 @@ class DataConvertingIterator[R](kvDataIterator: Iterator[(Location,RiakObject)],
 
   override def next(): R = {
     val v = kvDataIterator.next()
-    convert( v._1, v._2 )
+    convert( v )
   }
+}
+
+object DataConvertingIterator {
+  type KV_SOURCE_DATA = (Location, RiakObject)
+  type TS_SOURCE_DATA = (Seq[ColumnDescription], Seq[Row])
+
+  def createRiakObjectConverting[R](kvIterator: Iterator[KV_SOURCE_DATA], convert: (Location, RiakObject) => R)
+                                   (implicit ct: ClassTag[R]) =
+    new DataConvertingIterator[R, KV_SOURCE_DATA](kvIterator, new Function[KV_SOURCE_DATA, R] {
+      override def apply(v1: (Location, RiakObject)): R = {
+        convert(v1._1, v1._2)
+      }
+    })
+
+  def createTSConverting[R](tsdata: TS_SOURCE_DATA, convert: (Seq[ColumnDescription], Row) => R)
+                           (implicit ct: ClassTag[R]) =
+    new DataConvertingIterator[R, Row](tsdata._2.iterator, new Function[Row, R] {
+      override def apply(v1: Row): R = {
+        convert(tsdata._1, v1)
+      }
+    })
 }

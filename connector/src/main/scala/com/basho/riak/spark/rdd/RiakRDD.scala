@@ -81,13 +81,13 @@ class RiakRDD[R] private[spark] (
     val query = Query(BucketDef(bucketType, bucketName), readConf, queryData)
 
     val iterator: Iterator[(Location, RiakObject)] = DataQueryingIterator(query, session)
-    val convertingIterator = new DataConvertingIterator[R](iterator, convert)
+    val convertingIterator = DataConvertingIterator.createRiakObjectConverting[R](iterator, convert)
     val countingIterator = CountingIterator[R](convertingIterator)
     context.addTaskCompletionListener { (context) =>
       val endTime = System.currentTimeMillis()
       val duration = (endTime - startTime) / 1000.0
       logDebug(s"Fetched ${countingIterator.count} rows from ${query.bucket}" +
-        f" for partition ${partitionIdx} in $duration%.3f s.")
+        f" for partition $partitionIdx in $duration%.3f s.")
       session.shutdown()
     }
     countingIterator

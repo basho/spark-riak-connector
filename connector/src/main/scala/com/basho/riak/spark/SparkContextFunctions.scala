@@ -20,7 +20,7 @@ package com.basho.riak.spark
 import java.io.Serializable
 
 import com.basho.riak.client.core.query.{Namespace, Location, RiakObject}
-import com.basho.riak.spark.rdd.{RiakRDD, RiakConnector, ReadConf}
+import com.basho.riak.spark.rdd.{RiakTSRDD, RiakRDD, RiakConnector, ReadConf}
 import com.basho.riak.spark.util.RiakObjectConversionUtil
 import org.apache.spark.SparkContext
 
@@ -36,7 +36,11 @@ class SparkContextFunctions(@transient val sc: SparkContext) extends Serializabl
       val k = l.getKeyAsString
       k -> RiakObjectConversionUtil.from(l, r)
     }
-  };
+  }
+
+  def riakTSBucket[T](bucketName: String)
+                   (implicit ct: ClassTag[T]): RiakTSRDD[T] =
+    RiakTSRDD[T](sc, bucketName)
 
   def riakBucket[T](bucketName: String)
                    (implicit ct: ClassTag[T]): RiakRDD[T] =
