@@ -17,10 +17,12 @@
  */
 package com.basho.riak.spark.rdd
 
-import org.junit.Test
 import com.basho.riak.spark._
 import org.junit.Assert._
+import org.junit.Test
+import org.junit.experimental.categories.Category
 
+@Category(Array(classOf[RiakTSTests], classOf[RiakBDPTests]))
 class FullBucketReadTest extends AbstractRDDTest {
   private val NUMBER_OF_TEST_VALUES = 1000
 

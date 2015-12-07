@@ -18,16 +18,16 @@
 package com.basho.riak.spark.rdd
 
 import com.basho.riak.client.core.query.Location
-
 import org.apache.spark.rdd.RDD
 import org.junit.{Ignore, Before, Test}
 import com.basho.riak.spark._
 import org.junit.Assert._
-
 import scala.collection.mutable.ListBuffer
+import org.junit.experimental.categories.Category
 
 case class UserData(timestamp: String, user_id: String)
 
+@Category(Array(classOf[RiakCommonTests]))
 class SparkRDDTest extends AbstractRDDTest {
   private val CREATION_INDEX = "creationNo"
 

@@ -15,16 +15,16 @@
   * specific language governing permissions and limitations
   * under the License.
   */
-package com.basho.riak.spark.rdd.timeseries
+package com.basho.riak.spark.rdd
 
 import com.basho.riak.client.core.netty.RiakResponseException
 import com.basho.riak.spark._
-import com.basho.riak.spark.rdd.AbstractRDDTest
 import org.apache.spark.SparkException
 import org.apache.spark.sql.Row
 import org.hamcrest.CustomTypeSafeMatcher
 import org.junit.rules.ExpectedException
-import org.junit.{Assume, Before, Rule, Test}
+import org.junit.{ Rule, Test }
+import org.junit.experimental.categories.Category
 
 /**
   * Tests whether spark-riak-connector produces user friendly exception when TS or full bucket read queries are triggered
@@ -32,9 +32,9 @@ import org.junit.{Assume, Before, Rule, Test}
   * In order to run this test System property 'com.basho.riak-kv.pbchost' should be provided with address of started Riak KV.
   * If such system property is not provided this suite case will be skipped
   */
+@Category(Array(classOf[RiakKVTests]))
 class NotAvailableFeaturesTest extends AbstractRDDTest {
   val _expectedException: ExpectedException = ExpectedException.none()
-
   @Rule
   def expectedException: ExpectedException = _expectedException
 
@@ -51,15 +51,6 @@ class NotAvailableFeaturesTest extends AbstractRDDTest {
       t.getMessage.contains("Range queries are not supported in your version of Riak") &&
         t.getMessage.contains("Unknown message code: 90")
     }
-  }
-
-  @Before
-  def setUp(): Unit = {
-    Assume.assumeTrue(PROVIDED_RIAKKV_HOST != null && !PROVIDED_RIAKKV_HOST.isEmpty)
-    val conf = initSparkConf()
-      .set("spark.riak.connection.host", PROVIDED_RIAKKV_HOST)
-    sc.stop()
-    sc = createSparkContext(conf)
   }
 
   @Test

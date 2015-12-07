@@ -17,20 +17,17 @@
  */
 package com.basho.riak.spark.rdd;
 
-import com.basho.riak.spark.japi.SparkJavaUtil;
-import com.basho.riak.spark.japi.rdd.RiakJavaRDD;
-import com.basho.riak.spark.japi.SparkJavaUtil;
-import com.basho.riak.spark.japi.rdd.RiakJavaRDD;
-import com.basho.riak.spark.japi.SparkJavaUtil;
-import com.basho.riak.spark.japi.rdd.RiakJavaRDD;
-import com.basho.riak.spark.japi.SparkJavaUtil;
-import com.basho.riak.spark.japi.rdd.RiakJavaRDD;
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
 
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
+import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
+import com.basho.riak.spark.japi.SparkJavaUtil;
+import com.basho.riak.spark.japi.rdd.RiakJavaRDD;
+
+@Category(RiakCommonTests.class)
 public class JavaRDDReadTest extends AbstractJavaSparkTest {
     private String CREATION_INDEX = "creationNo";
 
