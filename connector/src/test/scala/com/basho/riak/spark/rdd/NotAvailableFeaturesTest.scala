@@ -32,7 +32,6 @@ import org.junit.experimental.categories.Category
   * In order to run this test System property 'com.basho.riak-kv.pbchost' should be provided with address of started Riak KV.
   * If such system property is not provided this suite case will be skipped
   */
-@Category(Array(classOf[RiakKVTests]))
 class NotAvailableFeaturesTest extends AbstractRDDTest {
   val _expectedException: ExpectedException = ExpectedException.none()
   @Rule
@@ -53,6 +52,7 @@ class NotAvailableFeaturesTest extends AbstractRDDTest {
     }
   }
 
+  @Category(Array(classOf[RiakKVTests], classOf[RiakBDPTests]))
   @Test
   def timeSeriesOnKV(): Unit = {
     expectedException.expect(timeSeriesMatcher)
@@ -61,6 +61,7 @@ class NotAvailableFeaturesTest extends AbstractRDDTest {
       .collect()
   }
 
+  @Category(Array(classOf[RiakKVTests]))
   @Test
   def fullBucketReadOnKV(): Unit = {
     expectedException.expect(coverageMatcher)
@@ -69,6 +70,7 @@ class NotAvailableFeaturesTest extends AbstractRDDTest {
       .collect()
   }
 
+  @Category(Array(classOf[RiakKVTests]))
   @Test
   def queryRangeLocalOnKV(): Unit = {
     expectedException.expect(coverageMatcher)
