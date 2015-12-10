@@ -23,9 +23,11 @@ import com.basho.riak.client.core.query.{Location, RiakObject}
 import org.junit.{Ignore, Test, Assert}
 import com.basho.riak.spark._
 import org.mockito.Mockito
+import org.junit.experimental.categories.Category
 
 case class TSData(latitude: Float, longitude: Float, timestamp: String, user_id: String, gauge1: Int, gauge2: String)
 
+@Category(Array(classOf[RiakCommonTests]))
 class RDDTest extends AbstractRDDTest{
   private val CREATION_INDEX = "creationNo"
 

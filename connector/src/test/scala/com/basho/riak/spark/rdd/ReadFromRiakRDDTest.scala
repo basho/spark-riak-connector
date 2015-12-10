@@ -19,15 +19,14 @@ package com.basho.riak.spark.rdd
 
 import java.math.BigInteger
 import java.util.UUID
-
-import org.junit.Test
 import org.junit.Assert._
-
-import com.basho.riak.spark._
+import org.junit.Test
 import org.junit.experimental.categories.Category
+import com.basho.riak.spark._
 
 case class UserTS(timestamp: String, user_id: String)
 
+@Category(Array(classOf[IntegrationTests]))
 class ReadFromRiakRDDTest extends AbstractRDDTest{
   private val CREATION_INDEX = "creationNo"
 
@@ -64,6 +63,7 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
   }
 
   @Test
+  @Category(Array(classOf[RiakCommonTests]))
   def readUDT_2iKeysRange(): Unit = {
     val rdd = sc.riakBucket[UserTS](DEFAULT_NAMESPACE)
       .query2iRange(CREATION_INDEX, 1, 3)
@@ -90,6 +90,7 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
   }
 
   @Test
+  @Category(Array(classOf[RiakCommonTests]))
   def readNothing_if_noDataFound(): Unit ={
     val rdd = sc.riakBucket[UserTS](DEFAULT_NAMESPACE)
       .queryBucketKeys(UUID.randomUUID().toString)
@@ -100,6 +101,7 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
   }
 
   @Test
+  @Category(Array(classOf[RiakCommonTests]))
   def readUDT_specifiedBucketKeys(): Unit ={
     val rdd = sc.riakBucket[UserTS](DEFAULT_NAMESPACE)
       .queryBucketKeys("key-1", "key-4", "key-6")
@@ -116,6 +118,7 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
   }
 
   @Test
+  @Category(Array(classOf[RiakCommonTests]))
   def readUDT_specified2iStringKeys(): Unit = {
     val data = sc.riakBucket[UserTS](DEFAULT_NAMESPACE)
       .query2iKeys("category", "stranger", "visitor")
@@ -134,6 +137,7 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
   }
 
   @Test
+  @Category(Array(classOf[RiakCommonTests]))
   def readUDT_specified2iIntKeys(): Unit = {
     val keys = List(1,3,5)
 
@@ -161,6 +165,7 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
   }
 
   @Test
+  @Category(Array(classOf[RiakCommonTests]))
   def partitionByInteger2iKeyRanges(): Unit = {
 
     val data = sc.riakBucket[UserTS](DEFAULT_NAMESPACE)
@@ -196,6 +201,7 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
   }
 
   @Test
+  @Category(Array(classOf[RiakCommonTests]))
   def partitionByString2iKeys(): Unit = {
     val data = sc.riakBucket[UserTS](DEFAULT_NAMESPACE)
       .partitionBy2iKeys("category", "neighbor", "visitor", "stranger")
@@ -253,6 +259,7 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
   }
 
   @Test
+  @Category(Array(classOf[RiakCommonTests]))
   def readUDT_2iJavaBigIntegerKeysRange(): Unit = {
     val rdd = sc.riakBucket[UserTS](DEFAULT_NAMESPACE)
       .query2iRange(CREATION_INDEX, new BigInteger("1"), new BigInteger("3"))
@@ -269,7 +276,9 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
   }
 
   @Test
+  @Category(Array(classOf[RiakTSTests], classOf[RiakBDPTests]))
   def local2iRangeRead() ={
+
     val data = sc.riakBucket[UserTS](DEFAULT_NAMESPACE)
       .query2iRangeLocal("creationNo", 1, 1000)
       .mapPartitionsWithIndex(funcReMapWithPartitionIdx, preservesPartitioning=true)

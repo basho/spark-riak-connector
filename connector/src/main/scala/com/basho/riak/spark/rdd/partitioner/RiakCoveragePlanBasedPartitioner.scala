@@ -52,7 +52,7 @@ object RiakCoveragePlanBasedPartitioner {
       } catch {
         case e: ExecutionException =>
           if (e.getCause.isInstanceOf[RiakResponseException] && e.getCause.getMessage.equals("Unknown message code: 70")) {
-            throw new IllegalStateException("Full bucket read is not supproted on your version of riak", e.getCause)
+            throw new IllegalStateException("Full bucket read is not supported on your version of Riak", e.getCause)
           } else throw e
       }
 

@@ -28,9 +28,11 @@ import com.basho.riak.client.core.query.timeseries.{Cell, Row}
 import org.junit.{Assume, Before, Test}
 import scala.collection.JavaConversions._
 import com.basho.riak.spark.toSparkContextFunctions
+import org.junit.experimental.categories.Category
 
 case class TimeSeriesData(time: Long, user_id: String, temperature_k: Double)
 
+@Category(Array(classOf[RiakTSTests]))
 class TimeSeriesTest extends AbstractRDDTest {
 
   protected val DEFAULT_TS_NAMESPACE = new Namespace("time_series_test","time_series_test")

@@ -19,6 +19,7 @@ package com.basho.riak.spark.rdd
 
 import java.util.concurrent.atomic.AtomicLong
 
+import org.junit.experimental.categories.Category
 import com.basho.riak.client.api.RiakClient
 import com.basho.riak.client.api.annotations.{RiakIndex, RiakKey}
 import com.basho.riak.client.core.query.{Namespace, Location, RiakObject}
@@ -46,6 +47,7 @@ case class ORMDomainObject(
 
     login: String)
 
+@Category(Array(classOf[RiakCommonTests]))
 class RDDStoreTest  extends AbstractRDDTest {
   @Test
   def storePairRDDUsingCustomMapper(): Unit = {

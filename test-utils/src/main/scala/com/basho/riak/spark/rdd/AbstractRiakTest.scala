@@ -34,14 +34,11 @@ import scala.collection.JavaConversions._
 
 abstract class AbstractRiakTest extends RiakFunctions{
 
-  trait RegressionTests {}
-
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   protected val DEFAULT_NAMESPACE = new Namespace("default","test-bucket")
   protected val DEFAULT_NAMESPACE_4STORE = new Namespace("default", "test-bucket-4store")
   protected val DEFAULT_RIAK_HOST = System.getProperty("com.basho.riak.pbchost", RiakNode.Builder.DEFAULT_REMOTE_ADDRESS)
-  protected val PROVIDED_RIAKKV_HOST = System.getProperty("com.basho.riak-kv.pbchost")
 
   protected override val riakHosts:Set[HostAndPort] = HostAndPort.hostsFromString(DEFAULT_RIAK_HOST, RiakNode.Builder.DEFAULT_REMOTE_PORT).toSet
   protected override val numberOfParallelRequests: Int = 4

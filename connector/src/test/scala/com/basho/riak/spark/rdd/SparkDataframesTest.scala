@@ -18,16 +18,16 @@
 package com.basho.riak.spark.rdd
 
 import scala.reflect.runtime.universe
-
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SQLContext
 import org.junit.Assert._
 import org.junit.{ Before, Test }
-
 import com.basho.riak.spark.toSparkContextFunctions
+import org.junit.experimental.categories.Category
 
 case class TestData(id: String, name: String, age: Int, category: String)
 
+@Category(Array(classOf[RiakTSTests], classOf[RiakBDPTests]))
 class SparkDataframesTest extends AbstractRDDTest {
 
   private val indexName = "creationNo"
