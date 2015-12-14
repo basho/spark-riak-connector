@@ -68,8 +68,8 @@ class RiakRDD[R] private[spark] (
   
   override def getPreferredLocations(split: Partition) : Seq[String] = {
     split match {
-      case (p: RiakLocalCoveragePartition[_]) => List(p.primaryHost.getHost)
-      case _ => throw new IllegalMonitorStateException("RiakLocalCoveragePartition can be used to define preferred locations")
+      case (cpp: RiakLocalCoveragePartition[_]) => List(cpp.primaryHost.getHost)
+      case _ => Nil
     }
   }
 
