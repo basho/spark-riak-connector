@@ -15,29 +15,24 @@
   * specific language governing permissions and limitations
   * under the License.
   */
-package com.basho.riak.spark.rdd.partitioner
+package org.apache.spark.sql.riak
 
-import com.basho.riak.client.core.util.HostAndPort
-import com.basho.riak.spark.query.TSQueryData
-import com.basho.riak.spark.rdd.RiakPartition
-import org.apache.spark.Partition
+import com.basho.riak.spark.rdd.RiakConnector
+import org.apache.spark.SparkContext
+import org.apache.spark.sql.{DataFrame, SQLContext}
 
 /**
   * @author Sergey Galkin <srggal at gmail dot com>
   */
-case class RiakTSPartition(
-      index: Int,
-      endpoints: Iterable[HostAndPort],
-      queryData: TSQueryData
-    ) extends RiakPartition
+class RiakSQLContext(sc: SparkContext, val bucket: String) extends SQLContext(sc) {
+  @transient
+  override protected[sql] lazy val catalog = new RiakCatalog(this, RiakConnector(sc.getConf))
+  /** A catalyst metadata catalog that points to Cassandra. */
 
-/**
-  * Dumb implementation of single partition partitioner.
-  *
-  * @author Sergey Galkin <srggal at gmail dot com>
-  */
-object RiakTSPartitioner {
-  def partitions(endpoints: Iterable[HostAndPort], queryData: TSQueryData): Array[Partition] = {
-    Array(new RiakTSPartition(0, endpoints, queryData))
-  }
+  /** Executes SQL query against Riak TS and returns DataFrame representing the result. */
+  def riakTsSql(tsQuery: String): DataFrame = new DataFrame(this, super.parseSql(tsQuery))
+
+  /** Delegates to [[riakTsSql]] */
+  override def sql(tsQuery: String): DataFrame = riakTsSql(tsQuery)
+
 }
