@@ -17,6 +17,9 @@
  */
 package com.basho.riak.spark.rdd
 
+import java.io.InputStream
+import java.util.Properties
+
 import org.apache.spark.SparkConf
 
 /** RDD read settings
@@ -28,19 +31,40 @@ case class ReadConf (
   splitCount: Int = ReadConf.DefaultSplitCount,
 
   /**
-   * DO NOT CHANGE THIS VALUES MANUALLY
-   * IT MAY CAUSE PERFORMANCE DEGRADATION
+    * Turns on streaming values support for PEx.
+    *
+    * It will make Full Bucket Reads more efficient: values will be streamed as a part of the FBR response
+    * instead of being fetched in a separate operations.
+    *
+    * Supported only by EE
+    *
+    * DO NOT CHANGE THIS VALUES MANUALLY IF YOU DON'T KNOW WHAT YOU ARE DOING
+    * IT MAY CAUSE EITHER PERFORMANCE DEGRADATION or INTRODUCE FBR ERRORS
     */
   useStreamingValuesForFBRead: Boolean = ReadConf.DefaultUseStreamingValues4FBRead
 )
 
 object ReadConf {
+
+  private val defaultProperties: Properties =
+     getClass.getResourceAsStream("/ee-default.properties") match {
+       case s: InputStream =>
+         val p = new Properties()
+         p.load(s)
+         s.close()
+         p
+       case _ =>
+         new Properties()
+     }
+
   val DefaultFetchSize = 1000
 
   // TODO: Need to think about the proper default value
   val DefaultSplitCount = 10
 
-  val DefaultUseStreamingValues4FBRead = true
+  val DefaultUseStreamingValues4FBRead: Boolean =
+    defaultProperties.getProperty("spark.riak.fullbucket.use-streaming-values", "false")
+    .toBoolean
 
   def fromSparkConf(conf: SparkConf): ReadConf = {
     ReadConf(
