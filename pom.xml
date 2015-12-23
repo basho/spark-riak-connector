@@ -152,7 +152,7 @@
                 </property>
             </activation>
             <properties>
-                <riak.test.category>com.basho.riak.spark.rdd.RiakBDPTests</riak.test.category>
+                <riak.test.category>com.basho.riak.spark.rdd.RiakTSTests</riak.test.category>
             </properties>
             <build>
                 <resources>
