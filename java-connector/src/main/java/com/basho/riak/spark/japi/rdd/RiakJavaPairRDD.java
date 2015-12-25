@@ -25,8 +25,6 @@ import scala.reflect.ClassTag;
 import static com.basho.riak.spark.util.JavaApiHelper.getClassTag;
 
 public class RiakJavaPairRDD<K, V> extends JavaPairRDD<K, V> {
-    private ClassTag<K> kClassTag;
-    private ClassTag<V> vClassTag;
 
     public RiakJavaPairRDD(
             RiakRDD<Tuple2<K, V>> rdd,
@@ -40,8 +38,6 @@ public class RiakJavaPairRDD<K, V> extends JavaPairRDD<K, V> {
             ClassTag<K> keyClassTag,
             ClassTag<V> valueClassTag){
         super(rdd, keyClassTag, valueClassTag);
-        this.kClassTag = keyClassTag;
-        this.vClassTag = valueClassTag;
     }
 
     @Override
@@ -51,16 +47,6 @@ public class RiakJavaPairRDD<K, V> extends JavaPairRDD<K, V> {
 
     private RiakJavaPairRDD<K, V> wrap(RiakRDD<Tuple2<K, V>> newRDD) {
         return new RiakJavaPairRDD<>(newRDD, kClassTag(), vClassTag());
-    }
-
-    @Override
-    public ClassTag<V> vClassTag() {
-        return vClassTag;
-    }
-
-    @Override
-    public ClassTag<K> kClassTag() {
-        return kClassTag;
     }
 
     public RiakJavaPairRDD<K, V> query2iRange(String index, Long from, Long to){

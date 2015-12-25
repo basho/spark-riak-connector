@@ -19,18 +19,16 @@ package com.basho.riak.spark.rdd
 
 import com.basho.riak.client.core.query.{Location, RiakObject}
 import com.basho.riak.client.core.util.HostAndPort
-import com.basho.riak.spark.query._
-import com.basho.riak.spark.query.{DataQueryingIterator, QueryData, Query}
+import com.basho.riak.spark.query.{DataQueryingIterator, Query, QueryData}
 import com.basho.riak.spark.rdd.connector.RiakConnector
-import com.basho.riak.spark.rdd.partitioner.{RiakCoveragePlanBasedPartitioner, RiakLocalCoveragePartition, RiakKeysPartition, RiakKeysPartitioner}
-import com.basho.riak.spark.util.{DataConvertingIterator, CountingIterator}
+import com.basho.riak.spark.rdd.partitioner._
+import com.basho.riak.spark.util.{CountingIterator, DataConvertingIterator}
 import org.apache.spark.annotation.DeveloperApi
-
-import scala.reflect.ClassTag
-import scala.language.existentials
-
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{Logging, Partition, SparkContext, TaskContext}
+
+import scala.language.existentials
+import scala.reflect.ClassTag
 
 class RiakRDD[R] private[spark] (
     @transient sc: SparkContext,
@@ -163,13 +161,13 @@ class RiakRDD[R] private[spark] (
 }
 
 object RiakRDD {
-  def apply[T](sc: SparkContext, bucketType: String, bucketName: String, convert: (Location, RiakObject) => T)
+  def apply[T](sc: SparkContext, bucketType: String, bucketName: String, convert: (Location, RiakObject) => T,
+               queryData: Option[QueryData[_]], readConf: ReadConf)
               (implicit ct: ClassTag[T]): RiakRDD[T] =
-    new RiakRDD[T](
-      sc, RiakConnector(sc.getConf), bucketType, bucketName, convert)
+    new RiakRDD[T](sc, RiakConnector(sc.getConf), bucketType, bucketName, convert, queryData, readConf)
 
-  def apply[K, V](sc: SparkContext, bucketType: String, bucketName: String, convert: (Location, RiakObject) => (K, V))
+  def apply[K, V](sc: SparkContext, bucketType: String, bucketName: String, convert: (Location, RiakObject) => (K, V),
+                  queryData: Option[QueryData[_]], readConf: ReadConf)
                  (implicit keyCT: ClassTag[K], valueCT: ClassTag[V]): RiakRDD[(K, V)] =
-    new RiakRDD[(K, V)](
-      sc, RiakConnector(sc.getConf), bucketType, bucketName, convert)
+    new RiakRDD[(K, V)](sc, RiakConnector(sc.getConf), bucketType, bucketName, convert, queryData, readConf)
 }

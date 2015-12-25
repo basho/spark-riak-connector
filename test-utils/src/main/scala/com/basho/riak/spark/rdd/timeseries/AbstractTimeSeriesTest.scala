@@ -6,7 +6,7 @@
   * except in compliance with the License.  You may obtain
   * a copy of the License at
   *
-  *   http://www.apache.org/licenses/LICENSE-2.0
+  * http://www.apache.org/licenses/LICENSE-2.0
   *
   * Unless required by applicable law or agreed to in writing,
   * software distributed under the License is distributed on an
@@ -22,12 +22,12 @@ import java.util.{Calendar, GregorianCalendar, TimeZone}
 import com.basho.riak.client.api.commands.timeseries.Delete
 import com.basho.riak.client.core.netty.RiakResponseException
 import com.basho.riak.client.core.operations.FetchBucketPropsOperation
-import com.basho.riak.client.core.operations.ts.StoreOperation
-import com.basho.riak.client.core.query.timeseries.{Cell, Row}
+import com.basho.riak.client.core.operations.ts.{QueryOperation, StoreOperation}
 import com.basho.riak.client.core.query.Namespace
-import com.basho.riak.spark._
-import com.basho.riak.spark.rdd.AbstractRDDTest
-import com.basho.riak.spark.util.TimeSeriesToSparkSqlConversion
+import com.basho.riak.client.core.query.timeseries.{Cell, Row}
+import com.basho.riak.client.core.util.BinaryValue
+import com.basho.riak.spark.rdd.AbstractRiakSparkTest
+import org.apache.spark.Logging
 import org.apache.spark.sql.types._
 import org.junit.Assert._
 import org.junit.Assume
@@ -39,10 +39,10 @@ case class TimeSeriesData(time: Long, user_id: String, temperature_k: Double)
 /**
   * @author Sergey Galkin <srggal at gmail dot com>
   */
-abstract class AbstractTimeSeriesTest(val createTestDate: Boolean = true) extends AbstractRDDTest {
+abstract class AbstractTimeSeriesTest(val createTestDate: Boolean = true) extends AbstractRiakSparkTest with Logging {
 
   protected def getMillis = (t: Timestamp) => t.getTime
-  
+
   protected val DEFAULT_TS_NAMESPACE = new Namespace("time_series_test","time_series_test")
   protected val bucketName = DEFAULT_TS_NAMESPACE.getBucketTypeAsString
 
@@ -76,8 +76,6 @@ abstract class AbstractTimeSeriesTest(val createTestDate: Boolean = true) extend
     new Cell(f.user_id),
     new Cell(f.temperature_k)))
 
-  val sparkRowsWithSchema = riakTSRows.map( r => TimeSeriesToSparkSqlConversion.asSparkRow(schema, r))
-
   val sqlWhereClause: String = s"WHERE time > $queryFrom AND " +
     s"time < $queryTo AND surrogate_key = 1 AND family = 'f'"
 
@@ -105,22 +103,18 @@ abstract class AbstractTimeSeriesTest(val createTestDate: Boolean = true) extend
 
     // ----------  Purging data: data might be not only created, but it may be also changed during the previous test case execution
     // Since there is no other options for truncation, data will be cleared for the time interval used for testing
-    sc.riakTSBucket[org.apache.spark.sql.Row](bucketName)
-      .sql(sqlQuery)
-      .collect()
-      .map(row => (row.getLong(0), row.getString(1), row.getTimestamp(2).getTime))
-      .map { case (surrogateKey, family, time) => List(new Cell(surrogateKey), new Cell(family), Cell.newTimestamp(time)) }
-      .foreach { keys =>
-        val builder = new Delete.Builder(DEFAULT_TS_NAMESPACE.getBucketNameAsString(), keys)
-        withRiakDo(_.execute(builder.build()))
-      }
+    val operationBuilder = new QueryOperation.Builder(BinaryValue.create(sqlQuery))
+    withRiakDo(session => {
+      session.getRiakCluster.execute(operationBuilder.build()).get().getRows
+        .map(row => List(row.getCells.get(0), row.getCells.get(1), row.getCells.get(2)))
+        .foreach { keys =>
+          val builder = new Delete.Builder(DEFAULT_TS_NAMESPACE.getBucketNameAsString(), keys)
+          withRiakDo(_.execute(builder.build()))
+        }
 
-    // Check that there is no date
-    val collected = sc.riakTSBucket[org.apache.spark.sql.Row](bucketName)
-      .sql(sqlQuery)
-      .collect().length
-
-    assertEquals(0, collected)
+      val collected = session.getRiakCluster.execute(operationBuilder.build()).get().getRows
+      assertTrue(collected.isEmpty)
+    })
 
     // ----------  Storing test data into Riak TS
     if (createTestDate) {
@@ -139,15 +133,15 @@ abstract class AbstractTimeSeriesTest(val createTestDate: Boolean = true) extend
   protected def checkBucketExistence(ns: Namespace, warningMsg: String): Unit = {
     val fetchProps = new FetchBucketPropsOperation.Builder(ns).build()
 
-    withRiakDo( session => {
+    withRiakDo(session => {
       session.getRiakCluster.execute(fetchProps)
     })
 
     try {
       fetchProps.get().getBucketProperties
     } catch {
-      case ex :ExecutionException if ex.getCause.isInstanceOf[RiakResponseException]
-        && ex.getCause.getMessage.startsWith("No bucket-type named")  =>
+      case ex: ExecutionException if ex.getCause.isInstanceOf[RiakResponseException]
+        && ex.getCause.getMessage.startsWith("No bucket-type named") =>
         logWarning(warningMsg)
         Assume.assumeTrue(msg + " (See logs for the details)", false)
     }

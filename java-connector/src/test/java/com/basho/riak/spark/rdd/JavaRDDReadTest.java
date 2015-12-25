@@ -6,7 +6,7 @@
  * except in compliance with the License.  You may obtain
  * a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,15 +17,14 @@
  */
 package com.basho.riak.spark.rdd;
 
-import static org.junit.Assert.assertEquals;
-
-import java.util.List;
-
+import com.basho.riak.spark.japi.SparkJavaUtil;
+import com.basho.riak.spark.japi.rdd.RiakJavaRDD;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
-import com.basho.riak.spark.japi.SparkJavaUtil;
-import com.basho.riak.spark.japi.rdd.RiakJavaRDD;
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
 
 public class JavaRDDReadTest extends AbstractJavaSparkTest {
     private String CREATION_INDEX = "creationNo";
@@ -39,32 +38,31 @@ public class JavaRDDReadTest extends AbstractJavaSparkTest {
                 ",{ key: 'key-4', indexes: {creationNo: 4, category: 'stranger'}, value: {user_id: 'u2', timestamp: '2014-11-24T13:14:04Z'}}" +
                 ",{ key: 'key-5', indexes: {creationNo: 5, category: 'stranger'}, value: {user_id: 'u3', timestamp: '2014-11-24T13:16:04.823Z'}}" +
                 ",{ key: 'key-6', indexes: {creationNo: 6, category: 'stranger'}, value: {user_id: 'u3', timestamp: '2014-11-24T13:21:04.825Z'}}" +
-        "]";
+                "]";
     }
 
     @Category(RiakCommonTests.class)
     @Test
-    public void readJSONASString(){
-        RiakJavaRDD<String> rdd = SparkJavaUtil.javaFunctions(jsc).riakBucket(DEFAULT_NAMESPACE(), String.class).
-                query2iRange(CREATION_INDEX, 1l, 4l);
+    public void readJSONASString() {
+        RiakJavaRDD<String> rdd = SparkJavaUtil.javaFunctions(jsc).riakBucket(DEFAULT_NAMESPACE(), String.class)
+                .query2iRange(CREATION_INDEX, 1L, 4L);
 
         final List<String> results = rdd.takeOrdered(100);
         assertEquals(4, results.size());
 
         assertEquals("{\n" +
-            "  \"user_id\" : \"u1\",\n" +
-            "  \"timestamp\" : \"2014-11-24T13:14:04.823Z\"\n" +
-            "}", results.get(0));
+                "  \"user_id\" : \"u1\",\n" +
+                "  \"timestamp\" : \"2014-11-24T13:14:04.823Z\"\n" +
+                "}", results.get(0));
     }
 
     @Category({RiakBDPTests.class, RiakTSTests.class})
     @Test
-    public void readAll(){
+    public void readAll() {
         RiakJavaRDD<String> rdd = SparkJavaUtil.javaFunctions(jsc).riakBucket(DEFAULT_NAMESPACE(), String.class).
                 queryAll();
 
         final List<String> results = rdd.takeOrdered(100);
         assertEquals(6, results.size());
     }
-
 }

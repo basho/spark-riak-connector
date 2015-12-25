@@ -31,7 +31,7 @@
         </dependency>
         <dependency>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-core_${scala.major.version}</artifactId>
+            <artifactId>spark-sql_${scala.major.version}</artifactId>
         </dependency>
     </dependencies>
 </project>

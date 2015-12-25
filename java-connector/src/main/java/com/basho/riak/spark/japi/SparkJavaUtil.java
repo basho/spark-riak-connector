@@ -18,7 +18,9 @@
 package com.basho.riak.spark.japi;
 
 import org.apache.spark.SparkContext;
+import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.rdd.RDD;
 
 public final class SparkJavaUtil {
 
@@ -31,5 +33,13 @@ public final class SparkJavaUtil {
 
     public static SparkContextJavaFunctions javaFunctions(JavaSparkContext sparkContext) {
         return new SparkContextJavaFunctions(JavaSparkContext.toSparkContext(sparkContext));
+    }
+
+    public static <T> RDDJavaFunctions<T> javaFunctions(RDD<T> rdd) {
+        return new RDDJavaFunctions<>(rdd);
+    }
+
+    public static <T> RDDJavaFunctions<T> javaFunctions(JavaRDD<T> rdd) {
+        return javaFunctions(rdd.rdd());
     }
 }
