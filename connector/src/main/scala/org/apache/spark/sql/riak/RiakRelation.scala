@@ -19,12 +19,14 @@ package org.apache.spark.sql.riak
 
 import com.basho.riak.spark._
 import com.basho.riak.spark.rdd.{ReadConf, RiakConnector, RiakTSRDD}
+import com.basho.riak.spark.util.TimeSeriesToSparkSqlConversion
 import com.basho.riak.spark.writer.WriteConf
 import org.apache.spark.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.sources.{BaseRelation, Filter, PrunedFilteredScan}
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{Row, SQLContext, sources}
+import scala.collection.convert.decorateAsScala._
 
 /**
   * @author Sergey Galkin <srggal at gmail dot com>
@@ -40,8 +42,30 @@ private[riak] class RiakRelation(
 
   override def schema: StructType = userSpecifiedSchema match {
     case None =>
-      // TODO: Add proper schema creation in case when user doesn't provide
-      throw new IllegalStateException("Schema should be provided")
+       // -- get schema from Riak TS
+      connector.withSessionDo(session => {
+        val request = new com.basho.riak.client.api.commands.timeseries.Query.Builder(s"DESCRIBE $bucket")
+                        .build()
+
+        val response = session.execute(request)
+
+        require(
+          "Column".equals(response.getColumnDescriptions.get(0).getName)
+            && "Type".equals(response.getColumnDescriptions.get(1).getName)
+            && "Is Null".equals(response.getColumnDescriptions.get(2).getName),
+          "Describe response has unexpected fields order or it has unexpected format"
+        )
+
+        val fields = for {r: com.basho.riak.client.core.query.timeseries.Row <- response.getRows.asScala } yield {
+          val cells = r.getCells
+          val name: String = cells.get(0).getVarcharAsUTF8String
+          val t: DataType = TimeSeriesToSparkSqlConversion.asDataType(cells.get(1).getVarcharAsUTF8String)
+          val nullable: Boolean = cells.get(2).getBoolean
+
+          StructField(name, t, nullable)
+        }
+        StructType(fields)
+      })
 
     case Some(st: StructType) => st
   }

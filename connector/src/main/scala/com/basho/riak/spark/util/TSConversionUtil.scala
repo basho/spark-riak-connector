@@ -57,16 +57,22 @@ object TimeSeriesToSparkSqlConversion {
       throw new IllegalStateException(s"Unhandled cell type ${sf.dataType.typeName}")
   }
 
-  private def asStructField(columnDescription: ColumnDescription): org.apache.spark.sql.types.StructField = {
-    val ft = columnDescription.getType match {
+  def asDataType(columnType: String): DataType = {
+    asDataType( ColumnType.valueOf(columnType.toUpperCase()))
+  }
+
+  def asDataType(columnType: ColumnType): DataType =
+    columnType match {
       case ColumnType.BOOLEAN => BooleanType
       case ColumnType.DOUBLE => DoubleType
       case ColumnType.SINT64 => LongType
       case ColumnType.TIMESTAMP => TimestampType
       case ColumnType.VARCHAR => StringType
-      case _ => throw new IllegalStateException("Unsupported column type '" + columnDescription.getType + "'")
+      case _ => throw new IllegalStateException("Unsupported column type '" + columnType + "'")
     }
 
+  private def asStructField(columnDescription: ColumnDescription): org.apache.spark.sql.types.StructField = {
+    val ft = asDataType(columnDescription.getType )
     StructField(columnDescription.getName, ft)
   }
 

@@ -22,7 +22,7 @@ import com.basho.riak.spark.toSparkContextFunctions
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{SQLContext, DataFrame}
 import org.apache.spark.sql.riak.RiakSQLContext
-import org.junit.{Ignore, Test}
+import org.junit.Test
 import org.junit.experimental.categories.Category
 
 /**
@@ -77,25 +77,30 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest {
       """.stripMargin, stringify(data))
   }
 
-  @Ignore("Ignored because of lack getting schema support in Riak TS")
   @Test
   def sqlRangeQuery(): Unit = {
     val from = tsRangeStart.getTimeInMillis - 5
     val to = tsRangeEnd.getTimeInMillis + 10
-    val bucketName =  DEFAULT_TS_NAMESPACE.getBucketTypeAsString
 
     val sqlContext = new RiakSQLContext(sc, DEFAULT_TS_NAMESPACE.getBucketTypeAsString)
-    val dfTemplate: DataFrame = sqlContext.sql(
+    val df: DataFrame = sqlContext.sql(
       s"SELECT time, user_id, temperature_k " +
         s" FROM $bucketName " +
-        s" WHERE time > $from AND time < $to AND surrogate_key = 1 AND family = 'f'")
+        s" WHERE time > CAST($from AS TIMESTAMP) AND time < CAST($to AS TIMESTAMP) AND surrogate_key = 1 AND family = 'f'")
 
-    dfTemplate.registerTempTable("ts_test")
+    df.printSchema()
+    val data = df.toJSON.collect()
 
-    val df = sqlContext.sql("SELECT time, user_id, temperature_k FROM ts_test")
-    val data = df.collect()
-
-    assert(data != null)
+    assertEqualsUsingJSONIgnoreOrder(
+      """
+        |[
+        |   {time: '1970-01-01 03:01:51.111', user_id:'bryce', temperature_k:305.37},
+        |   {time: '1970-01-01 03:01:51.222', user_id:'bryce', temperature_k:300.12},
+        |   {time: '1970-01-01 03:01:51.333', user_id:'bryce', temperature_k:295.95},
+        |   {time: '1970-01-01 03:01:51.444', user_id:'ratman',temperature_k:362.121},
+        |   {time: '1970-01-01 03:01:51.555', user_id:'ratman',temperature_k:3502.212}
+        |]
+      """.stripMargin, stringify(data))
   }
 
   @Test
@@ -113,18 +118,21 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest {
             StructField("user_id", StringType, nullable=false),
             StructField("temperature_k", DoubleType, nullable=true)))
       )
-      .load(DEFAULT_TS_NAMESPACE.getBucketTypeAsString)
+      .load(bucketName)
       .filter(s"time > CAST($from AS TIMESTAMP) AND time < CAST($to AS TIMESTAMP) AND surrogate_key = 1 AND family = 'f'")
 
     df.printSchema()
     val data = df.toJSON.collect()
 
-    assertEqualsUsingJSONIgnoreOrder("[" +
-      "{surrogate_key:1, family: 'f', time: '1970-01-01 03:01:51.111', user_id:'bryce', temperature_k:305.37}," +
-      "{surrogate_key:1, family: 'f', time: '1970-01-01 03:01:51.222', user_id:'bryce', temperature_k:300.12}," +
-      "{surrogate_key:1, family: 'f', time: '1970-01-01 03:01:51.333', user_id:'bryce', temperature_k:295.95}," +
-      "{surrogate_key:1, family: 'f', time: '1970-01-01 03:01:51.444', user_id:'ratman',temperature_k:362.121}," +
-      "{surrogate_key:1, family: 'f', time: '1970-01-01 03:01:51.555', user_id:'ratman',temperature_k:3502.212}" +
-      "]", stringify(data))
+    assertEqualsUsingJSONIgnoreOrder(
+      """
+        |[
+        |   {surrogate_key:1, family: 'f', time: '1970-01-01 03:01:51.111', user_id:'bryce', temperature_k:305.37},
+        |   {surrogate_key:1, family: 'f', time: '1970-01-01 03:01:51.222', user_id:'bryce', temperature_k:300.12},
+        |   {surrogate_key:1, family: 'f', time: '1970-01-01 03:01:51.333', user_id:'bryce', temperature_k:295.95},
+        |   {surrogate_key:1, family: 'f', time: '1970-01-01 03:01:51.444', user_id:'ratman',temperature_k:362.121},
+        |   {surrogate_key:1, family: 'f', time: '1970-01-01 03:01:51.555', user_id:'ratman',temperature_k:3502.212}
+        |]
+      """.stripMargin, stringify(data))
   }
 }
