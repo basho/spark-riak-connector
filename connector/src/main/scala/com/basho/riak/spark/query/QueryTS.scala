@@ -22,7 +22,6 @@ import java.sql.Timestamp
 import com.basho.riak.client.api.RiakClient
 import com.basho.riak.client.core.query.timeseries.{Row, ColumnDescription}
 import com.basho.riak.spark.rdd.{BucketDef, ReadConf}
-import org.apache.spark.sql.types.UTF8String
 import scala.collection.convert.decorateAsScala._
 
 /**
@@ -50,10 +49,10 @@ case class QueryTS(bucket: BucketDef, queryData: TSQueryData, readConf: ReadConf
           case ts: Timestamp =>
             ts.getTime.toString
 
-          case s: UTF8String =>
+          case s: String =>
             "'" + s + "'"
 
-          case x =>
+          case x: Any =>
             x.toString
         }
         recursiveInterpolateFirst(regex.replaceFirstIn(input, v), iterator)

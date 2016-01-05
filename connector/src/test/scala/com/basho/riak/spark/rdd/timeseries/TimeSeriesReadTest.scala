@@ -82,6 +82,10 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest {
     val from = tsRangeStart.getTimeInMillis - 5
     val to = tsRangeEnd.getTimeInMillis + 10
 
+    /*
+     * This usage scenario requires to use RiakSQLContext, otherwise
+     * RuntimeException('Table Not Found: time_series_test') will be thrown
+     */
     val sqlContext = new RiakSQLContext(sc, DEFAULT_TS_NAMESPACE.getBucketTypeAsString)
     val df: DataFrame = sqlContext.sql(
       s"SELECT time, user_id, temperature_k " +

@@ -25,10 +25,10 @@ import com.basho.riak.client.core.query.{BucketProperties, Namespace}
 import com.basho.riak.spark.rdd.RiakConnector
 import com.google.common.cache.{CacheBuilder, CacheLoader, LoadingCache}
 import org.apache.spark.Logging
-import org.apache.spark.sql.catalyst.SimpleCatalystConf
+import org.apache.spark.sql.catalyst.{TableIdentifier, SimpleCatalystConf}
 import org.apache.spark.sql.catalyst.analysis.Catalog
 import org.apache.spark.sql.catalyst.plans.logical.{Subquery, LogicalPlan}
-import org.apache.spark.sql.sources.LogicalRelation
+import org.apache.spark.sql.execution.datasources.LogicalRelation
 
 /**
   * @author Sergey Galkin <srggal at gmail dot com>
@@ -43,6 +43,10 @@ private[sql] class RiakCatalog(rsc: RiakSQLContext, riakConnector: RiakConnector
       }
     }
     CacheBuilder.newBuilder().maximumSize(1000).build(cacheLoader)
+  }
+
+  override def refreshTable(tableIdent: TableIdentifier): Unit = {
+    throw new UnsupportedOperationException
   }
 
   override val conf: SimpleCatalystConf = SimpleCatalystConf(true)
@@ -68,8 +72,6 @@ private[sql] class RiakCatalog(rsc: RiakSQLContext, riakConnector: RiakConnector
   override def getTables(databaseName: Option[String]): Seq[(String, Boolean)] = {
     getTablesFromRiakTS(databaseName)
   }
-
-  override def refreshTable(databaseName: String, tableName: String): Unit = ???
 
   override def tableExists(tableIdentifier: Seq[String]): Boolean = {
     val fetchProps = new FetchBucketPropsOperation.Builder(new Namespace(rsc.bucket, rsc.bucket)).build()
@@ -102,6 +104,6 @@ private[sql] class RiakCatalog(rsc: RiakSQLContext, riakConnector: RiakConnector
   /** Return a table identifier with table name, keyspace name and cluster name */
   private def bucketIdent(tableIdentifier: Seq[String]): String = {
     require(tableIdentifier.size == 1)
-    tableIdentifier(0)
+    tableIdentifier.head
   }
 }
