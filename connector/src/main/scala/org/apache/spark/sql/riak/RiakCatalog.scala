@@ -21,7 +21,7 @@ import java.util.concurrent.ExecutionException
 
 import com.basho.riak.client.core.netty.RiakResponseException
 import com.basho.riak.client.core.operations.FetchBucketPropsOperation
-import com.basho.riak.client.core.query.{BucketProperties, Namespace}
+import com.basho.riak.client.core.query.Namespace
 import com.basho.riak.spark.rdd.RiakConnector
 import com.google.common.cache.{CacheBuilder, CacheLoader, LoadingCache}
 import org.apache.spark.Logging
@@ -34,6 +34,8 @@ import org.apache.spark.sql.execution.datasources.LogicalRelation
   * @author Sergey Galkin <srggal at gmail dot com>
   */
 private[sql] class RiakCatalog(rsc: RiakSQLContext, riakConnector: RiakConnector) extends Catalog with Logging {
+  private val CACHE_SIZE = 1000
+
   /** A cache of Spark SQL data source tables that have been accessed. Cache is thread safe. */
   private[riak] val cachedDataSourceTables: LoadingCache[String, LogicalPlan] = {
     val cacheLoader = new CacheLoader[String, LogicalPlan]() {
@@ -42,20 +44,24 @@ private[sql] class RiakCatalog(rsc: RiakSQLContext, riakConnector: RiakConnector
         buildRelation(tableIdent)
       }
     }
-    CacheBuilder.newBuilder().maximumSize(1000).build(cacheLoader)
+    CacheBuilder.newBuilder().maximumSize(CACHE_SIZE).build(cacheLoader)
   }
 
   override def refreshTable(tableIdent: TableIdentifier): Unit = {
-    throw new UnsupportedOperationException
+    val table = bucketIdent(tableIdent.toSeq)
+    cachedDataSourceTables.refresh(table)
   }
 
   override val conf: SimpleCatalystConf = SimpleCatalystConf(true)
 
 
   override def unregisterAllTables(): Unit = {
+    cachedDataSourceTables.invalidateAll()
   }
 
   override def unregisterTable(tableIdentifier: Seq[String]): Unit = {
+    val tableIdent = bucketIdent(tableIdentifier)
+    cachedDataSourceTables.invalidate(tableIdent)
   }
 
   override def lookupRelation(tableIdentifier: Seq[String], alias: Option[String]): LogicalPlan = {
@@ -81,7 +87,7 @@ private[sql] class RiakCatalog(rsc: RiakSQLContext, riakConnector: RiakConnector
     })
 
     try {
-      val props: BucketProperties = fetchProps.get().getBucketProperties
+      fetchProps.get().getBucketProperties
       true
     } catch {
       case ex: ExecutionException if ex.getCause.isInstanceOf[RiakResponseException]
