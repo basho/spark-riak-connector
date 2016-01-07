@@ -1,44 +1,38 @@
+/**
+  * Copyright (c) 2015 Basho Technologies, Inc.
+  *
+  * This file is provided to you under the Apache License,
+  * Version 2.0 (the "License"); you may not use this file
+  * except in compliance with the License.  You may obtain
+  * a copy of the License at
+  *
+  *   http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing,
+  * software distributed under the License is distributed on an
+  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  * KIND, either express or implied.  See the License for the
+  * specific language governing permissions and limitations
+  * under the License.
+  */
 package com.basho.riak.spark.rdd.timeseries
 
-import com.basho.riak.client.api.commands.timeseries.Delete
-import com.basho.riak.client.core.query.timeseries.Cell
 import com.basho.riak.spark._
 import com.basho.riak.spark.rdd.RiakTSTests
 import com.basho.riak.spark.writer.WriteDataMapperFactory._
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{Row, SQLContext}
-import org.junit.Assert._
-import org.junit.{Before, Test}
+import org.junit.Test
 import org.junit.experimental.categories.Category
 
-import scala.collection.JavaConversions._
-
+/**
+  * @author Sergey Galkin <srggal at gmail dot com>
+  */
 @Category(Array(classOf[RiakTSTests]))
-class TimeSeriesWriteTest extends AbstractTimeSeriesTest {
-
-  @Before
-  def setUp(): Unit = {
-    val from = tsRangeStart.getTimeInMillis - 5
-    val to = tsRangeEnd.getTimeInMillis + 10
-    val bucketName = DEFAULT_TS_NAMESPACE.getBucketTypeAsString
-
-    sc.riakTSBucket[org.apache.spark.sql.Row](bucketName)
-      .sql(s"SELECT surrogate_key, family, time, user_id, temperature_k FROM $bucketName WHERE time > $from AND time < $to AND surrogate_key = 1 AND family = 'f'")
-      .collect()
-      .map(row => (row.getLong(0), row.getString(1), row.getLong(2)))
-      .map { case (surrogateKey, family, time) => List(new Cell(surrogateKey), new Cell(family), Cell.newTimestamp(time)) }
-      .foreach { keys =>
-        val builder = new Delete.Builder(DEFAULT_TS_NAMESPACE.getBucketNameAsString(), keys)
-        withRiakDo(_.execute(builder.build()))
-      }
-  }
+class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) {
 
   @Test
   def saveSqlRowsToRiak(): Unit = {
-    val from = tsRangeStart.getTimeInMillis - 5
-    val to = tsRangeEnd.getTimeInMillis + 10
-    val bucketName = DEFAULT_TS_NAMESPACE.getBucketTypeAsString
-
     val sqlRowsRdd = sc.parallelize(
       Seq(
         Row(1, "f", 111111L, "bryce", 305.37),
@@ -46,11 +40,11 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest {
         Row(1, "f", 111333L, "bryce", 295.95),
         Row(1, "f", 111444L, "ratman", 362.121),
         Row(1, "f", 111555L, "ratman", 3502.212)))
-    sqlRowsRdd.saveToRiakTS(DEFAULT_TS_NAMESPACE.getBucketTypeAsString)
+
+    sqlRowsRdd.saveToRiakTS(bucketName)
 
     val newRdd = sc.riakTSBucket[org.apache.spark.sql.Row](bucketName)
-      .sql(s"SELECT user_id, temperature_k FROM $bucketName WHERE time > $from AND time < $to AND surrogate_key = 1 AND family = 'f'")
-    assertEquals(5, newRdd.count())
+      .sql(s"SELECT user_id, temperature_k FROM $bucketName $sqlWhereClause")
 
     val data = newRdd.collect().map(_.toSeq)
 
@@ -68,10 +62,6 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest {
 
   @Test
   def saveDataFrameWithSchemaToRiak(): Unit = {
-    val from = tsRangeStart.getTimeInMillis - 5
-    val to = tsRangeEnd.getTimeInMillis + 10
-    val bucketName = DEFAULT_TS_NAMESPACE.getBucketTypeAsString
-
     val sqlContext = new SQLContext(sc)
 
     val jsonRdd = sc.parallelize(Seq(
@@ -93,8 +83,7 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest {
     df.rdd.saveToRiakTS(DEFAULT_TS_NAMESPACE.getBucketTypeAsString)
 
     val newRdd = sc.riakTSBucket[org.apache.spark.sql.Row](bucketName)
-      .sql(s"SELECT user_id, temperature_k FROM $bucketName WHERE time > $from AND time < $to AND surrogate_key = 1 AND family = 'f'")
-    assertEquals(5, newRdd.count())
+      .sql(s"SELECT user_id, temperature_k FROM $bucketName $sqlWhereClause")
 
     val data = newRdd.collect().map(_.toSeq)
 

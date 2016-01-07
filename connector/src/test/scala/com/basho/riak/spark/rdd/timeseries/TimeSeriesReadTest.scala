@@ -22,17 +22,16 @@ import com.basho.riak.spark.toSparkContextFunctions
 import org.junit.Test
 import org.junit.experimental.categories.Category
 
+/**
+  * @author Sergey Galkin <srggal at gmail dot com>
+  */
 @Category(Array(classOf[RiakTSTests]))
 class TimeSeriesReadTest extends AbstractTimeSeriesTest {
 
   @Test
   def readDataAsSqlRow(): Unit ={
-    val from = tsRangeStart.getTimeInMillis - 5
-    val to = tsRangeEnd.getTimeInMillis + 10
-
-    val bucketName =  DEFAULT_TS_NAMESPACE.getBucketTypeAsString
     val rdd = sc.riakTSBucket[org.apache.spark.sql.Row](bucketName)
-      .sql(s"SELECT user_id, temperature_k FROM $bucketName WHERE time > $from AND time < $to AND surrogate_key = 1 AND family = 'f'")
+      .sql(s"SELECT user_id, temperature_k FROM $bucketName $sqlWhereClause")
 
     val data = rdd.collect() map (r => r.toSeq)
 
@@ -48,22 +47,14 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest {
       """.stripMargin, data)
   }
 
-  private def stringify = (s: Array[String]) => s.mkString("[", ",", "]")
-
   // TODO: Consider possibility of moving this case to the SparkDataframesTest
   @Test
   def riakTSRDDToDataFrame(): Unit ={
-    val from = tsRangeStart.getTimeInMillis - 5
-    val to = tsRangeEnd.getTimeInMillis + 10
-
-    val bucketName =  DEFAULT_TS_NAMESPACE.getBucketTypeAsString
-
-
     val sqlContext = new org.apache.spark.sql.SQLContext(sc)
     import sqlContext.implicits._
 
     val df = sc.riakTSBucket[org.apache.spark.sql.Row](bucketName)
-      .sql(s"SELECT time, user_id, temperature_k FROM $bucketName WHERE time > $from AND time < $to AND surrogate_key = 1 AND family = 'f'")
+      .sql(s"SELECT time, user_id, temperature_k FROM $bucketName $sqlWhereClause")
       .map(r=> TimeSeriesData(r.getLong(0), r.getString(1), r.getDouble(2)))
       .toDF()
 
