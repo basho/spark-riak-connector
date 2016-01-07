@@ -15,35 +15,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package com.basho.riak.spark.writer
+package com.basho.riak.spark.writer.mapper
 
+import com.basho.riak.spark._
 import com.basho.riak.spark.rdd.BucketDef
+import com.basho.riak.spark.writer.{WriteDataMapper, WriteDataMapperFactory}
 
-class TupleWriteDataMapper[T <: Product] extends WriteDataMapper[T] {
-  override def mapValue(value: T): (String, Any) = {
-    val itor = value.productIterator
-
-    if(value.productArity == 1){
-      // scalastyle:off null
-      (null, itor.next())
-      // scalastyle:on null
-    } else {
-      val key = itor.next().toString
-
-      if (value.productArity == 2) {
-        // to prevent Tuple2._2 serialization as a List of values
-        key -> itor.next()
-      } else {
-        key -> itor
-      }
-    }
+class DefaultWriteDataMapper[T] (bucketDef: BucketDef) extends WriteDataMapper[T, KeyValue]{
+  override def mapValue(value: T): KeyValue = {
+    // scalastyle:off null
+    (null, value)
+    // scalastyle:on null
   }
 }
 
-object TupleWriteDataMapper{
-  def factory[T <: Product]: WriteDataMapperFactory[T] = new WriteDataMapperFactory[T] {
+object DefaultWriteDataMapper {
+  def factory[T]: WriteDataMapperFactory[T, KeyValue] = new WriteDataMapperFactory[T, KeyValue] {
     override def dataMapper(bucketDef: BucketDef) = {
-      new TupleWriteDataMapper[T]
+      new DefaultWriteDataMapper[T](bucketDef)
     }
   }
 }

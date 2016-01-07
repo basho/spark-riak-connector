@@ -26,6 +26,8 @@ import scala.reflect.ClassTag
 
 package object spark {
 
+  type KeyValue = (String, Any)
+
   implicit def toSparkContextFunctions(sc: SparkContext): SparkContextFunctions =
     new SparkContextFunctions(sc)
 

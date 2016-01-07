@@ -56,10 +56,10 @@ class RDDStoreTest  extends AbstractRDDTest {
     /**
      * Custom value writer factory which uses totals as a key.
      */
-    implicit val vwf = new WriteDataMapperFactory[(String,Int)]{
-      override def dataMapper(bucket: BucketDef): WriteDataMapper[(String, Int)] = {
-        new WriteDataMapper[(String, Int)] {
-          override def mapValue(value: (String, Int)): (String, Any) = {
+    implicit val vwf = new WriteDataMapperFactory[(String,Int), KeyValue]{
+      override def dataMapper(bucket: BucketDef): WriteDataMapper[(String, Int), KeyValue] = {
+        new WriteDataMapper[(String, Int), KeyValue] {
+          override def mapValue(value: (String, Int)): KeyValue = {
             (value._2.toString, RiakObjectConversionUtil.to(value._1))
           }
         }
@@ -116,9 +116,9 @@ class RDDStoreTest  extends AbstractRDDTest {
     /**
      * ValueWriterFactory responsible for populating each stored object with the proper CREATION_INDEX value
      */
-    implicit val vwf = new WriteDataMapperFactory[Int] {
-      override def dataMapper(bucket: BucketDef): WriteDataMapper[Int] = {
-        new WriteDataMapper[Int] {
+    implicit val vwf = new WriteDataMapperFactory[Int, KeyValue] {
+      override def dataMapper(bucket: BucketDef): WriteDataMapper[Int, KeyValue] = {
+        new WriteDataMapper[Int, KeyValue] {
           /**
            * Save operation performed on each partition, therefore, for production usage
            * the following Atomic should be replaced by a distributed counter
