@@ -15,25 +15,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package com.basho.riak.spark.rdd
+package com.basho.riak.spark.rdd.timeseries
 
-import org.junit.{Test, Ignore}
-import org.apache.spark.Logging
-import com.basho.riak.client.core.query.timeseries.Row
-import com.basho.riak.client.core.query.timeseries.Cell
-import com.basho.riak.spark.util.TimeSeriesToSparkSqlConversion
-import org.junit.Assert._
+import java.util.{Calendar, Date}
+
+import com.basho.riak.client.core.query.timeseries.{Cell, Row}
 import com.basho.riak.client.core.util.BinaryValue
-import java.util.Date
-import java.util.Calendar
+import com.basho.riak.spark.util.TimeSeriesToSparkSqlConversion
+import org.apache.spark.Logging
+import org.junit.Assert._
+import org.junit.Test
+
 import scala.collection.JavaConversions._
-import com.fasterxml.jackson.core.`type`.TypeReference
 
 class TSConversionTest extends Logging{
   
   case class SampleClass(int: Integer, date: Date, string: String)
 
-  private def singleCellTest [T] (value: T, cell: Cell): Unit = {
+  private def singleCellTest[T](value: T, cell: Cell): Unit = {
     val singleCellRow = new Row(cell)
     val sparkRow = TimeSeriesToSparkSqlConversion.asSparkRow(singleCellRow)
     assertEquals(1, sparkRow.length)
@@ -126,7 +125,7 @@ class TSConversionTest extends Logging{
   private def compareElementwise(a: Seq[Any], b: Seq[Any]): Boolean = {
     a match {
       case Nil => true
-      case x::xs => 
+      case x::xs =>
           val bh = b.head
           val a = x.equals(b.head)
           x.equals(b.head) && compareElementwise(xs, b.tail)
@@ -135,10 +134,12 @@ class TSConversionTest extends Logging{
 
   private def assertSeqEquals(expected: Seq[Any], actual: Seq[Any]): Unit = {
     def stringify = (s: Seq[Any]) => s.mkString("[", ",", "]")
-    if (expected.length != actual.length) 
+    if (expected.length != actual.length) {
       throw new AssertionError(s"Expected Seq of ${expected.length} elements, but got ${actual.length}")
-    if (!compareElementwise(expected, actual)) 
+    }
+
+    if (!compareElementwise(expected, actual)) {
       throw new AssertionError(s"Expected Seq ${stringify(expected)} but got ${stringify(actual)}")
-  }  
-  
+    }
+  }
 }

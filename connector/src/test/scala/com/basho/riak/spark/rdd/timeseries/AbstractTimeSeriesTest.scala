@@ -7,7 +7,7 @@ import com.basho.riak.client.core.netty.RiakResponseException
 import com.basho.riak.client.core.operations.FetchBucketPropsOperation
 import com.basho.riak.client.core.operations.ts.StoreOperation
 import com.basho.riak.client.core.query.timeseries.{Cell, Row}
-import com.basho.riak.client.core.query.{BucketProperties, Namespace}
+import com.basho.riak.client.core.query.Namespace
 import com.basho.riak.spark.rdd.AbstractRDDTest
 import org.junit.{Assume, Before}
 
@@ -28,6 +28,12 @@ abstract class AbstractTimeSeriesTest extends AbstractRDDTest {
     val c = new GregorianCalendar(TimeZone.getTimeZone("UTC"))
     c.setTimeInMillis(timeInMillis)
     c
+  }
+
+  override def initialize(): Unit = {
+    /* DO NOT CALL IHERITED initialize to avoid reseting non TS bucket */
+    // super.initialize()
+    sc = createSparkContext(initSparkConf())
   }
 
   @Before
@@ -75,7 +81,7 @@ abstract class AbstractTimeSeriesTest extends AbstractRDDTest {
     })
 
     try {
-      val props: BucketProperties = fetchProps.get().getBucketProperties
+      fetchProps.get().getBucketProperties
     } catch {
       case ex :ExecutionException if ex.getCause.isInstanceOf[RiakResponseException]
         && ex.getCause.getMessage.startsWith("No bucket-type named")  =>
