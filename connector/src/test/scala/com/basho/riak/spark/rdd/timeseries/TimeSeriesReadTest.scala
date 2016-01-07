@@ -58,7 +58,7 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest {
 
     val df = sc.riakTSBucket[org.apache.spark.sql.Row](bucketName)
       .sql(s"SELECT time, user_id, temperature_k FROM $bucketName $sqlWhereClause")
-      .map(r=> TimeSeriesData(r.getLong(0), r.getString(1), r.getDouble(2)))
+      .map(r=> TimeSeriesData(r.getTimestamp(0).getTime, r.getString(1), r.getDouble(2)))
       .toDF()
 
     df.registerTempTable("test")

@@ -85,7 +85,7 @@ abstract class AbstractTimeSeriesTest(val createTestDate: Boolean = true) extend
     sc.riakTSBucket[org.apache.spark.sql.Row](bucketName)
       .sql(sqlQuery)
       .collect()
-      .map(row => (row.getLong(0), row.getString(1), row.getLong(2)))
+      .map(row => (row.getLong(0), row.getString(1), row.getTimestamp(2).getTime))
       .map { case (surrogateKey, family, time) => List(new Cell(surrogateKey), new Cell(family), Cell.newTimestamp(time)) }
       .foreach { keys =>
         val builder = new Delete.Builder(DEFAULT_TS_NAMESPACE.getBucketNameAsString(), keys)
