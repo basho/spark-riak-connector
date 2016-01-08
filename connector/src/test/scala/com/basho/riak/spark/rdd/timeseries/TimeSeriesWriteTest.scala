@@ -20,10 +20,11 @@ package com.basho.riak.spark.rdd.timeseries
 import com.basho.riak.spark._
 import com.basho.riak.spark.rdd.RiakTSTests
 import com.basho.riak.spark.writer.WriteDataMapperFactory._
-import org.apache.spark.sql.types._
-import org.apache.spark.sql.{Row, SQLContext}
+import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.{SaveMode, DataFrame, Row, SQLContext}
 import org.junit.Test
 import org.junit.experimental.categories.Category
+import org.junit.Assert._
 
 /**
   * @author Sergey Galkin <srggal at gmail dot com>
@@ -41,8 +42,13 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) {
         Row(1, "f", 111444L, "ratman", 362.121),
         Row(1, "f", 111555L, "ratman", 3502.212)))
 
+
+    // check to be 100% sure that schema is not provided
+    sqlRowsRdd.collect().foreach( r => assertNull(r.schema) )
+
     sqlRowsRdd.saveToRiakTS(bucketName)
 
+    // -- verification
     val newRdd = sc.riakTSBucket[org.apache.spark.sql.Row](bucketName)
       .sql(s"SELECT user_id, temperature_k FROM $bucketName $sqlWhereClause")
 
@@ -64,24 +70,10 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) {
   def saveDataFrameWithSchemaToRiak(): Unit = {
     val sqlContext = new SQLContext(sc)
 
-    val jsonRdd = sc.parallelize(Seq(
-      """{"surrogate_key": 1, "family": "f", "time": 111111, "user_id": "bryce", "temperature_k": 305.37}""",
-      """{"surrogate_key": 1, "family": "f", "time": 111222, "user_id": "bryce", "temperature_k": 300.12}""",
-      """{"surrogate_key": 1, "family": "f", "time": 111333, "user_id": "bryce", "temperature_k": 295.95}""",
-      """{"surrogate_key": 1, "family": "f", "time": 111444, "user_id": "ratman", "temperature_k": 362.121}""",
-      """{"surrogate_key": 1, "family": "f", "time": 111555, "user_id": "ratman", "temperature_k": 3502.212}"""))
+    val sourceDF = getSourceDF(sqlContext)
+    sourceDF.rdd.saveToRiakTS(DEFAULT_TS_NAMESPACE.getBucketTypeAsString)
 
-    val df = sqlContext.read.schema(
-      StructType(List(
-        StructField(name = "surrogate_key", dataType = IntegerType),
-        StructField(name = "family", dataType = StringType),
-        StructField(name = "time", dataType = LongType),
-        StructField(name = "user_id", dataType = StringType),
-        StructField(name = "temperature_k", dataType = DoubleType))))
-      .json(jsonRdd)
-
-    df.rdd.saveToRiakTS(DEFAULT_TS_NAMESPACE.getBucketTypeAsString)
-
+    // -- verification
     val newRdd = sc.riakTSBucket[org.apache.spark.sql.Row](bucketName)
       .sql(s"SELECT user_id, temperature_k FROM $bucketName $sqlWhereClause")
 
@@ -99,4 +91,39 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) {
       """.stripMargin, data)
   }
 
+  @Test
+  def dataFrameGenericSave(): Unit = {
+    val sqlContext = new SQLContext(sc)
+    val sourceDF =  getSourceDF(sqlContext)
+
+    sourceDF.write
+      .format("org.apache.spark.sql.riak")
+      .mode(SaveMode.Append)
+      .save(bucketName)
+
+    // -- verification
+    val df = sqlContext.read
+      .format("org.apache.spark.sql.riak")
+      .schema(schema)
+      .load(bucketName)
+      .filter(s"time > CAST($queryFrom AS TIMESTAMP) AND time < CAST($queryTo AS TIMESTAMP) AND surrogate_key = 1 AND family = 'f'")
+
+    val data = df.toJSON.collect()
+
+    assertEqualsUsingJSONIgnoreOrder(
+      """
+        |[
+        |   {surrogate_key:1, family: 'f', time: '1970-01-01 03:01:51.111', user_id:'bryce', temperature_k:305.37},
+        |   {surrogate_key:1, family: 'f', time: '1970-01-01 03:01:51.222', user_id:'bryce', temperature_k:300.12},
+        |   {surrogate_key:1, family: 'f', time: '1970-01-01 03:01:51.333', user_id:'bryce', temperature_k:295.95},
+        |   {surrogate_key:1, family: 'f', time: '1970-01-01 03:01:51.444', user_id:'ratman',temperature_k:362.121},
+        |   {surrogate_key:1, family: 'f', time: '1970-01-01 03:01:51.555', user_id:'ratman',temperature_k:3502.212}
+        |]
+      """.stripMargin, stringify(data))
+  }
+
+  private def getSourceDF(sqlContext: SQLContext): DataFrame = {
+    val rdd: RDD[Row] = sqlContext.sparkContext.parallelize(sparkRowsWithSchema)
+    sqlContext.createDataFrame(rdd, schema)
+  }
 }

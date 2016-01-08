@@ -18,18 +18,37 @@
 package org.apache.spark.sql.riak
 
 import org.apache.spark.Logging
-import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.{DataFrame, SaveMode, SQLContext}
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types.StructType
 
 /**
+  * Riak data source extends [[RelationProvider]], [[SchemaRelationProvider]] and [[CreatableRelationProvider]].
+  *
   * @author Sergey Galkin <srggal at gmail dot com>
   */
-class DefaultSource /*extends RelationProvider with*/ extends SchemaRelationProvider with Logging {
+class DefaultSource extends RelationProvider with SchemaRelationProvider with CreatableRelationProvider with Logging {
 
   override def createRelation(sqlContext: SQLContext, parameters: Map[String, String], schema: StructType): BaseRelation = {
     val bucketDef = DefaultSource.parseBucketDef(parameters)
     RiakRelation(bucketDef.bucket, sqlContext, Some(schema))
+  }
+
+  override def createRelation(sqlContext: SQLContext, parameters: Map[String, String]): BaseRelation = {
+    val bucketDef = DefaultSource.parseBucketDef(parameters)
+    RiakRelation(bucketDef.bucket, sqlContext, None)
+  }
+
+  override def createRelation(sqlContext: SQLContext, mode: SaveMode, parameters: Map[String, String], data: DataFrame): BaseRelation = {
+    val bucketDef = DefaultSource.parseBucketDef(parameters)
+    val relation =  RiakRelation(bucketDef.bucket, sqlContext, None)
+
+    mode match {
+      case SaveMode.Append => relation.insert(data, overwrite = false)
+      case _ =>
+          throw new UnsupportedOperationException(s"Writing with mode '$mode' is not supported, 'Append' is the only supported mode")
+    }
+    relation
   }
 }
 

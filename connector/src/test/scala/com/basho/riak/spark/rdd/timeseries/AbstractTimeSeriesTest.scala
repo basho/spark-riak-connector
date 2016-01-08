@@ -28,6 +28,8 @@ import com.basho.riak.client.core.query.timeseries.{Cell, Row}
 import com.basho.riak.client.core.query.Namespace
 import com.basho.riak.spark._
 import com.basho.riak.spark.rdd.AbstractRDDTest
+import com.basho.riak.spark.util.TimeSeriesToSparkSqlConversion
+import org.apache.spark.sql.types._
 import org.junit.Assert._
 import org.junit.Assume
 
@@ -43,6 +45,14 @@ abstract class AbstractTimeSeriesTest(val createTestDate: Boolean = true) extend
   protected val DEFAULT_TS_NAMESPACE = new Namespace("time_series_test","time_series_test")
   protected val bucketName = DEFAULT_TS_NAMESPACE.getBucketTypeAsString
 
+  val schema = StructType(List(
+    StructField(name = "surrogate_key", dataType = LongType),
+    StructField(name = "family", dataType = StringType),
+    StructField(name = "time", dataType = TimestampType),
+    StructField(name = "user_id", dataType = StringType),
+    StructField(name = "temperature_k", dataType = DoubleType))
+  )
+
   val testData = List(
     TimeSeriesData(111111, "bryce", 305.37),
     TimeSeriesData(111222, "bryce", 300.12),
@@ -55,8 +65,20 @@ abstract class AbstractTimeSeriesTest(val createTestDate: Boolean = true) extend
   val tsRangeStart: Calendar = mkTimestamp(testData.minBy(_.time).time)
   val tsRangeEnd: Calendar = mkTimestamp(testData.maxBy(_.time).time)
 
-  val sqlWhereClause: String = s"WHERE time > ${tsRangeStart.getTimeInMillis - 5} AND " +
-    s"time < ${tsRangeEnd.getTimeInMillis + 10} AND surrogate_key = 1 AND family = 'f'"
+  val queryFrom = tsRangeStart.getTimeInMillis - 5
+  val queryTo = tsRangeEnd.getTimeInMillis + 10
+
+  val riakTSRows = testData.map(f => new Row(
+    new Cell(1) /*surrogate_key*/ ,
+    new Cell("f") /* family */ ,
+    Cell.newTimestamp(f.time),
+    new Cell(f.user_id),
+    new Cell(f.temperature_k)))
+
+  val sparkRowsWithSchema = riakTSRows.map( r => TimeSeriesToSparkSqlConversion.asSparkRow(schema, r))
+
+  val sqlWhereClause: String = s"WHERE time > $queryFrom AND " +
+    s"time < $queryTo AND surrogate_key = 1 AND family = 'f'"
 
   val sqlQuery: String = s"SELECT surrogate_key, family, time, user_id, temperature_k " +
     s"FROM $bucketName $sqlWhereClause"
@@ -103,14 +125,9 @@ abstract class AbstractTimeSeriesTest(val createTestDate: Boolean = true) extend
     if (createTestDate) {
       val tableName = DEFAULT_TS_NAMESPACE.getBucketType
 
-      val rows = testData.map(f => new Row(
-        new Cell(1) /*surrogate_key*/ ,
-        new Cell("f") /* family */ ,
-        Cell.newTimestamp(f.time),
-        new Cell(f.user_id),
-        new Cell(f.temperature_k)))
-
-      val storeOp = new StoreOperation.Builder(tableName).withRows(rows).build()
+      val storeOp = new StoreOperation.Builder(tableName)
+        .withRows(riakTSRows)
+        .build()
 
       withRiakDo(session => {
         session.getRiakCluster.execute(storeOp).get()

@@ -19,7 +19,6 @@ package com.basho.riak.spark.rdd.timeseries
 
 import com.basho.riak.spark.rdd.RiakTSTests
 import com.basho.riak.spark.toSparkContextFunctions
-import org.apache.spark.sql.types._
 import org.apache.spark.sql.{SQLContext, DataFrame}
 import org.apache.spark.sql.riak.RiakSQLContext
 import org.junit.Test
@@ -36,6 +35,7 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest {
     val rdd = sc.riakTSBucket[org.apache.spark.sql.Row](bucketName)
       .sql(s"SELECT user_id, temperature_k FROM $bucketName $sqlWhereClause")
 
+    // -- verification
     val data = rdd.collect() map (r => r.toSeq)
 
     assertEqualsUsingJSONIgnoreOrder(
@@ -65,6 +65,7 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest {
 
     val data = sqlContext.sql("select * from test").toJSON.collect()
 
+    // -- verification
     assertEqualsUsingJSONIgnoreOrder(
       """
         |[
@@ -79,9 +80,6 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest {
 
   @Test
   def sqlRangeQuery(): Unit = {
-    val from = tsRangeStart.getTimeInMillis - 5
-    val to = tsRangeEnd.getTimeInMillis + 10
-
     /*
      * This usage scenario requires to use RiakSQLContext, otherwise
      * RuntimeException('Table Not Found: time_series_test') will be thrown
@@ -90,8 +88,10 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest {
     val df: DataFrame = sqlContext.sql(
       s"SELECT time, user_id, temperature_k " +
         s" FROM $bucketName " +
-        s" WHERE time > CAST($from AS TIMESTAMP) AND time < CAST($to AS TIMESTAMP) AND surrogate_key = 1 AND family = 'f'")
+        s" WHERE time > CAST($queryFrom AS TIMESTAMP) AND time < CAST($queryTo AS TIMESTAMP) " +
+        s"        AND surrogate_key = 1 AND family = 'f'")
 
+    // -- verification
     df.printSchema()
     val data = df.toJSON.collect()
 
@@ -109,22 +109,15 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest {
 
   @Test
   def dataFrameGenericLoad(): Unit = {
-    val from = tsRangeStart.getTimeInMillis - 5
-    val to = tsRangeEnd.getTimeInMillis + 10
     val sqlContext = new SQLContext(sc)
     val df = sqlContext.read
       .format("org.apache.spark.sql.riak")
-      .schema(
-        StructType(
-          List(StructField("surrogate_key", LongType, nullable=false),
-            StructField("family", StringType, nullable=false),
-            StructField("time", TimestampType, nullable=false),
-            StructField("user_id", StringType, nullable=false),
-            StructField("temperature_k", DoubleType, nullable=true)))
-      )
-      .load(bucketName)
-      .filter(s"time > CAST($from AS TIMESTAMP) AND time < CAST($to AS TIMESTAMP) AND surrogate_key = 1 AND family = 'f'")
+      .schema(schema)
+      .load(bucketName) // For real usage no needs to provide schema manually
+      .filter(s"time > CAST($queryFrom AS TIMESTAMP) AND time < CAST($queryTo AS TIMESTAMP) " +
+        s"AND surrogate_key = 1 AND family = 'f'")
 
+    // -- verification
     df.printSchema()
     val data = df.toJSON.collect()
 

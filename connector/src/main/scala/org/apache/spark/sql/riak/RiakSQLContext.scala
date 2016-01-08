@@ -22,12 +22,15 @@ import org.apache.spark.SparkContext
 import org.apache.spark.sql.{DataFrame, SQLContext}
 
 /**
+  * Allows to execute SQL queries against Riak TS.
+  *
   * @author Sergey Galkin <srggal at gmail dot com>
   */
 class RiakSQLContext(sc: SparkContext, val bucket: String) extends SQLContext(sc) {
+
+  /** A catalyst metadata catalog that points to Riak. */
   @transient
   override protected[sql] lazy val catalog = new RiakCatalog(this, RiakConnector(sc.getConf))
-  /** A catalyst metadata catalog that points to Cassandra. */
 
   /** Executes SQL query against Riak TS and returns DataFrame representing the result. */
   def riakTsSql(tsQuery: String): DataFrame = new DataFrame(this, super.parseSql(tsQuery))

@@ -21,11 +21,12 @@ import com.basho.riak.spark._
 import com.basho.riak.spark.rdd.{ReadConf, RiakConnector, RiakTSRDD}
 import com.basho.riak.spark.util.TimeSeriesToSparkSqlConversion
 import com.basho.riak.spark.writer.WriteConf
+import com.basho.riak.spark.writer.mapper.SqlDataMapper
 import org.apache.spark.Logging
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.sources.{BaseRelation, Filter, PrunedFilteredScan}
+import org.apache.spark.sql.sources.{InsertableRelation, BaseRelation, Filter, PrunedFilteredScan}
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{Row, SQLContext, sources}
+import org.apache.spark.sql._
 import scala.collection.convert.decorateAsScala._
 
 /**
@@ -38,7 +39,7 @@ private[riak] class RiakRelation(
         writeConf: WriteConf,
         override val sqlContext: SQLContext,
         userSpecifiedSchema: Option[StructType])
-  extends BaseRelation with PrunedFilteredScan with Logging {
+  extends BaseRelation with PrunedFilteredScan with InsertableRelation with Logging {
 
   override def schema: StructType = userSpecifiedSchema match {
     case None =>
@@ -87,7 +88,7 @@ private[riak] class RiakRelation(
         logInfo(s"filters: ${filters.mkString(", ")}")
 
         whereClause(filters) match {
-          case (sql, values) /*if values.nonEmpty*/ => prunedRdd.where(sql, values: _*)
+          case (sql, values) /* if values.nonEmpty */ => prunedRdd.where(sql, values: _*)
           case _ => prunedRdd
         }
       case _ => prunedRdd
@@ -116,6 +117,15 @@ private[riak] class RiakRelation(
     val sql = sqlValue.map(_._1).mkString(" AND ")
     val args = sqlValue.map(_._2)
     (sql, sqlValue.seq)
+  }
+
+  override def insert(data: DataFrame, overwrite: Boolean): Unit = {
+    if (overwrite) {
+      throw new UnsupportedOperationException("Data truncation is not supported for the moment")
+    }
+
+    implicit val rwf = SqlDataMapper.factory[Row]
+    data.rdd.saveToRiakTS(bucket, writeConf = writeConf)
   }
 }
 
