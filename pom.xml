@@ -49,8 +49,6 @@
         <fasterxml.jackson.version>2.4.4</fasterxml.jackson.version>
         
         <riak.test.category>com.basho.riak.spark.rdd.RiakKVTests</riak.test.category>
-
-        <artifactory.publish.artifactId>${project.artifactId}</artifactory.publish.artifactId>
     </properties>
 
     <distributionManagement>
@@ -133,7 +131,6 @@
             </activation>
             <properties>
                 <riak.test.category>com.basho.riak.spark.rdd.RiakTSTests</riak.test.category>
-                <artifactory.publish.artifactId>${project.artifactId}_TS</artifactory.publish.artifactId>
             </properties>
 		</profile>
 		<profile>
@@ -340,15 +337,13 @@
                                 <goal>publish</goal>
                             </goals>
                             <configuration>
-                                <deployProperties>
-                                    <artifactId>${artifactory.publish.artifactId}</artifactId>
-                                </deployProperties>
                                 <publisher>
                                     <contextUrl>https://basholabs.artifactoryonline.com/basholabs</contextUrl>
                                     <username>{{ARTIFACTORY_USER}}</username>
                                     <password>{{ARTIFACTORY_PASS}}</password>
                                     <repoKey>libs-release-local</repoKey>
                                     <snapshotRepoKey>libs-snapshot-local</snapshotRepoKey>
+                                    <excludePatterns>spark-riak-connector-test-utils-*,spark-riak-connector-examples-*</excludePatterns>
                                 </publisher>
                                 <buildInfo>
                                     <buildName>{{TRAVIS_REPO_SLUG}}</buildName>
