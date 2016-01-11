@@ -459,7 +459,7 @@
         </repository>
         <repository>
             <id>jfrog-artifactory-bintray</id>
-            <url>https://bintray.com/jfrog/jfrog-jars/artifactory-maven-plugin</url>
+            <url>https://bintray.com/jfrog/jfrog-jars</url>
             <releases>
                 <enabled>true</enabled>
             </releases>
