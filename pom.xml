@@ -461,7 +461,7 @@
     <pluginRepositories>
         <pluginRepository>
             <id>jfrog-artifactory-bintray</id>
-            <url>https://bintray.com/jfrog/jfrog-jars</url>
+            <url>https://dl.bintray.com/jfrog/jfrog-jars</url>
             <releases>
                 <enabled>true</enabled>
             </releases>
