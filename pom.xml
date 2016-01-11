@@ -51,7 +51,7 @@
         <riak.test.category>com.basho.riak.spark.rdd.RiakKVTests</riak.test.category>
     </properties>
 
-    <distributionManagement>
+    <!--distributionManagement>
         <snapshotRepository>
             <id>sonatype-nexus-snapshots</id>
             <name>Sonatype Nexus Snapshots</name>
@@ -62,7 +62,7 @@
             <name>Nexus Release Repository</name>
             <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
         </repository>
-    </distributionManagement>
+    </distributionManagement-->
 
     <profiles>
         <profile>
