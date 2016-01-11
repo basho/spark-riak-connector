@@ -457,7 +457,9 @@
                 <enabled>true</enabled>
             </snapshots>
         </repository>
-        <repository>
+    </repositories>
+    <pluginRepositories>
+        <pluginRepository>
             <id>jfrog-artifactory-bintray</id>
             <url>https://bintray.com/jfrog/jfrog-jars</url>
             <releases>
@@ -466,6 +468,6 @@
             <snapshots>
                 <enabled>true</enabled>
             </snapshots>
-        </repository>
-    </repositories>
+        </pluginRepository>
+    </pluginRepositories>
 </project>
