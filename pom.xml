@@ -51,18 +51,18 @@
         <riak.test.category>com.basho.riak.spark.rdd.RiakKVTests</riak.test.category>
     </properties>
 
-    <!--distributionManagement>
+    <distributionManagement>
         <snapshotRepository>
-            <id>sonatype-nexus-snapshots</id>
-            <name>Sonatype Nexus Snapshots</name>
-            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+            <id>basho-artifactory-release</id>
+            <name>Basho Artifactory Releases</name>
+            <url>https://basholabs.artifactoryonline.com/basholabs/libs-release-local</url>
         </snapshotRepository>
         <repository>
-            <id>sonatype-nexus-staging</id>
-            <name>Nexus Release Repository</name>
-            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
+            <id>basho-artifactory-snapshots</id>
+            <name>Basho Artifactory Snapshots</name>
+            <url>https://basholabs.artifactoryonline.com/basholabs/libs-snapshot-local</url>
         </repository>
-    </distributionManagement-->
+    </distributionManagement>
 
     <profiles>
         <profile>
@@ -371,6 +371,10 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.jfrog.buildinfo</groupId>
+                <artifactId>artifactory-maven-plugin</artifactId>
             </plugin>
         </plugins>
     </build>
