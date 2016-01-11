@@ -343,7 +343,6 @@
                                     <password>{{ARTIFACTORY_PASS}}</password>
                                     <repoKey>libs-release-local</repoKey>
                                     <snapshotRepoKey>libs-snapshot-local</snapshotRepoKey>
-                                    <excludePatterns>spark-riak-connector-test-utils-*,spark-riak-connector-examples-*</excludePatterns>
                                 </publisher>
                                 <buildInfo>
                                     <buildName>{{TRAVIS_REPO_SLUG}}</buildName>
@@ -372,10 +371,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.jfrog.buildinfo</groupId>
-                <artifactId>artifactory-maven-plugin</artifactId>
             </plugin>
         </plugins>
     </build>
