@@ -325,6 +325,34 @@
 						</execution>
 					</executions>
 				</plugin>
+                <plugin>
+                    <groupId>org.jfrog.buildinfo</groupId>
+                    <artifactId>artifactory-maven-plugin</artifactId>
+                    <version>2.4.0</version>
+                    <inherited>false</inherited>
+                    <executions>
+                        <execution>
+                            <id>build-info</id>
+                            <goals>
+                                <goal>publish</goal>
+                            </goals>
+                            <configuration>
+                                <publisher>
+                                    <contextUrl>https://basholabs.artifactoryonline.com/basholabs</contextUrl>
+                                    <username>{{ARTIFACTORY_USER}}</username>
+                                    <password>{{ARTIFACTORY_PASS}}</password>
+                                    <repoKey>libs-release-local</repoKey>
+                                    <snapshotRepoKey>libs-snapshot-local</snapshotRepoKey>
+                                </publisher>
+                                <buildInfo>
+                                    <buildName>Travis CI #{{TRAVIS_BUILD_NUMBER}} from commit {{TRAVIS_COMMIT}}</buildName>
+                                    <buildNumber>{{TRAVIS_BUILD_NUMBER}}</buildNumber>
+                                    <buildUrl>https://travis-ci.com/{{TRAVIS_REPO_SLUG}}/builds/{{TRAVIS_BUILD_ID}}</buildUrl>
+                                </buildInfo>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
             </plugins>
         </pluginManagement>
         <plugins>
@@ -343,6 +371,10 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.jfrog.buildinfo</groupId>
+                <artifactId>artifactory-maven-plugin</artifactId>
             </plugin>
         </plugins>
     </build>
@@ -418,6 +450,16 @@
         <repository>
             <id>bintray</id>
             <url>https://dl.bintray.com/basho/data-platform</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+        <repository>
+            <id>jfrog-artifactory-bintray</id>
+            <url>https://bintray.com/jfrog/jfrog-jars/artifactory-maven-plugin</url>
             <releases>
                 <enabled>true</enabled>
             </releases>
