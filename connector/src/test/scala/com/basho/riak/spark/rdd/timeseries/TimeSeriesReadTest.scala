@@ -23,7 +23,7 @@ import org.apache.spark.sql.{SQLContext, DataFrame}
 import org.apache.spark.sql.riak.RiakSQLContext
 import org.junit.Test
 import org.junit.experimental.categories.Category
-import java.sql.Timestamp
+
 /**
   * @author Sergey Galkin <srggal at gmail dot com>
   */
@@ -110,19 +110,21 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest {
   @Test
   def dataFrameGenericLoad(): Unit = {
     val sqlContext = new SQLContext(sc)
-    
+    sqlContext.udf.register("getMillis", getMillis) // transforms timestamp to not deal with timezones
+
     import org.apache.spark.sql.functions.udf
     import sqlContext.implicits._  
     
-    val udfGetMillis = udf(getMillis) 
+    val udfGetMillis = udf(getMillis)
     
     val df = sqlContext.read
       .format("org.apache.spark.sql.riak")
+      // For real usage no needs to provide schema manually
       .schema(schema)
-      .load(bucketName) // For real usage no needs to provide schema manually
+      .load(bucketName)
       .filter(s"time > CAST($queryFrom AS TIMESTAMP) AND time < CAST($queryTo AS TIMESTAMP) " +
         s"AND surrogate_key = 1 AND family = 'f'")
-      // adding select statement to apply timestamp transformations
+      // adding select statement to apply timestamp transformations to not deal with timezones
       .select(udfGetMillis($"time") as "time", $"family", $"surrogate_key", $"user_id", $"temperature_k") 
       
     // -- verification

@@ -23,8 +23,10 @@ import org.apache.spark.sql.{DataFrame, SQLContext}
 
 /**
   * Allows to execute SQL queries against Riak TS.
+  * Predicate pushdown is supported.
   *
   * @author Sergey Galkin <srggal at gmail dot com>
+  * @since 1.2.0
   */
 class RiakSQLContext(sc: SparkContext, val bucket: String) extends SQLContext(sc) {
 

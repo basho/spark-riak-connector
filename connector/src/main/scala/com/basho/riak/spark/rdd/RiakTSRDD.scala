@@ -28,6 +28,7 @@ import scala.reflect.ClassTag
 
 /**
   * @author Sergey Galkin <srggal at gmail dot com>
+  * @since 1.1.0
   */
 class RiakTSRDD[R] private[spark](
      @transient sc: SparkContext,
@@ -120,6 +121,7 @@ class RiakTSRDD[R] private[spark](
 
 /**
   * @author Sergey Galkin <srggal at gmail dot com>
+  * @since 1.1.0
   */
 object RiakTSRDD {
   def apply[T](sc: SparkContext, bucketName: String)

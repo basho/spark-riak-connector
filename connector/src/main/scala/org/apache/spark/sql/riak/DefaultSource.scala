@@ -17,7 +17,6 @@
   */
 package org.apache.spark.sql.riak
 
-import org.apache.spark.Logging
 import org.apache.spark.sql.{DataFrame, SaveMode, SQLContext}
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types.StructType
@@ -26,19 +25,32 @@ import org.apache.spark.sql.types.StructType
   * Riak data source extends [[RelationProvider]], [[SchemaRelationProvider]] and [[CreatableRelationProvider]].
   *
   * @author Sergey Galkin <srggal at gmail dot com>
+  * @since 1.2.0
   */
-class DefaultSource extends RelationProvider with SchemaRelationProvider with CreatableRelationProvider with Logging {
+class DefaultSource extends RelationProvider with SchemaRelationProvider with CreatableRelationProvider {
 
+  /**
+    * Creates a new relation for a RiakTS bucket and explicitly pass schema [[StructType]] as a parameter
+    */
   override def createRelation(sqlContext: SQLContext, parameters: Map[String, String], schema: StructType): BaseRelation = {
     val bucketDef = DefaultSource.parseBucketDef(parameters)
     RiakRelation(bucketDef.bucket, sqlContext, Some(schema))
   }
 
+  /**
+    * Creates a new relation for a RiakTS bucket.
+    */
   override def createRelation(sqlContext: SQLContext, parameters: Map[String, String]): BaseRelation = {
     val bucketDef = DefaultSource.parseBucketDef(parameters)
     RiakRelation(bucketDef.bucket, sqlContext, None)
   }
 
+  /**
+    * Creates a new relation for a RiakTS bucket and explicitly pass schema [[StructType]] as a parameter.
+    * It saves the data to the RiakTS bucket depends on [[SaveMode]].
+    *
+    * @note Due to the RiakTS restriction the only [[SaveMode.Append]] is supported
+    */
   override def createRelation(sqlContext: SQLContext, mode: SaveMode, parameters: Map[String, String], data: DataFrame): BaseRelation = {
     val bucketDef = DefaultSource.parseBucketDef(parameters)
     val relation =  RiakRelation(bucketDef.bucket, sqlContext, None)
@@ -60,6 +72,7 @@ private case class BucketDef(bucket: String, schema: Option[StructType])
   */
 object DefaultSource {
   val RiakBucketProperty = "path"
+
   // In case of using SQLContext.load(String)
   val RiakDataSourceProviderPackageName = DefaultSource.getClass.getPackage.getName
   val RiakDataSourceProviderClassName = RiakDataSourceProviderPackageName + ".DefaultSource"

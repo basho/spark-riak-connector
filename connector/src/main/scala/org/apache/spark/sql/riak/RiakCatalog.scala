@@ -32,6 +32,7 @@ import org.apache.spark.sql.execution.datasources.LogicalRelation
 
 /**
   * @author Sergey Galkin <srggal at gmail dot com>
+  * @since 1.2.0
   */
 private[sql] class RiakCatalog(rsc: RiakSQLContext, riakConnector: RiakConnector) extends Catalog with Logging {
   private val CACHE_SIZE = 1000

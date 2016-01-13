@@ -30,7 +30,11 @@ import org.apache.spark.sql._
 import scala.collection.convert.decorateAsScala._
 
 /**
+  * Implements [[BaseRelation]]]], [[InsertableRelation]]]] and [[PrunedFilteredScan]]]]
+  * It inserts data to and scans RiakTS bucket.  It pushs down some filters to SQL.
+  *
   * @author Sergey Galkin <srggal at gmail dot com>
+  * @since 1.2.0
   */
 private[riak] class RiakRelation(
         bucket: String,

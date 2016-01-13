@@ -26,11 +26,13 @@ import scala.collection.convert.decorateAsScala._
 
 /**
   * @author Sergey Galkin <srggal at gmail dot com>
+  * @since 1.1.0
   */
 case class TSQueryData(sql: String, values: Seq[Any])
 
 /**
   * @author Sergey Galkin <srggal at gmail dot com>
+  * @since 1.1.0
   */
 case class QueryTS(bucket: BucketDef, queryData: TSQueryData, readConf: ReadConf) {
 
