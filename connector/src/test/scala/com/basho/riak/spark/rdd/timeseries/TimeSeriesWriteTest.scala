@@ -17,14 +17,16 @@
   */
 package com.basho.riak.spark.rdd.timeseries
 
-import com.basho.riak.spark._
-import com.basho.riak.spark.rdd.RiakTSTests
-import com.basho.riak.spark.writer.WriteDataMapperFactory._
+import java.sql.Timestamp
+
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{SaveMode, DataFrame, Row, SQLContext}
 import org.junit.Test
 import org.junit.experimental.categories.Category
 import org.junit.Assert._
+
+import com.basho.riak.spark.rdd.RiakTSTests
+import com.basho.riak.spark._
 
 /**
   * @author Sergey Galkin <srggal at gmail dot com>
@@ -69,7 +71,6 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) {
   @Test
   def saveDataFrameWithSchemaToRiak(): Unit = {
     val sqlContext = new SQLContext(sc)
-
     val sourceDF = getSourceDF(sqlContext)
     sourceDF.rdd.saveToRiakTS(DEFAULT_TS_NAMESPACE.getBucketTypeAsString)
 
@@ -94,6 +95,12 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) {
   @Test
   def dataFrameGenericSave(): Unit = {
     val sqlContext = new SQLContext(sc)
+    
+    import org.apache.spark.sql.functions.udf
+    import sqlContext.implicits._  
+    
+    val udfGetMillis = udf(getMillis) 
+    
     val sourceDF =  getSourceDF(sqlContext)
 
     sourceDF.write
@@ -107,17 +114,19 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) {
       .schema(schema)
       .load(bucketName)
       .filter(s"time > CAST($queryFrom AS TIMESTAMP) AND time < CAST($queryTo AS TIMESTAMP) AND surrogate_key = 1 AND family = 'f'")
+      // adding select statement to apply timestamp transformations
+      .select(udfGetMillis($"time") as "time", $"family", $"surrogate_key", $"user_id", $"temperature_k") 
 
     val data = df.toJSON.collect()
 
     assertEqualsUsingJSONIgnoreOrder(
       """
         |[
-        |   {surrogate_key:1, family: 'f', time: '1970-01-01 03:01:51.111', user_id:'bryce', temperature_k:305.37},
-        |   {surrogate_key:1, family: 'f', time: '1970-01-01 03:01:51.222', user_id:'bryce', temperature_k:300.12},
-        |   {surrogate_key:1, family: 'f', time: '1970-01-01 03:01:51.333', user_id:'bryce', temperature_k:295.95},
-        |   {surrogate_key:1, family: 'f', time: '1970-01-01 03:01:51.444', user_id:'ratman',temperature_k:362.121},
-        |   {surrogate_key:1, family: 'f', time: '1970-01-01 03:01:51.555', user_id:'ratman',temperature_k:3502.212}
+        |   {surrogate_key:1, family: 'f', time: 111111, user_id:'bryce', temperature_k:305.37},
+        |   {surrogate_key:1, family: 'f', time: 111222, user_id:'bryce', temperature_k:300.12},
+        |   {surrogate_key:1, family: 'f', time: 111333, user_id:'bryce', temperature_k:295.95},
+        |   {surrogate_key:1, family: 'f', time: 111444, user_id:'ratman', temperature_k:362.121},
+        |   {surrogate_key:1, family: 'f', time: 111555, user_id:'ratman', temperature_k:3502.212}
         |]
       """.stripMargin, stringify(data))
   }

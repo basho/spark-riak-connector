@@ -19,7 +19,6 @@ package com.basho.riak.spark.rdd.timeseries
 
 import java.util.concurrent.ExecutionException
 import java.util.{Calendar, GregorianCalendar, TimeZone}
-
 import com.basho.riak.client.api.commands.timeseries.Delete
 import com.basho.riak.client.core.netty.RiakResponseException
 import com.basho.riak.client.core.operations.FetchBucketPropsOperation
@@ -32,8 +31,8 @@ import com.basho.riak.spark.util.TimeSeriesToSparkSqlConversion
 import org.apache.spark.sql.types._
 import org.junit.Assert._
 import org.junit.Assume
-
 import scala.collection.JavaConversions._
+import java.sql.Timestamp
 
 case class TimeSeriesData(time: Long, user_id: String, temperature_k: Double)
 
@@ -42,6 +41,8 @@ case class TimeSeriesData(time: Long, user_id: String, temperature_k: Double)
   */
 abstract class AbstractTimeSeriesTest(val createTestDate: Boolean = true) extends AbstractRDDTest {
 
+  protected def getMillis = (t: Timestamp) => t.getTime
+  
   protected val DEFAULT_TS_NAMESPACE = new Namespace("time_series_test","time_series_test")
   protected val bucketName = DEFAULT_TS_NAMESPACE.getBucketTypeAsString
 
