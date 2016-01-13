@@ -67,7 +67,7 @@ abstract class AbstractRiakTSSparkTest extends AbstractRiakSparkTest with Loggin
     tsRangeStart = mkTimestamp(testData.minBy(_.time).time)
     tsRangeEnd = mkTimestamp(testData.maxBy(_.time).time)
 
-    val tableName = DEFAULT_TS_NAMESPACE.getBucketType
+    val tableName = DEFAULT_TS_NAMESPACE.getBucketTypeAsString
 
     val rows = testData.map(f => new Row(
       new Cell(1) /*surrogate_key*/ ,

@@ -25,7 +25,6 @@ import com.basho.riak.client.core.operations.FetchBucketPropsOperation
 import com.basho.riak.client.core.operations.ts.{QueryOperation, StoreOperation}
 import com.basho.riak.client.core.query.Namespace
 import com.basho.riak.client.core.query.timeseries.{Cell, Row}
-import com.basho.riak.client.core.util.BinaryValue
 import com.basho.riak.spark.rdd.AbstractRiakSparkTest
 import org.apache.spark.Logging
 import org.apache.spark.sql.types._
@@ -103,22 +102,22 @@ abstract class AbstractTimeSeriesTest(val createTestDate: Boolean = true) extend
 
     // ----------  Purging data: data might be not only created, but it may be also changed during the previous test case execution
     // Since there is no other options for truncation, data will be cleared for the time interval used for testing
-    val operationBuilder = new QueryOperation.Builder(BinaryValue.create(sqlQuery))
+    val operationBuilder = new QueryOperation.Builder(sqlQuery)
     withRiakDo(session => {
-      session.getRiakCluster.execute(operationBuilder.build()).get().getRows
-        .map(row => List(row.getCells.get(0), row.getCells.get(1), row.getCells.get(2)))
+      session.getRiakCluster.execute(operationBuilder.build()).get().getRowsCopy
+        .map(row => List(row.getCellsCopy.get(0), row.getCellsCopy.get(1), row.getCellsCopy.get(2)))
         .foreach { keys =>
           val builder = new Delete.Builder(DEFAULT_TS_NAMESPACE.getBucketNameAsString(), keys)
           withRiakDo(_.execute(builder.build()))
         }
 
-      val collected = session.getRiakCluster.execute(operationBuilder.build()).get().getRows
+      val collected = session.getRiakCluster.execute(operationBuilder.build()).get().getRowsCopy
       assertTrue(collected.isEmpty)
     })
 
     // ----------  Storing test data into Riak TS
     if (createTestDate) {
-      val tableName = DEFAULT_TS_NAMESPACE.getBucketType
+      val tableName = DEFAULT_TS_NAMESPACE.getBucketTypeAsString
 
       val storeOp = new StoreOperation.Builder(tableName)
         .withRows(riakTSRows)

@@ -98,7 +98,7 @@ class RiakTSWriter[T](connector: RiakConnector,
                      dataMapper: WriteDataMapper[T, RowDef], writeConf: WriteConf): Unit = {
     val rowDefs = objects.map(dataMapper.mapValue).toList
 
-    val builder = new StoreOperation.Builder(ns.getBucketName).withRows(rowDefs.map(_.row))
+    val builder = new StoreOperation.Builder(ns.getBucketNameAsString).withRows(rowDefs.map(_.row))
     rowDefs.map(_.columnDescription).filter(_.isDefined).map(_.get).headOption.foreach(descr => builder.withColumns(descr.toList))
 
     session.execute(builder.build()).await()
