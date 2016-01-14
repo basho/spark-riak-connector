@@ -17,22 +17,23 @@
   */
 package com.basho.riak.spark.rdd.timeseries
 
-import java.sql.Timestamp
-
+import com.basho.riak.spark._
+import com.basho.riak.spark.rdd.{AbstractRDDTest, RiakTSTests}
+import com.basho.riak.spark.util.TimeSeriesToSparkSqlConversion
+import com.basho.riak.spark.writer.WriteDataMapperFactory._
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{SaveMode, DataFrame, Row, SQLContext}
+import org.apache.spark.sql.{DataFrame, Row, SQLContext, SaveMode}
+import org.junit.Assert._
 import org.junit.Test
 import org.junit.experimental.categories.Category
-import org.junit.Assert._
-
-import com.basho.riak.spark.rdd.RiakTSTests
-import com.basho.riak.spark._
 
 /**
   * @author Sergey Galkin <srggal at gmail dot com>
   */
 @Category(Array(classOf[RiakTSTests]))
-class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) {
+class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) with AbstractRDDTest {
+
+  val sparkRowsWithSchema = riakTSRows.map( r => TimeSeriesToSparkSqlConversion.asSparkRow(schema, r))
 
   @Test
   def saveSqlRowsToRiak(): Unit = {
@@ -95,12 +96,12 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) {
   @Test
   def dataFrameGenericSave(): Unit = {
     val sqlContext = new SQLContext(sc)
-    
+
     import org.apache.spark.sql.functions.udf
-    import sqlContext.implicits._  
-    
-    val udfGetMillis = udf(getMillis) 
-    
+    import sqlContext.implicits._
+
+    val udfGetMillis = udf(getMillis)
+
     val sourceDF =  getSourceDF(sqlContext)
 
     sourceDF.write
@@ -115,7 +116,7 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) {
       .load(bucketName)
       .filter(s"time > CAST($queryFrom AS TIMESTAMP) AND time < CAST($queryTo AS TIMESTAMP) AND surrogate_key = 1 AND family = 'f'")
       // adding select statement to apply timestamp transformations
-      .select(udfGetMillis($"time") as "time", $"family", $"surrogate_key", $"user_id", $"temperature_k") 
+      .select(udfGetMillis($"time") as "time", $"family", $"surrogate_key", $"user_id", $"temperature_k")
 
     val data = df.toJSON.collect()
 

@@ -17,19 +17,20 @@
  */
 package com.basho.riak.spark.rdd
 
-import com.basho.riak.client.core.RiakNode
-import com.basho.riak.client.core.util.HostAndPort
-import org.junit.rules.TestWatcher
-import org.junit.runner.Description
-import org.slf4j.{LoggerFactory, Logger}
-
 import java.io.IOException
 
+import com.basho.riak.client.core.RiakNode
 import com.basho.riak.client.core.query.Namespace
+import com.basho.riak.client.core.util.HostAndPort
 import com.fasterxml.jackson.core.JsonProcessingException
 import net.javacrumbs.jsonunit.JsonAssert
 import net.javacrumbs.jsonunit.core.{Configuration, Option}
-import org.junit.{Rule, Before}
+import org.apache.commons.lang3.StringUtils
+import org.junit.rules.TestWatcher
+import org.junit.runner.Description
+import org.junit.{Before, Rule}
+import org.slf4j.{Logger, LoggerFactory}
+
 import scala.collection.JavaConversions._
 
 abstract class AbstractRiakTest extends RiakFunctions{
@@ -69,16 +70,18 @@ abstract class AbstractRiakTest extends RiakFunctions{
   }
 
   @Before
-  def initialize(): Unit ={
+  protected def initialize(): Unit = setupData()
+
+  protected def setupData(): Unit = {
     // Purge data: data might be not only created, but it may be also changed during the previous test case execution
     //
     // For manual check: curl -v http://localhost:10018/buckets/test-bucket/keys?keys=true
-    List(DEFAULT_NAMESPACE, DEFAULT_NAMESPACE_4STORE) foreach( x=> resetAndEmptyBucket(x))
+    List(DEFAULT_NAMESPACE, DEFAULT_NAMESPACE_4STORE) foreach (x => resetAndEmptyBucket(x))
 
-    withRiakDo( session => {
+    withRiakDo(session => {
       val data: String = jsonData()
 
-      if (data != null) {
+      if (StringUtils.isNotBlank(data)) {
         createValues(session, DEFAULT_NAMESPACE, data)
       }
     })

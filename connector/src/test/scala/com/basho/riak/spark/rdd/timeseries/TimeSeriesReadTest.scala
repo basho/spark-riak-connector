@@ -17,7 +17,7 @@
  */
 package com.basho.riak.spark.rdd.timeseries
 
-import com.basho.riak.spark.rdd.RiakTSTests
+import com.basho.riak.spark.rdd.{AbstractRDDTest, RiakTSTests}
 import com.basho.riak.spark.toSparkContextFunctions
 import org.apache.spark.sql.{SQLContext, DataFrame}
 import org.apache.spark.sql.riak.RiakSQLContext
@@ -28,10 +28,10 @@ import org.junit.experimental.categories.Category
   * @author Sergey Galkin <srggal at gmail dot com>
   */
 @Category(Array(classOf[RiakTSTests]))
-class TimeSeriesReadTest extends AbstractTimeSeriesTest {
+class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
 
   @Test
-  def readDataAsSqlRow(): Unit ={
+  def readDataAsSqlRow(): Unit = {
     val rdd = sc.riakTSBucket[org.apache.spark.sql.Row](bucketName)
       .sql(s"SELECT user_id, temperature_k FROM $bucketName $sqlWhereClause")
 
@@ -52,7 +52,7 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest {
 
   // TODO: Consider possibility of moving this case to the SparkDataframesTest
   @Test
-  def riakTSRDDToDataFrame(): Unit ={
+  def riakTSRDDToDataFrame(): Unit = {
     val sqlContext = new org.apache.spark.sql.SQLContext(sc)
     import sqlContext.implicits._
 
@@ -113,10 +113,10 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest {
     sqlContext.udf.register("getMillis", getMillis) // transforms timestamp to not deal with timezones
 
     import org.apache.spark.sql.functions.udf
-    import sqlContext.implicits._  
-    
+    import sqlContext.implicits._
+
     val udfGetMillis = udf(getMillis)
-    
+
     val df = sqlContext.read
       .format("org.apache.spark.sql.riak")
       // For real usage no needs to provide schema manually
@@ -125,8 +125,8 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest {
       .filter(s"time > CAST($queryFrom AS TIMESTAMP) AND time < CAST($queryTo AS TIMESTAMP) " +
         s"AND surrogate_key = 1 AND family = 'f'")
       // adding select statement to apply timestamp transformations to not deal with timezones
-      .select(udfGetMillis($"time") as "time", $"family", $"surrogate_key", $"user_id", $"temperature_k") 
-      
+      .select(udfGetMillis($"time") as "time", $"family", $"surrogate_key", $"user_id", $"temperature_k")
+
     // -- verification
     df.printSchema()
     val data = df.toJSON.collect()
