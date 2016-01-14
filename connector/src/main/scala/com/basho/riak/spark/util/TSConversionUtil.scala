@@ -77,7 +77,7 @@ object TimeSeriesToSparkSqlConversion {
   }
 
   def asSparkRow(schema: StructType, row: Row): org.apache.spark.sql.Row = {
-    val values = for {c <- schema zip row.getCells.asScala} yield {
+    val values = for {c <- schema zip row.getCellsCopy.asScala} yield {
       cellValue(c._1, c._2)
     }
     new GenericRowWithSchema(values.toArray, schema)

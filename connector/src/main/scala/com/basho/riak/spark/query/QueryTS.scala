@@ -70,10 +70,10 @@ case class QueryTS(bucket: BucketDef, queryData: TSQueryData, readConf: ReadConf
 
   def nextChunk(session: RiakSession): (Seq[ColumnDescription], Seq[Row]) = {
     val sql = interpolateValues(queryData.sql, queryData.values)
-    val op = new QueryOperation.Builder(BinaryValue.create(sql.toString)).build()
+    val op = new QueryOperation.Builder(sql.toString).build()
     try {
       val qr = session.execute(op).get()
-      qr.getColumnDescriptions.asScala -> qr.getRows.asScala
+      qr.getColumnDescriptionsCopy.asScala -> qr.getRowsCopy.asScala
     } catch {
       case e: ExecutionException =>
         if (e.getCause.isInstanceOf[RiakResponseException]

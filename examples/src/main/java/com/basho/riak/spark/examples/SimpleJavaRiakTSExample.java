@@ -83,7 +83,7 @@ public class SimpleJavaRiakTSExample implements Serializable {
     RiakTSJavaRDD<Row> rdd = javaFunctions(jsc).riakTSBucket(TABLE_NAME, Row.class)
       .sql(String.format("SELECT * FROM %s WHERE time >= %d AND time <= %d  AND  weather = 'sunny' AND family = 'f'", TABLE_NAME, from, to));
     
-    rdd.foreach(x -> System.out.println(Joiner.on(",").join(x.getCells())));
+    rdd.foreach(x -> System.out.println(Joiner.on(",").join(x.getCellsCopy())));
   }
 
   protected static void loadDemoData(JavaSparkContext jsc) {

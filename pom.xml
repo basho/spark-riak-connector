@@ -4,7 +4,7 @@
 
     <groupId>com.basho.riak</groupId>
     <artifactId>spark-riak-connector-parent</artifactId>
-    <version>1.2.0-SNAPSHOT</version>
+    <version>1.2.0-beta1</version>
     <packaging>pom</packaging>
     <description>Spark Connector for Riak 2.3</description>
     <url>https://github.com/basho/spark-riak-connector</url>
@@ -383,7 +383,7 @@
             <dependency>
                 <groupId>com.basho.riak</groupId>
                 <artifactId>dataplatform-riak-client</artifactId>
-                <version>1.1.0</version>
+                <version>1.2.0-beta1</version>
             </dependency>
             <dependency>
                 <groupId>org.scala-lang</groupId>
@@ -453,13 +453,23 @@
     </dependencyManagement>
     <repositories>
         <repository>
+            <id>artifactory</id>
+            <url>https://basholabs.artifactoryonline.com/basholabs/libs-snapshot</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+        <repository>
             <id>bintray</id>
             <url>https://dl.bintray.com/basho/data-platform</url>
             <releases>
                 <enabled>true</enabled>
             </releases>
             <snapshots>
-                <enabled>true</enabled>
+                <enabled>false</enabled>
             </snapshots>
         </repository>
     </repositories>

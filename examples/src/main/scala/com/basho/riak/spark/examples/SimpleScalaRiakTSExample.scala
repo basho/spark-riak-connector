@@ -107,7 +107,7 @@ object SimpleScalaRiakTSExample {
         )
       )
 
-    val storeOp = new StoreOperation.Builder(BinaryValue.create(tableName)).withRows(rows).build
+    val storeOp = new StoreOperation.Builder(tableName).withRows(rows).build
 
     rf.withRiakDo(session => {
       val r = session.getRiakCluster.execute(storeOp).get
@@ -116,7 +116,8 @@ object SimpleScalaRiakTSExample {
     
     //Non-ts
     
-    val ros = testData.map{x =>  
+    //noinspection ScalaStyle
+    val ros = testData.map{ x =>
       val obj = RiakObjectConversionUtil.to(x)
       obj.setContentType("application/json")
       obj.getIndexes.getIndex[LongIntIndex, LongIntIndex.Name](LongIntIndex.named("time"))

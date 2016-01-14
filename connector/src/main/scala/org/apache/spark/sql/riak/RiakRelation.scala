@@ -17,6 +17,7 @@
   */
 package org.apache.spark.sql.riak
 
+import com.basho.riak.client.core.query.timeseries.ColumnDescription
 import com.basho.riak.spark._
 import com.basho.riak.spark.rdd.connector.RiakConnector
 import com.basho.riak.spark.rdd.{ReadConf, RiakTSRDD}
@@ -55,15 +56,17 @@ private[riak] class RiakRelation(
 
         val response = session.execute(request)
 
+        val columnDescs = response.getColumnDescriptionsCopy
+
         require(
-          "Column".equals(response.getColumnDescriptions.get(0).getName)
-            && "Type".equals(response.getColumnDescriptions.get(1).getName)
-            && "Is Null".equals(response.getColumnDescriptions.get(2).getName),
+          "Column".equals(columnDescs.get(0).getName)
+            && "Type".equals(columnDescs.get(1).getName)
+            && "Is Null".equals(columnDescs.get(2).getName),
           "Describe response has unexpected fields order or it has unexpected format"
         )
 
-        val fields = for {r: com.basho.riak.client.core.query.timeseries.Row <- response.getRows.asScala } yield {
-          val cells = r.getCells
+        val fields = for {r: com.basho.riak.client.core.query.timeseries.Row <- response.getRowsCopy.asScala } yield {
+          val cells = r.getCellsCopy
           val name: String = cells.get(0).getVarcharAsUTF8String
           val t: DataType = TimeSeriesToSparkSqlConversion.asDataType(cells.get(1).getVarcharAsUTF8String)
           val nullable: Boolean = cells.get(2).getBoolean

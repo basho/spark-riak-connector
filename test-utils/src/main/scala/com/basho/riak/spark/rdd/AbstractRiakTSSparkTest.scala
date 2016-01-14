@@ -19,7 +19,9 @@ abstract class AbstractRiakTSSparkTest extends AbstractRiakSparkTest with Loggin
 
   protected final val DEFAULT_TS_NAMESPACE = new Namespace("time_series_test", "time_series_test")
 
+  //noinspection ScalaStyle
   protected var tsRangeStart: Calendar = null
+  //noinspection ScalaStyle
   protected var tsRangeEnd: Calendar = null
 
   private def mkTimestamp(timeInMillis: Long): Calendar = {
@@ -28,6 +30,7 @@ abstract class AbstractRiakTSSparkTest extends AbstractRiakSparkTest with Loggin
     c
   }
 
+  //noinspection ScalaStyle
   override protected def setupData(): Unit = {
 
     val fetchProps = new FetchBucketPropsOperation.Builder(DEFAULT_TS_NAMESPACE).build()
