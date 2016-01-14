@@ -20,7 +20,8 @@ package com.basho.riak.spark
 import java.io.Serializable
 
 import com.basho.riak.client.core.query.{Namespace, Location, RiakObject}
-import com.basho.riak.spark.rdd.{RiakTSRDD, RiakRDD, RiakConnector, ReadConf}
+import com.basho.riak.spark.rdd.connector.RiakConnector
+import com.basho.riak.spark.rdd.{RiakTSRDD, RiakRDD, ReadConf}
 import com.basho.riak.spark.util.RiakObjectConversionUtil
 import org.apache.spark.SparkContext
 

@@ -17,8 +17,8 @@
  */
 package com.basho.riak.spark.query
 
-import com.basho.riak.client.api.RiakClient
 import com.basho.riak.client.core.query.Location
+import com.basho.riak.spark.rdd.connector.RiakSession
 import com.basho.riak.spark.rdd.{ReadConf, BucketDef}
 
 import scala.collection.mutable.ArrayBuffer
@@ -32,7 +32,7 @@ private case class Query2iKeys[K](bucket: BucketDef, readConf:ReadConf, index: S
 
   private def chunkIsCollected(chunk: Iterable[Location]) = chunk.size >= readConf.fetchSize
 
-  override def locationsByKeys(keys: Iterator[K], session: RiakClient): (Boolean, Iterable[Location]) = {
+  override def locationsByKeys(keys: Iterator[K], session: RiakSession): (Boolean, Iterable[Location]) = {
     val dataBuffer = new ArrayBuffer[Location](readConf.fetchSize)
 
     while ((keys.hasNext || _iterator.hasNext || tokenNext.isDefined) && !chunkIsCollected(dataBuffer)){

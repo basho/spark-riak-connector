@@ -18,7 +18,8 @@
 package org.apache.spark.sql.riak
 
 import com.basho.riak.spark._
-import com.basho.riak.spark.rdd.{ReadConf, RiakConnector, RiakTSRDD}
+import com.basho.riak.spark.rdd.connector.RiakConnector
+import com.basho.riak.spark.rdd.{ReadConf, RiakTSRDD}
 import com.basho.riak.spark.util.TimeSeriesToSparkSqlConversion
 import com.basho.riak.spark.writer.WriteConf
 import com.basho.riak.spark.writer.mapper.SqlDataMapper

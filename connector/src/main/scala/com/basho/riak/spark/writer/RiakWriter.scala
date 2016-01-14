@@ -17,14 +17,14 @@
   */
 package com.basho.riak.spark.writer
 
-import com.basho.riak.client.api.RiakClient
 import com.basho.riak.client.api.cap.Quorum
 import com.basho.riak.client.api.commands.kv.StoreValue
 import com.basho.riak.client.api.convert.JSONConverter
 import com.basho.riak.client.core.operations.ts.StoreOperation
 import com.basho.riak.client.core.query.{Location, Namespace}
 import com.basho.riak.spark._
-import com.basho.riak.spark.rdd.{BucketDef, RiakConnector}
+import com.basho.riak.spark.rdd.connector.{RiakSession, RiakConnector}
+import com.basho.riak.spark.rdd.BucketDef
 import com.basho.riak.spark.util.CountingIterator
 import com.basho.riak.spark.writer.ts.RowDef
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
@@ -58,7 +58,7 @@ abstract class RiakWriter[T, U](
     }
   }
 
-  def store(session: RiakClient, ns: Namespace, objects: Iterator[T], dm: WriteDataMapper[T, U], wc: WriteConf): Unit
+  def store(session: RiakSession, ns: Namespace, objects: Iterator[T], dm: WriteDataMapper[T, U], wc: WriteConf): Unit
 
 }
 
@@ -67,7 +67,7 @@ class RiakKVWriter[T](connector: RiakConnector,
                       dataMapper: WriteDataMapper[T, KeyValue],
                       writeConf: WriteConf) extends RiakWriter[T, KeyValue](connector, bucketDef, dataMapper, writeConf) {
 
-  override def store(session: RiakClient, ns: Namespace, objects: Iterator[T],
+  override def store(session: RiakSession, ns: Namespace, objects: Iterator[T],
                      dataMapper: WriteDataMapper[T, KeyValue], writeConf: WriteConf): Unit = {
     val values = objects.map(dataMapper.mapValue)
 
@@ -94,14 +94,14 @@ class RiakTSWriter[T](connector: RiakConnector,
                       bucketDef: BucketDef,
                       dataMapper: WriteDataMapper[T, RowDef],
                       writeConf: WriteConf) extends RiakWriter[T, RowDef](connector, bucketDef, dataMapper, writeConf) {
-  override def store(session: RiakClient, ns: Namespace, objects: Iterator[T],
+  override def store(session: RiakSession, ns: Namespace, objects: Iterator[T],
                      dataMapper: WriteDataMapper[T, RowDef], writeConf: WriteConf): Unit = {
     val rowDefs = objects.map(dataMapper.mapValue).toList
 
     val builder = new StoreOperation.Builder(ns.getBucketName).withRows(rowDefs.map(_.row))
     rowDefs.map(_.columnDescription).filter(_.isDefined).map(_.get).headOption.foreach(descr => builder.withColumns(descr.toList))
 
-    session.getRiakCluster.execute(builder.build()).await()
+    session.execute(builder.build()).await()
   }
 }
 

@@ -24,7 +24,8 @@ import com.basho.riak.client.api.commands.kv.CoveragePlan.Builder
 import com.basho.riak.client.core.netty.RiakResponseException
 import com.basho.riak.client.core.util.HostAndPort
 import com.basho.riak.spark.query.QueryData
-import com.basho.riak.spark.rdd.{RiakConnector, ReadConf, RiakPartition, BucketDef}
+import com.basho.riak.spark.rdd.connector.RiakConnector
+import com.basho.riak.spark.rdd.{ReadConf, RiakPartition, BucketDef}
 import org.apache.spark.Partition
 
 import scala.collection.JavaConversions._

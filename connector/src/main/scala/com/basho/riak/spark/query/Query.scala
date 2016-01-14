@@ -17,11 +17,11 @@
  */
 package com.basho.riak.spark.query
 
-import com.basho.riak.client.api.RiakClient
 import com.basho.riak.client.api.cap.Quorum
 import com.basho.riak.client.api.commands.kv.{FetchValue, MultiFetch}
 import com.basho.riak.client.core.query.{RiakObject, Location}
-import com.basho.riak.spark.rdd.{RiakConnector, ReadConf, BucketDef}
+import com.basho.riak.spark.rdd.connector.RiakSession
+import com.basho.riak.spark.rdd.{ReadConf, BucketDef}
 import scala.collection.JavaConversions._
 
 import scala.collection.mutable.ArrayBuffer
@@ -36,15 +36,15 @@ trait Query[T] extends Serializable with Logging{
   def bucket: BucketDef
   def readConf: ReadConf
 
-  def nextChunk(nextToken: Option[_], session: RiakClient): (Option[T], Iterable[ResultT])
+  def nextChunk(nextToken: Option[_], session: RiakSession): (Option[T], Iterable[ResultT])
 }
 
 trait LocationQuery[T] extends Query[T] {
   private val dataBuffer: ArrayBuffer[ResultT] = new ArrayBuffer[ResultT](readConf.fetchSize)
 
-  def nextLocationChunk(nextToken: Option[_], session: RiakClient): (Option[T], Iterable[Location])
+  def nextLocationChunk(nextToken: Option[_], session: RiakSession): (Option[T], Iterable[Location])
 
-  def nextChunk(token: Option[_], session: RiakClient): (Option[T], Iterable[ResultT]) = {
+  def nextChunk(token: Option[_], session: RiakSession): (Option[T], Iterable[ResultT]) = {
     val r = nextLocationChunk(token, session )
     logDebug(s"nextLocationChunk(token=$token) returns:\n  token: ${r._1}\n  locations: ${r._2}")
 
@@ -60,13 +60,13 @@ trait LocationQuery[T] extends Query[T] {
          *
          * Ideally the chunk size should be equal to the max number of connections for the RiakNode
          */
-        val itChunkedLocations = locations.grouped(RiakConnector.getMinConnectionsPerNode(session))
+        val itChunkedLocations = locations.grouped(session.minConnectionsPerNode)
         fetchValues(session, itChunkedLocations, dataBuffer)
         (nextToken, dataBuffer.toList)
     }
   }
 
-  private def fetchValues(riakSession: RiakClient, chunkedLocations: Iterator[Iterable[Location]], buffer: ArrayBuffer[(Location, RiakObject)]) ={
+  private def fetchValues(riakSession: RiakSession, chunkedLocations: Iterator[Iterable[Location]], buffer: ArrayBuffer[(Location, RiakObject)]) ={
 
     while(chunkedLocations.hasNext){
       val builder = new MultiFetch.Builder()
@@ -139,7 +139,7 @@ object Query{
         require(queryData.coverageEntries.isDefined)
 
         val ce = queryData.coverageEntries.get
-        require(!ce.isEmpty)
+        require(ce.nonEmpty)
 
         if(readConf.useStreamingValuesForFBRead){
           new QueryFullBucket(bucket, readConf, ce)

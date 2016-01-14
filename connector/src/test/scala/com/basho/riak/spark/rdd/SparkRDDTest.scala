@@ -18,6 +18,7 @@
 package com.basho.riak.spark.rdd
 
 import com.basho.riak.client.core.query.Location
+import com.basho.riak.spark.rdd.connector.RiakConnector
 import org.apache.spark.rdd.RDD
 import org.junit.{Ignore, Before, Test}
 import com.basho.riak.spark._
@@ -104,8 +105,8 @@ class SparkRDDTest extends AbstractRDDTest {
     // Read data from riak and populate data buffer
     val data =  ListBuffer[(String,Long)]()
     RiakConnector(sc.getConf).withSessionDo { session => {
-      foreachKeyInBucket(session, DEFAULT_NAMESPACE_4STORE, (RiakConnector, l: Location) =>{
-        val v = readByLocation[Long](session, l)
+      foreachKeyInBucket(session.unwrap(), DEFAULT_NAMESPACE_4STORE, (RiakConnector, l: Location) =>{
+        val v = readByLocation[Long](session.unwrap(), l)
         data += ((l.getKeyAsString,v))
       })
     }}

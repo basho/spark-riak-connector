@@ -17,12 +17,12 @@
  */
 package com.basho.riak.spark.query
 
+import com.basho.riak.spark.rdd.connector.RiakSession
 import org.apache.spark.Logging
 
-import com.basho.riak.client.api.RiakClient
 import com.basho.riak.client.core.query.{RiakObject, Location}
 
-class DataQueryingIterator(query: Query[_], riakSession: RiakClient) extends Iterator[(Location, RiakObject)] with Logging {
+class DataQueryingIterator(query: Query[_], riakSession: RiakSession) extends Iterator[(Location, RiakObject)] with Logging {
 
   type ResultT = (Location, RiakObject)
 
@@ -102,7 +102,7 @@ object  DataQueryingIterator {
   private val OPTION_TRUE = Some(true)
   private val OPTION_FALSE = Some(false)
 
-  def apply(query: Query[_], riakSession: RiakClient): DataQueryingIterator = {
+  def apply(query: Query[_], riakSession: RiakSession): DataQueryingIterator = {
     new DataQueryingIterator(query, riakSession)
   }
 }
