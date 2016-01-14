@@ -17,9 +17,6 @@
  */
 package com.basho.riak.spark.examples
 
-import com.basho.riak.client.core.operations.ts.StoreOperation
-
-import scala.collection.JavaConversions.seqAsJavaList
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 import com.basho.riak.client.core.query.timeseries.Cell
@@ -28,6 +25,12 @@ import com.basho.riak.client.core.util.BinaryValue
 import com.basho.riak.spark.rdd.RiakFunctions
 import com.basho.riak.spark.toSparkContextFunctions
 import java.util.Calendar
+import com.basho.riak.spark.rdd.RiakObjectData
+import com.basho.riak.client.core.operations.ts.StoreOperation
+import scala.collection.JavaConversions._
+import com.basho.riak.client.core.query.Namespace
+import com.basho.riak.spark.util.RiakObjectConversionUtil
+import com.basho.riak.client.core.query.indexes.LongIntIndex
 
 /**
  * Really simple demo timeseries-related features
@@ -48,6 +51,7 @@ object SimpleScalaRiakTSExample {
 
   case class WeatherDemo(time: Long, weather: String, temperature: Double, humidity: Double, pressure: Double)
 
+  private val ns = new Namespace("ts_weather_demo-ns")
   private val tableName = "ts_weather_demo"
   private val startTime = 1443647460000l // Thu Oct 01 00:11:00
   private val second = 1000l
@@ -72,25 +76,27 @@ object SimpleScalaRiakTSExample {
     setSparkOpt(sparkConf, "spark.master", "local")
     setSparkOpt(sparkConf, "spark.riak.connection.host", "127.0.0.1:8087")
 
+    clearBucket(sparkConf)
     loadDemoData(sparkConf)
     val sc = new SparkContext(sparkConf)
     
     val from = beginingOfQuantumMillis(testData.head.time)
     val to = endOfQuantumMillis(testData.last.time)
-
-    val rdd = sc.riakTSBucket[org.apache.spark.sql.Row](tableName)
+    
+    // TS range scan
+    val rddTS = sc.riakTSBucket(tableName)
       .sql(s"SELECT * FROM $tableName WHERE time >= $from AND time <= $to  AND  weather != 'sunny' AND family = 'f'")
-    println(s"Execution result: ${rdd.count}")
-
-    // Filter data using query language rather than filter over rdd
-    val filteredRdd = sc.riakTSBucket(tableName)
-      .sql(s"SELECT * FROM $tableName WHERE time >= $from AND time <= $to AND weather = 'sunny' AND family = 'f'")
-    println(s"Execution result with filtering: ${filteredRdd.count}")
+    println(s"Execution result for TS: ${rddTS.count}")
+    
+    // Non-TS way to do the same
+    val rddNTS = sc.riakBucket[WeatherDemo](ns).query2iRangeLocal("time", from, to).filter(x => x.weather != "sunny")
+    println(s"Execution result for non-TS: ${rddNTS.count}")
   }
 
   private def loadDemoData(sparkConf: SparkConf): Unit = {
     val rf = RiakFunctions(sparkConf)
 
+    // TS
     val rows = testData.map(x => new Row(
           new Cell(x.weather),
           new Cell("f") /* family */,
@@ -106,6 +112,27 @@ object SimpleScalaRiakTSExample {
     rf.withRiakDo(session => {
       val r = session.getRiakCluster.execute(storeOp).get
       assert(true)
+    })
+    
+    //Non-ts
+    
+    val ros = testData.map{x =>  
+      val obj = RiakObjectConversionUtil.to(x)
+      obj.setContentType("application/json")
+      obj.getIndexes.getIndex[LongIntIndex, LongIntIndex.Name](LongIntIndex.named("time"))
+                .add(x.time)
+      obj
+    }
+     rf.withRiakDo(session => {
+       ros.foreach(ro => rf.createValueRaw(session, ns, ro, null, true))
+    })
+    
+  }
+
+  private def clearBucket(sparkConf: SparkConf): Unit = {
+    val rf = RiakFunctions(sparkConf)
+    rf.withRiakDo(session => {
+      rf.resetAndEmptyBucket(ns)
     })
   }
 
