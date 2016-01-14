@@ -21,6 +21,7 @@ import com.basho.riak.client.core.query.{Location, RiakObject}
 import com.basho.riak.client.core.util.HostAndPort
 import com.basho.riak.spark.query._
 import com.basho.riak.spark.query.{DataQueryingIterator, QueryData, Query}
+import com.basho.riak.spark.rdd.connector.RiakConnector
 import com.basho.riak.spark.rdd.partitioner.{RiakCoveragePlanBasedPartitioner, RiakLocalCoveragePartition, RiakKeysPartition, RiakKeysPartitioner}
 import com.basho.riak.spark.util.{DataConvertingIterator, CountingIterator}
 import org.apache.spark.annotation.DeveloperApi
@@ -88,7 +89,7 @@ class RiakRDD[R] private[spark] (
       val duration = (endTime - startTime) / 1000.0
       logDebug(s"Fetched ${countingIterator.count} rows from ${query.bucket}" +
         f" for partition $partitionIdx in $duration%.3f s.")
-      session.shutdown()
+      session.close()
     }
     countingIterator
   }

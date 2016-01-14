@@ -17,8 +17,8 @@
  */
 package com.basho.riak.spark.query
 
-import com.basho.riak.client.api.RiakClient
 import com.basho.riak.client.core.query.Location
+import com.basho.riak.spark.rdd.connector.RiakSession
 import com.basho.riak.spark.util.CountingIterator
 
 /**
@@ -34,10 +34,10 @@ private trait QuerySubsetOfKeys[K] extends LocationQuery[Int] {
    * @return _1 true, in case when additional values for the last key are available. Additional means that values
    *         are not fit into the current chunk due to the chunk size limit.
    */
-  protected def locationsByKeys(keys: Iterator[K], session: RiakClient): (Boolean, Iterable[Location])
+  protected def locationsByKeys(keys: Iterator[K], session: RiakSession): (Boolean, Iterable[Location])
 
   // scalastyle:off cyclomatic.complexity
-  final override def nextLocationChunk(nextToken: Option[_], session: RiakClient): (Option[Int], Iterable[Location]) = {
+  final override def nextLocationChunk(nextToken: Option[_], session: RiakSession): (Option[Int], Iterable[Location]) = {
     nextToken match {
       case None | Some(0) =>
         // it is either the first call or a kind of "random" read request of reading the first bulk

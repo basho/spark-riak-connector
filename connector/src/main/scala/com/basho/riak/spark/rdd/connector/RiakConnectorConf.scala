@@ -15,14 +15,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package com.basho.riak.spark.rdd
+package com.basho.riak.spark.rdd.connector
 
 import java.net.InetAddress
 
 import com.basho.riak.client.core.util.HostAndPort
 import org.apache.spark.{Logging, SparkConf}
-import scala.util.control.NonFatal
 import scala.collection.JavaConversions._
+import scala.util.control.NonFatal
 
 
 /** Stores configuration of a connection to Riak.

@@ -19,6 +19,7 @@ package com.basho.riak.spark.rdd
 
 import com.basho.riak.client.core.query.timeseries.{Row, ColumnDescription}
 import com.basho.riak.spark.query.{TSQueryData, QueryTS}
+import com.basho.riak.spark.rdd.connector.RiakConnector
 import com.basho.riak.spark.rdd.partitioner.{RiakTSPartition, RiakTSPartitioner}
 import com.basho.riak.spark.util.{TSConversionUtil, CountingIterator, DataConvertingIterator}
 import org.apache.spark.{TaskContext, Partition, Logging, SparkContext}
@@ -80,7 +81,7 @@ class RiakTSRDD[R] private[spark](
       val duration = (endTime - startTime) / 1000.0
       logDebug(s"Fetched ${countingIterator.count} rows from ${q.bucket}" +
         f" for partition $partitionIdx in $duration%.3f s.")
-      session.shutdown()
+      session.close()
     }
     countingIterator
   }

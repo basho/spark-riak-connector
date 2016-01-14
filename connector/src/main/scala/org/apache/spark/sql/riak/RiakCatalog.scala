@@ -22,7 +22,7 @@ import java.util.concurrent.ExecutionException
 import com.basho.riak.client.core.netty.RiakResponseException
 import com.basho.riak.client.core.operations.FetchBucketPropsOperation
 import com.basho.riak.client.core.query.Namespace
-import com.basho.riak.spark.rdd.RiakConnector
+import com.basho.riak.spark.rdd.connector.RiakConnector
 import com.google.common.cache.{CacheBuilder, CacheLoader, LoadingCache}
 import org.apache.spark.Logging
 import org.apache.spark.sql.catalyst.{TableIdentifier, SimpleCatalystConf}
@@ -84,7 +84,7 @@ private[sql] class RiakCatalog(rsc: RiakSQLContext, riakConnector: RiakConnector
     val fetchProps = new FetchBucketPropsOperation.Builder(new Namespace(rsc.bucket, rsc.bucket)).build()
 
     riakConnector.withSessionDo(session => {
-      session.getRiakCluster.execute(fetchProps)
+      session.execute(fetchProps)
     })
 
     try {

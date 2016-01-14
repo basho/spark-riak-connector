@@ -19,11 +19,11 @@ package com.basho.riak.spark.query
 
 import java.math.BigInteger
 
-import com.basho.riak.client.api.RiakClient
 import com.basho.riak.client.api.commands.indexes.{BigIntIndexQuery, BinIndexQuery, IntIndexQuery}
 import com.basho.riak.client.core.operations.CoveragePlanOperation.Response.CoverageEntry
 import com.basho.riak.client.core.query.{Namespace, Location}
 import com.basho.riak.client.core.util.BinaryValue
+import com.basho.riak.spark.rdd.connector.RiakSession
 import com.basho.riak.spark.rdd.{ReadConf, BucketDef}
 
 import scala.collection.JavaConversions._
@@ -56,7 +56,7 @@ private case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadC
 
   // This method is looks ugly, but to fix that we need to introduce changes in Riak Java Client
     // scalastyle:off cyclomatic.complexity method.length
-  override def nextLocationChunk(nextToken: Option[_], session: RiakClient): (Option[String], Iterable[Location]) = {
+  override def nextLocationChunk(nextToken: Option[_], session: RiakSession): (Option[String], Iterable[Location]) = {
     val ns = new Namespace(bucket.bucketType, bucket.bucketName)
     val builder = from match {
 

@@ -18,10 +18,16 @@
 package com.basho.riak.spark.query
 
 import java.sql.Timestamp
+import java.util.concurrent.ExecutionException
 
-import com.basho.riak.client.api.RiakClient
+import com.basho.riak.client.core.netty.RiakResponseException
+import com.basho.riak.client.core.operations.ts.QueryOperation
+
 import com.basho.riak.client.core.query.timeseries.{Row, ColumnDescription}
+import com.basho.riak.client.core.util.BinaryValue
+import com.basho.riak.spark.rdd.connector.RiakSession
 import com.basho.riak.spark.rdd.{BucketDef, ReadConf}
+
 import scala.collection.convert.decorateAsScala._
 
 /**
@@ -62,10 +68,20 @@ case class QueryTS(bucket: BucketDef, queryData: TSQueryData, readConf: ReadConf
     recursiveInterpolateFirst(sql, values.iterator)
   }
 
-  def nextChunk(session: RiakClient): (Seq[ColumnDescription], Seq[Row]) = {
+  def nextChunk(session: RiakSession): (Seq[ColumnDescription], Seq[Row]) = {
     val sql = interpolateValues(queryData.sql, queryData.values)
-    val request = new com.basho.riak.client.api.commands.timeseries.Query.Builder(sql).build()
-    val response = session.execute(request)
-    response.getColumnDescriptions.asScala -> response.getRows.asScala
+    val op = new QueryOperation.Builder(BinaryValue.create(sql.toString)).build()
+    try {
+      val qr = session.execute(op).get()
+      qr.getColumnDescriptions.asScala -> qr.getRows.asScala
+    } catch {
+      case e: ExecutionException =>
+        if (e.getCause.isInstanceOf[RiakResponseException]
+          && e.getCause.getMessage.equals("Unknown message code: 90")) {
+          throw new IllegalStateException("Range queries are not supported in your version of Riak", e.getCause)
+        } else {
+          throw e
+        }
+    }
   }
 }

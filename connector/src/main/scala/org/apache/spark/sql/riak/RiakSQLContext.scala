@@ -17,7 +17,7 @@
   */
 package org.apache.spark.sql.riak
 
-import com.basho.riak.spark.rdd.RiakConnector
+import com.basho.riak.spark.rdd.connector.RiakConnector
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.{DataFrame, SQLContext}
 

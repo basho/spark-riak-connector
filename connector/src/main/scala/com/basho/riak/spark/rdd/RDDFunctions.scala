@@ -20,6 +20,7 @@ package com.basho.riak.spark.rdd
 import com.basho.riak.client.core.query.Namespace
 import com.basho.riak.client.core.query.timeseries.{Row => RiakRow}
 import com.basho.riak.spark._
+import com.basho.riak.spark.rdd.connector.RiakConnector
 import com.basho.riak.spark.writer.ts.RowDef
 import com.basho.riak.spark.writer.{RiakWriter, WriteConf, WriteDataMapperFactory}
 import org.apache.spark.SparkContext

@@ -3,6 +3,7 @@ import com.basho.riak.client.core.RiakNode
 import com.basho.riak.client.core.query.Namespace
 import com.basho.riak.spark.rdd._
 import com.basho.riak.client.core.query.indexes.LongIntIndex
+import com.basho.riak.spark.rdd.connector.RiakConnectorConf
 import com.basho.riak.spark.rdd.{RiakFunctions, BucketDef}
 import com.basho.riak.spark.util.RiakObjectConversionUtil
 import com.basho.riak.spark.writer.{WriteDataMapperFactory, WriteDataMapper}
