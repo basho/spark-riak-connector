@@ -85,11 +85,11 @@ object SimpleScalaRiakTSExample {
     
     // TS range scan
     val rddTS = sc.riakTSBucket(tableName)
-      .sql(s"SELECT * FROM $tableName WHERE time >= $from AND time <= $to  AND  weather != 'sunny' AND family = 'f'")
+      .sql(s"SELECT * FROM $tableName WHERE time >= $from AND time <= $to  AND  weather = 'sunny' AND family = 'f'")
     println(s"Execution result for TS: ${rddTS.count}")
     
     // Non-TS way to do the same
-    val rddNTS = sc.riakBucket[WeatherDemo](ns).query2iRangeLocal("time", from, to).filter(x => x.weather != "sunny")
+    val rddNTS = sc.riakBucket[WeatherDemo](ns).query2iRangeLocal("time", from, to).filter(x => x.weather == "sunny")
     println(s"Execution result for non-TS: ${rddNTS.count}")
   }
 
