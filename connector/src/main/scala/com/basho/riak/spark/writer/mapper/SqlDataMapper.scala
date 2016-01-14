@@ -74,7 +74,20 @@ class SqlDataMapper[T <: SparkRow] extends WriteDataMapper[T, RowDef] {
     case DateType =>
       val sqlDate = Option(row.getAs[java.sql.Date](field.name))
       val cd = new ColumnDescription(field.name, ColumnType.TIMESTAMP)
-      val cell = if (sqlDate.isDefined) new Cell(new Date(sqlDate.get.getTime)) else null
+      val cell = if (sqlDate.isDefined) {
+        Cell.newTimestamp(sqlDate.get.getTime)
+      } else {
+        null
+      }
+      cd -> cell
+    case TimestampType =>
+      val sqlTs = Option(row.getAs[java.sql.Timestamp](field.name))
+      val cd = new ColumnDescription(field.name, ColumnType.TIMESTAMP)
+      val cell = if (sqlTs.isDefined){
+        Cell.newTimestamp(sqlTs.get.getTime)
+      } else {
+        null
+      }
       cd -> cell
     case _ => sys.error(s"${field.dataType} not supported")
   }

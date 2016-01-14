@@ -19,7 +19,6 @@ package com.basho.riak.spark.rdd.timeseries
 
 import java.util.concurrent.ExecutionException
 import java.util.{Calendar, GregorianCalendar, TimeZone}
-
 import com.basho.riak.client.api.commands.timeseries.Delete
 import com.basho.riak.client.core.netty.RiakResponseException
 import com.basho.riak.client.core.operations.FetchBucketPropsOperation
@@ -28,10 +27,12 @@ import com.basho.riak.client.core.query.timeseries.{Cell, Row}
 import com.basho.riak.client.core.query.Namespace
 import com.basho.riak.spark._
 import com.basho.riak.spark.rdd.AbstractRDDTest
+import com.basho.riak.spark.util.TimeSeriesToSparkSqlConversion
+import org.apache.spark.sql.types._
 import org.junit.Assert._
 import org.junit.Assume
-
 import scala.collection.JavaConversions._
+import java.sql.Timestamp
 
 case class TimeSeriesData(time: Long, user_id: String, temperature_k: Double)
 
@@ -40,8 +41,18 @@ case class TimeSeriesData(time: Long, user_id: String, temperature_k: Double)
   */
 abstract class AbstractTimeSeriesTest(val createTestDate: Boolean = true) extends AbstractRDDTest {
 
+  protected def getMillis = (t: Timestamp) => t.getTime
+  
   protected val DEFAULT_TS_NAMESPACE = new Namespace("time_series_test","time_series_test")
   protected val bucketName = DEFAULT_TS_NAMESPACE.getBucketTypeAsString
+
+  val schema = StructType(List(
+    StructField(name = "surrogate_key", dataType = LongType),
+    StructField(name = "family", dataType = StringType),
+    StructField(name = "time", dataType = TimestampType),
+    StructField(name = "user_id", dataType = StringType),
+    StructField(name = "temperature_k", dataType = DoubleType))
+  )
 
   val testData = List(
     TimeSeriesData(111111, "bryce", 305.37),
@@ -55,8 +66,20 @@ abstract class AbstractTimeSeriesTest(val createTestDate: Boolean = true) extend
   val tsRangeStart: Calendar = mkTimestamp(testData.minBy(_.time).time)
   val tsRangeEnd: Calendar = mkTimestamp(testData.maxBy(_.time).time)
 
-  val sqlWhereClause: String = s"WHERE time > ${tsRangeStart.getTimeInMillis - 5} AND " +
-    s"time < ${tsRangeEnd.getTimeInMillis + 10} AND surrogate_key = 1 AND family = 'f'"
+  val queryFrom = tsRangeStart.getTimeInMillis - 5
+  val queryTo = tsRangeEnd.getTimeInMillis + 10
+
+  val riakTSRows = testData.map(f => new Row(
+    new Cell(1) /*surrogate_key*/ ,
+    new Cell("f") /* family */ ,
+    Cell.newTimestamp(f.time),
+    new Cell(f.user_id),
+    new Cell(f.temperature_k)))
+
+  val sparkRowsWithSchema = riakTSRows.map( r => TimeSeriesToSparkSqlConversion.asSparkRow(schema, r))
+
+  val sqlWhereClause: String = s"WHERE time > $queryFrom AND " +
+    s"time < $queryTo AND surrogate_key = 1 AND family = 'f'"
 
   val sqlQuery: String = s"SELECT surrogate_key, family, time, user_id, temperature_k " +
     s"FROM $bucketName $sqlWhereClause"
@@ -85,7 +108,7 @@ abstract class AbstractTimeSeriesTest(val createTestDate: Boolean = true) extend
     sc.riakTSBucket[org.apache.spark.sql.Row](bucketName)
       .sql(sqlQuery)
       .collect()
-      .map(row => (row.getLong(0), row.getString(1), row.getLong(2)))
+      .map(row => (row.getLong(0), row.getString(1), row.getTimestamp(2).getTime))
       .map { case (surrogateKey, family, time) => List(new Cell(surrogateKey), new Cell(family), Cell.newTimestamp(time)) }
       .foreach { keys =>
         val builder = new Delete.Builder(DEFAULT_TS_NAMESPACE.getBucketNameAsString(), keys)
@@ -103,14 +126,9 @@ abstract class AbstractTimeSeriesTest(val createTestDate: Boolean = true) extend
     if (createTestDate) {
       val tableName = DEFAULT_TS_NAMESPACE.getBucketType
 
-      val rows = testData.map(f => new Row(
-        new Cell(1) /*surrogate_key*/ ,
-        new Cell("f") /* family */ ,
-        Cell.newTimestamp(f.time),
-        new Cell(f.user_id),
-        new Cell(f.temperature_k)))
-
-      val storeOp = new StoreOperation.Builder(tableName).withRows(rows).build()
+      val storeOp = new StoreOperation.Builder(tableName)
+        .withRows(riakTSRows)
+        .build()
 
       withRiakDo(session => {
         session.getRiakCluster.execute(storeOp).get()
