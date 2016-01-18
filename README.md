@@ -6,7 +6,7 @@ Spark Riak connector allows you to expose data stored in Riak buckets as Spark R
 
 ## Compatibility
 * Compatible with Riak KV, bundled inside BDP 1.x
-* Compatible with Apache Spark 1.4 or later
+* Compatible with Apache Spark 1.5.2 or later
 * Compatible with Scala 2.10 or later
 * Compatible with Java 8
 
@@ -20,6 +20,8 @@ Spark Riak connector allows you to expose data stored in Riak buckets as Spark R
 * Provides mapping and data conversion for JSON formatted values
 * Provides ability to construct an RDD by using a 2i string index or a set of indexes
 * Provides ability to construct an RDD by using a 2i range query or a set of ranges 
+* Provides ability to perform range queries over Riak TS bucket
+* Provides ability to construct Dataframes from Riak TS bucket
 
 
 ## Building
@@ -193,6 +195,14 @@ Riak TS buckets can be queried using sql() function:
 
 ```scala
 val rdd = sc.riakTSBucket(tableName).sql(s"SELECT * FROM $tableName WHERE time >= $from AND time <= $to")
+```
+
+### Saving rdd to Riak TS bucket
+
+Existing rdd of org.apache.spark.sql.Row> can be saved to Riak TS as follows
+
+```scala
+rdd.saveToRiakTS(TABLE_NAME);
 ```
 
 ## Examples
