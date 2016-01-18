@@ -49,7 +49,7 @@ private[sql] class RiakCatalog(rsc: RiakSQLContext, riakConnector: RiakConnector
   }
 
   override def refreshTable(tableIdent: TableIdentifier): Unit = {
-    val table = bucketIdent(tableIdent.toSeq)
+    val table = bucketIdent(tableIdent)
     cachedDataSourceTables.refresh(table)
   }
 
@@ -81,7 +81,8 @@ private[sql] class RiakCatalog(rsc: RiakSQLContext, riakConnector: RiakConnector
   }
 
   override def tableExists(tableIdentifier: Seq[String]): Boolean = {
-    val fetchProps = new FetchBucketPropsOperation.Builder(new Namespace(rsc.bucket, rsc.bucket)).build()
+    val tableIdent = bucketIdent(tableIdentifier)
+    val fetchProps = new FetchBucketPropsOperation.Builder(new Namespace(tableIdent, tableIdent)).build()
 
     riakConnector.withSessionDo(session => {
       session.execute(fetchProps)
@@ -97,10 +98,7 @@ private[sql] class RiakCatalog(rsc: RiakSQLContext, riakConnector: RiakConnector
     }
   }
 
-  def getTablesFromRiakTS(databaseName: Option[String]): Seq[(String, Boolean)] = {
-    List(rsc.bucket -> false)
-  }
-
+  def getTablesFromRiakTS(databaseName: Option[String]): Seq[(String, Boolean)] = Nil
 
   /** Build logic plan from a RiakRelation */
   private def buildRelation(tableIdent: String): LogicalPlan = {
@@ -112,5 +110,9 @@ private[sql] class RiakCatalog(rsc: RiakSQLContext, riakConnector: RiakConnector
   private def bucketIdent(tableIdentifier: Seq[String]): String = {
     require(tableIdentifier.size == 1)
     tableIdentifier.head
+  }
+
+  private def bucketIdent(tableIdentifier: TableIdentifier): String = {
+    tableIdentifier.table
   }
 }
