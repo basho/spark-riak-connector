@@ -29,6 +29,7 @@
             <groupId>com.basho.riak</groupId>
             <artifactId>spark-riak-connector</artifactId>
             <version>${project.version}</version>
+            <classifier>shaded</classifier>
         </dependency>
         <dependency>
             <groupId>com.basho.riak</groupId>
@@ -61,7 +62,7 @@
         <plugins>
             <plugin>
                 <artifactId>maven-assembly-plugin</artifactId>
-                <version>2.5.3</version>
+                <version>2.6</version>
                 <configuration>
                     <descriptors>
                         <descriptor>src/main/repl/spark-repl-assembly.xml</descriptor>

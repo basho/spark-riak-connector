@@ -27,24 +27,19 @@
   </formats>
 
   <dependencySets>
-
     <!-- put all binary prerequisites to /lib -->
     <dependencySet>
       <outputDirectory>lib</outputDirectory>
       <includes>
-        <include>com.basho.riak:spark-riak-connector</include>
+        <include>com.basho.riak:spark-riak-connector:jar:shaded</include>
         <include>com.basho.riak:spark-riak-connector-java</include>
         <include>com.basho.riak:spark-riak-connector-test-utils</include>
-        <include>com.google.guava:guava</include>
-        <include>com.basho.riak:dataplatform-riak-client</include>
-        <include>com.fasterxml.jackson.module:jackson-module-scala_${scala.major.version}</include>
-        <include>com.fasterxml.jackson.datatype:jackson-datatype-joda</include>
-        <include>org.scala-lang.modules:scala-java8-compat_${scala.major.version}</include>
+
+        <!-- artifacts required for OFAC demo -->
         <include>org.scala-lang:scala-swing</include>
         <include>org.jfree:jfreechart</include>
         <include>org.jfree:jcommon</include>
         <include>com.github.wookietreiber:scala-chart_${scala.major.version}</include>
-        <include>joda-time:joda-time</include>
       </includes>
     </dependencySet>
 
