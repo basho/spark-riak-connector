@@ -24,8 +24,7 @@ import org.apache.spark.sql.riak.RiakSQLContext
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.SQLContext
 import org.junit.Assert.assertTrue
-import org.junit.rules.ExpectedException
-import org.junit.{Rule, Test}
+import org.junit.Test
 import org.junit.experimental.categories.Category
 
 /**
@@ -33,11 +32,6 @@ import org.junit.experimental.categories.Category
   */
 @Category(Array(classOf[RiakTSTests]))
 class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
-
-  val _expectedException: ExpectedException = ExpectedException.none()
-
-  @Rule
-  def expectedException: ExpectedException = _expectedException
 
   @Test
   def readDataAsSqlRow(): Unit = {

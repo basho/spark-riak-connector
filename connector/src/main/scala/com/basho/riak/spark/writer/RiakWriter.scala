@@ -20,6 +20,7 @@ package com.basho.riak.spark.writer
 import com.basho.riak.client.api.cap.Quorum
 import com.basho.riak.client.api.commands.kv.StoreValue
 import com.basho.riak.client.api.convert.JSONConverter
+import com.basho.riak.client.core.RiakFuture
 import com.basho.riak.client.core.operations.ts.StoreOperation
 import com.basho.riak.client.core.query.{Location, Namespace}
 import com.basho.riak.spark._
@@ -101,7 +102,10 @@ class RiakTSWriter[T](connector: RiakConnector,
     val builder = new StoreOperation.Builder(ns.getBucketNameAsString).withRows(rowDefs.map(_.row))
     rowDefs.map(_.columnDescription).filter(_.isDefined).map(_.get).headOption.foreach(descr => builder.withColumns(descr.toList))
 
-    session.execute(builder.build()).await()
+    val future: RiakFuture[Void, String] = session.execute(builder.build())
+    future.await()
+
+    if (!future.isSuccess) throw future.cause()
   }
 }
 

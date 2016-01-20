@@ -29,7 +29,8 @@ import com.basho.riak.spark.rdd.AbstractRiakSparkTest
 import org.apache.spark.Logging
 import org.apache.spark.sql.types._
 import org.junit.Assert._
-import org.junit.Assume
+import org.junit.{Rule, Assume}
+import org.junit.rules.ExpectedException
 import scala.collection.JavaConversions._
 import java.sql.Timestamp
 
@@ -39,6 +40,11 @@ case class TimeSeriesData(time: Long, user_id: String, temperature_k: Double)
   * @author Sergey Galkin <srggal at gmail dot com>
   */
 abstract class AbstractTimeSeriesTest(val createTestDate: Boolean = true) extends AbstractRiakSparkTest with Logging {
+
+  val _expectedException: ExpectedException = ExpectedException.none()
+
+  @Rule
+  def expectedException: ExpectedException = _expectedException
 
   protected def getMillis = (t: Timestamp) => t.getTime
 
