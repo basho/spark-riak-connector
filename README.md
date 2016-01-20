@@ -94,12 +94,14 @@ from the spark-shell and set within the $SPARK_HOME/conf/spark-default.conf.
 
 The following options are available on `SparkConf` object:
 
-Property name                                  | Description                                       | Default value
------------------------------------------------|---------------------------------------------------|--------------------
-spark.riak.connection.host                     | IP:port of a Riak node protobuf interface         | 127.0.0.1:8087
-spark.riak.connections.min                     | Minimum number of parallel connections to Riak    | 10
-spark.riak.connections.max                     | Maximum number of parallel connections to Riak    | 30
-spark.riak.input.fetch-size                    | Number of keys to fetch in a single round-trip to Riak | 1000
+Property name                                  | Description                                       | Default value      | Riak Type
+-----------------------------------------------|---------------------------------------------------|--------------------|-------------
+spark.riak.connection.host                     | IP:port of a Riak node protobuf interface         | 127.0.0.1:8087     | KV/TS
+spark.riak.connections.min                     | Minimum number of parallel connections to Riak    | 10                 | KV/TS
+spark.riak.connections.max                     | Maximum number of parallel connections to Riak    | 30                 | KV/TS
+spark.riak.input.fetch-size                    | Number of keys to fetch in a single round-trip to Riak | 1000          | KV
+spark.riak.input.split.count                   | Desired minimum number of Spark partitions to divide the data into | 10| KV
+spark.riak.output.wquorum                      | Quorum value on write                                              | 1 | KV
 
 
 Example:

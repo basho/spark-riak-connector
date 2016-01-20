@@ -20,6 +20,15 @@ package org.apache.spark.sql.riak
 import org.apache.spark.sql.{DataFrame, SaveMode, SQLContext}
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types.StructType
+import com.basho.riak.spark.rdd.connector.RiakConnectorConf
+import com.basho.riak.client.api.RiakClient
+import com.basho.riak.spark.rdd.connector.RiakConnector
+import com.basho.riak.client.core.RiakNode
+import org.apache.spark.SparkConf
+import com.basho.riak.client.core.util.HostAndPort
+import scala.collection.JavaConversions._
+import com.basho.riak.spark.rdd.ReadConf
+import com.basho.riak.spark.writer.WriteConf
 
 /**
   * Riak data source extends [[RelationProvider]], [[SchemaRelationProvider]] and [[CreatableRelationProvider]].
@@ -28,21 +37,19 @@ import org.apache.spark.sql.types.StructType
   * @since 1.2.0
   */
 class DefaultSource extends RelationProvider with SchemaRelationProvider with CreatableRelationProvider {
-
+  
   /**
     * Creates a new relation for a RiakTS bucket and explicitly pass schema [[StructType]] as a parameter
     */
   override def createRelation(sqlContext: SQLContext, parameters: Map[String, String], schema: StructType): BaseRelation = {
-    val bucketDef = DefaultSource.parseBucketDef(parameters)
-    RiakRelation(bucketDef.bucket, sqlContext, Some(schema))
+    DefaultSource.createRelationRead(sqlContext, parameters, Some(schema))
   }
 
   /**
     * Creates a new relation for a RiakTS bucket.
     */
   override def createRelation(sqlContext: SQLContext, parameters: Map[String, String]): BaseRelation = {
-    val bucketDef = DefaultSource.parseBucketDef(parameters)
-    RiakRelation(bucketDef.bucket, sqlContext, None)
+    DefaultSource.createRelationRead(sqlContext, parameters, None)
   }
 
   /**
@@ -52,8 +59,7 @@ class DefaultSource extends RelationProvider with SchemaRelationProvider with Cr
     * @note Due to the RiakTS restriction the only [[SaveMode.Append]] is supported
     */
   override def createRelation(sqlContext: SQLContext, mode: SaveMode, parameters: Map[String, String], data: DataFrame): BaseRelation = {
-    val bucketDef = DefaultSource.parseBucketDef(parameters)
-    val relation =  RiakRelation(bucketDef.bucket, sqlContext, None)
+    val relation =  DefaultSource.createRelationWrite(sqlContext, parameters, None)
 
     mode match {
       case SaveMode.Append => relation.insert(data, overwrite = false)
@@ -80,6 +86,26 @@ object DefaultSource {
   private def parseBucketDef(parameters: Map[String, String]): BucketDef = {
     val bucket = parameters(RiakBucketProperty)
     BucketDef(bucket, None)
+  }
+  
+  private def parseRiakConnectionOptions(options: Map[String, String], conf: SparkConf): RiakConnector = {
+    new RiakConnector(RiakConnectorConf(conf, options))
+  }
+  
+  private def createRelationRead(sqlContext: SQLContext, parameters: Map[String, String], schema: Option[StructType]): RiakRelation = {
+    val existingConf = sqlContext.sparkContext.getConf
+    val bucketDef = parseBucketDef(parameters)
+    val riakConnector = parseRiakConnectionOptions(parameters, existingConf)
+    val readConf = ReadConf.fromOptions(parameters, existingConf)
+    RiakRelation(bucketDef.bucket, sqlContext, schema, Some(riakConnector), readConf = readConf)
+  }
+  
+  private def createRelationWrite(sqlContext: SQLContext, parameters: Map[String, String], schema: Option[StructType]): RiakRelation = {
+    val existingConf = sqlContext.sparkContext.getConf
+    val bucketDef = parseBucketDef(parameters)
+    val riakConnector = parseRiakConnectionOptions(parameters, existingConf)
+    val writeConf = WriteConf.fromOptions(parameters, existingConf)
+    RiakRelation(bucketDef.bucket, sqlContext, schema, Some(riakConnector), writeConf = writeConf)
   }
 }
 

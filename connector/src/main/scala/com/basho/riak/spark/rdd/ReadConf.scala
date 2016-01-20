@@ -42,9 +42,21 @@ case class ReadConf (
     * IT MAY CAUSE EITHER PERFORMANCE DEGRADATION or INTRODUCE FBR ERRORS
     */
   useStreamingValuesForFBRead: Boolean = ReadConf.DefaultUseStreamingValues4FBRead
-)
+) {
+  
+  def overrideProperties(options: Map[String, String]): ReadConf = {    
+    val newFetchSize = options.getOrElse(ReadConf.fetchSizePropName, fetchSize.toString).toInt
+    val newSplitCount = options.getOrElse(ReadConf.splitCountPropName, splitCount.toString).toInt 
+    val newUseStreamingValuesForFBRead = options.getOrElse(ReadConf.useStreamingValuesPropName, useStreamingValuesForFBRead.toString).toBoolean 
+    ReadConf(newFetchSize, newSplitCount, newUseStreamingValuesForFBRead)
+  }
+}
 
 object ReadConf {
+  
+  val fetchSizePropName = "spark.riak.input.fetch-size"
+  val splitCountPropName = "spark.riak.input.split.count"
+  val useStreamingValuesPropName = "spark.riak.fullbucket.use-streaming-values"
 
   private val defaultProperties: Properties =
      getClass.getResourceAsStream("/ee-default.properties") match {
@@ -63,14 +75,19 @@ object ReadConf {
   val DefaultSplitCount = 10
 
   val DefaultUseStreamingValues4FBRead: Boolean =
-    defaultProperties.getProperty("spark.riak.fullbucket.use-streaming-values", "false")
+    defaultProperties.getProperty(useStreamingValuesPropName, "false")
     .toBoolean
 
   def fromSparkConf(conf: SparkConf): ReadConf = {
     ReadConf(
-      fetchSize = conf.getInt("spark.riak.input.fetch-size", DefaultFetchSize),
-      splitCount = conf.getInt("spark.riak.input.split.count", DefaultSplitCount),
-      useStreamingValuesForFBRead = conf.getBoolean("spark.riak.fullbucket.use-streaming-values", DefaultUseStreamingValues4FBRead)
+      fetchSize = conf.getInt(fetchSizePropName, DefaultFetchSize),
+      splitCount = conf.getInt(splitCountPropName, DefaultSplitCount),
+      useStreamingValuesForFBRead = conf.getBoolean(useStreamingValuesPropName, DefaultUseStreamingValues4FBRead)
     )
+  }
+  
+  def fromOptions(options: Map[String, String], conf: SparkConf): ReadConf = {
+    val readConf = fromSparkConf(conf)
+    readConf.overrideProperties(options)
   }
 }

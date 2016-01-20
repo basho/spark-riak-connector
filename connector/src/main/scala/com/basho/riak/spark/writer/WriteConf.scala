@@ -19,7 +19,13 @@ package com.basho.riak.spark.writer
 
 import org.apache.spark.SparkConf
 
-case class WriteConf( writeQuorum: Int = WriteConf.DefaultWriteQuorum)
+case class WriteConf( writeQuorum: Int = WriteConf.DefaultWriteQuorum) {
+  
+  def overrideProperties(options: Map[String, String]): WriteConf = {
+    val newWriteQuorum = options.getOrElse(WriteConf.WriteQuorumProperty, writeQuorum.toString).toInt
+    WriteConf(newWriteQuorum)
+  }
+}
 
 object WriteConf {
   val WriteQuorumProperty = "spark.riak.output.wquorum"
@@ -30,5 +36,10 @@ object WriteConf {
     WriteConf(
       writeQuorum = conf.getInt(WriteQuorumProperty, DefaultWriteQuorum)
     )
+  }
+  
+  def fromOptions(options: Map[String, String], conf: SparkConf): WriteConf = {
+    val writeConf = fromSparkConf(conf)
+    writeConf.overrideProperties(options)
   }
 }
