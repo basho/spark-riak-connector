@@ -17,7 +17,6 @@
   */
 package org.apache.spark.sql.riak
 
-import com.basho.riak.client.core.query.timeseries.ColumnDescription
 import com.basho.riak.spark._
 import com.basho.riak.spark.rdd.connector.RiakConnector
 import com.basho.riak.spark.rdd.{ReadConf, RiakTSRDD}
@@ -82,7 +81,8 @@ private[riak] class RiakRelation(
   private[this] val baseRdd: RiakTSRDD[Row] =
     sqlContext.sparkContext.riakTSBucket[Row](bucket)
 
-  def buildScan(): RDD[Row] = baseRdd.asInstanceOf[RDD[Row]]
+   def buildScan(): RDD[Row] =
+    baseRdd.asInstanceOf[RDD[Row]]
 
   override def buildScan(requiredColumns: Array[String], filters: Array[Filter]): RDD[Row] = {
 

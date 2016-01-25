@@ -14,6 +14,10 @@
 
     <dependencies>
         <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.fasterxml.jackson.module</groupId>
             <artifactId>jackson-module-scala_${scala.major.version}</artifactId>
         </dependency>
@@ -96,9 +100,8 @@
                                     <include>com.fasterxml.jackson.datatype:jackson-datatype-joda</include>
                                     <include>joda-time:joda-time</include>
                                     <include>com.fasterxml.jackson.module:jackson-module-scala_${scala.major.version}</include>
-                                    <!--<include>org.jfree:jcommon</include>-->
                                     <include>org.scala-lang.modules:scala-java8-compat_${scala.major.version}</include>
-                                    <inlude>com.basho.riak:riak-client</inlude>
+                                    <inlude>com.basho.riak:dataplatform-riak-client</inlude>
                                 </includes>
                             </artifactSet>
                         </configuration>

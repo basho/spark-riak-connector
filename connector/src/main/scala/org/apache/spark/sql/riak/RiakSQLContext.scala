@@ -28,7 +28,7 @@ import org.apache.spark.sql.{DataFrame, SQLContext}
   * @author Sergey Galkin <srggal at gmail dot com>
   * @since 1.2.0
   */
-class RiakSQLContext(sc: SparkContext, val bucket: String) extends SQLContext(sc) {
+class RiakSQLContext(sc: SparkContext) extends SQLContext(sc) {
 
   /** A catalyst metadata catalog that points to Riak. */
   @transient

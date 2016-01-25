@@ -23,7 +23,7 @@ export EXAMPLES_HOME="$FWDIR"
 
 . "$FWDIR"/conf/config.sh
 
-spark-shell --jars $(echo $FWDIR/**/*.jar | tr ' ' ',') \
+spark-shell --jars $SPARK_JARS \
 	--conf spark.riak.connection.host=$RIAK_HOST:$RIAK_PORT \
 	-i $FWDIR/conf/rspark-shell-defaults.scala \
 	$@
