@@ -27,6 +27,7 @@ import com.basho.riak.spark.rdd.*;
 import com.basho.riak.spark.rdd.connector.RiakConnector$;
 import com.basho.riak.spark.util.RiakObjectConversionUtil;
 import org.apache.spark.SparkContext;
+import org.apache.spark.sql.types.StructType;
 import scala.Function2;
 import scala.Option;
 import scala.Tuple2;
@@ -95,6 +96,14 @@ public class SparkContextJavaFunctions {
         final ClassTag<T> classTag = getClassTag(targetClass);
         final RiakTSRDD<T> rdd = RiakTSRDD$.MODULE$.apply(sparkContext, bucketName, ReadConf$.MODULE$.apply(sparkContext.getConf()),
             classTag, RiakConnector$.MODULE$.apply(sparkContext.getConf()));
+        return new RiakTSJavaRDD<>(rdd, classTag);
+    }
+
+    public <T> RiakTSJavaRDD<T> riakTSBucket(String bucketName, StructType schema, Class<T> targetClass) {
+        final ClassTag<T> classTag = getClassTag(targetClass);
+        final RiakTSRDD<T> rdd = RiakTSRDD$.MODULE$.apply(sparkContext, bucketName,
+                ReadConf$.MODULE$.apply(sparkContext.getConf()), Option.apply(schema),
+                classTag, RiakConnector$.MODULE$.apply(sparkContext.getConf()));
         return new RiakTSJavaRDD<>(rdd, classTag);
     }
 }

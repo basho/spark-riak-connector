@@ -59,7 +59,7 @@ class DefaultSource extends RelationProvider with SchemaRelationProvider with Cr
     * @note Due to the RiakTS restriction the only [[SaveMode.Append]] is supported
     */
   override def createRelation(sqlContext: SQLContext, mode: SaveMode, parameters: Map[String, String], data: DataFrame): BaseRelation = {
-    val relation =  DefaultSource.createRelationWrite(sqlContext, parameters, None)
+    val relation =  DefaultSource.createRelationWrite(sqlContext, parameters, Some(data.schema))
 
     mode match {
       case SaveMode.Append => relation.insert(data, overwrite = false)
