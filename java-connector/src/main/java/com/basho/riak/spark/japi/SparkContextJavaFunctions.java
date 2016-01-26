@@ -24,6 +24,7 @@ import com.basho.riak.spark.japi.rdd.RiakJavaPairRDD;
 import com.basho.riak.spark.japi.rdd.RiakJavaRDD;
 import com.basho.riak.spark.japi.rdd.RiakTSJavaRDD;
 import com.basho.riak.spark.rdd.*;
+import com.basho.riak.spark.rdd.connector.RiakConnector$;
 import com.basho.riak.spark.util.RiakObjectConversionUtil;
 import org.apache.spark.SparkContext;
 import scala.Function2;
@@ -73,7 +74,7 @@ public class SparkContextJavaFunctions {
         final ClassTag<T> classTag = getClassTag(valueClass);
         final String bucketTypeStr = bucketType == null || bucketType.isEmpty() ? "default" : bucketType;
         final RiakRDD<T> rdd = RiakRDD$.MODULE$.apply(sparkContext, bucketTypeStr, bucketName,
-                ConversionFunction.create(classTag), Option.apply(null), ReadConf$.MODULE$.fromSparkConf(sparkContext.getConf()), classTag);
+                ConversionFunction.create(classTag), Option.apply(null), ReadConf$.MODULE$.apply(sparkContext.getConf()), classTag);
         return new RiakJavaRDD<>(rdd, classTag);
     }
 
@@ -86,13 +87,14 @@ public class SparkContextJavaFunctions {
         final ClassTag<V> vClassTag = getClassTag(valueClass);
         final String bucketTypeStr = bucketType == null || bucketType.isEmpty() ? "default" : bucketType;
         final RiakRDD<Tuple2<K, V>> rdd = RiakRDD$.MODULE$.apply(sparkContext, bucketTypeStr, bucketName, convert,
-                Option.apply(null), ReadConf$.MODULE$.fromSparkConf(sparkContext.getConf()), kClassTag, vClassTag);
+                Option.apply(null), ReadConf$.MODULE$.apply(sparkContext.getConf()), kClassTag, vClassTag);
         return new RiakJavaPairRDD<>(rdd, kClassTag, vClassTag);
     }
 
     public <T> RiakTSJavaRDD<T> riakTSBucket(String bucketName, Class<T> targetClass) {
         final ClassTag<T> classTag = getClassTag(targetClass);
-        final RiakTSRDD<T> rdd = RiakTSRDD$.MODULE$.apply(sparkContext, bucketName, classTag);
+        final RiakTSRDD<T> rdd = RiakTSRDD$.MODULE$.apply(sparkContext, bucketName, ReadConf$.MODULE$.apply(sparkContext.getConf()),
+            classTag, RiakConnector$.MODULE$.apply(sparkContext.getConf()));
         return new RiakTSJavaRDD<>(rdd, classTag);
     }
 }

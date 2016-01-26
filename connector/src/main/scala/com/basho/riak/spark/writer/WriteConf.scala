@@ -19,16 +19,37 @@ package com.basho.riak.spark.writer
 
 import org.apache.spark.SparkConf
 
-case class WriteConf( writeQuorum: Int = WriteConf.DefaultWriteQuorum)
+case class WriteConf( writeQuorum: Int = WriteConf.DefaultWriteQuorum) {
+  
+  def overrideProperties(options: Map[String, String]): WriteConf = {
+    val newWriteQuorum = options.getOrElse(WriteConf.WriteQuorumProperty, writeQuorum.toString).toInt
+    WriteConf(newWriteQuorum)
+  }
+}
 
 object WriteConf {
   val WriteQuorumProperty = "spark.riak.output.wquorum"
 
   val DefaultWriteQuorum = 1
 
-  def fromSparkConf(conf: SparkConf): WriteConf = {
+  /** Creates WriteConf based on properties provided to Spark Conf
+  *
+  * @param conf SparkConf of Spark context with Riak-related properties
+  */
+  def apply(conf: SparkConf): WriteConf = {
     WriteConf(
       writeQuorum = conf.getInt(WriteQuorumProperty, DefaultWriteQuorum)
     )
+  }
+  
+  /** Creates WriteConf based on an externally provided map of properties 
+  *   to override those of SparkCon 
+  *
+  * @param conf SparkConf of Spark context to be taken as defaults
+  * @param options externally provided map of properties 
+  */
+  def apply(conf: SparkConf, options: Map[String, String]): WriteConf = {
+    val writeConf = WriteConf(conf)
+    writeConf.overrideProperties(options)
   }
 }

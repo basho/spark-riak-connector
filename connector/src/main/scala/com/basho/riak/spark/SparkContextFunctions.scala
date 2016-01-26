@@ -39,9 +39,9 @@ class SparkContextFunctions(@transient val sc: SparkContext) extends Serializabl
     }
   }
 
-  def riakTSBucket[T](bucketName: String)
-                   (implicit ct: ClassTag[T]): RiakTSRDD[T] =
-    RiakTSRDD[T](sc, bucketName)
+  def riakTSBucket[T](bucketName: String, readConf: ReadConf = ReadConf(sc.getConf))
+                   (implicit ct: ClassTag[T], connector: RiakConnector = RiakConnector(sc.getConf)): RiakTSRDD[T] =
+    RiakTSRDD[T](sc, bucketName, readConf = readConf)
 
   def riakBucket[T](bucketName: String)
                    (implicit ct: ClassTag[T]): RiakRDD[T] =
@@ -50,7 +50,7 @@ class SparkContextFunctions(@transient val sc: SparkContext) extends Serializabl
   def riakBucket[T](bucketName: String, bucketType: String, convert: (Location, RiakObject) => T)
                    (implicit connector: RiakConnector = RiakConnector(sc.getConf),
                     ct: ClassTag[T]): RiakRDD[T] =
-      new RiakRDD[T](sc, connector, bucketType, bucketName, convert, readConf = ReadConf.fromSparkConf(sc.getConf))
+      new RiakRDD[T](sc, connector, bucketType, bucketName, convert, readConf = ReadConf(sc.getConf))
 
   def riakBucket[T](ns: Namespace)
                    (implicit ct: ClassTag[T]): RiakRDD[T]  =

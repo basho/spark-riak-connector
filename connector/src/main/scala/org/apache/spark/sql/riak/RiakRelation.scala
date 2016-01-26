@@ -18,6 +18,7 @@
 package org.apache.spark.sql.riak
 
 import com.basho.riak.spark._
+import scala.reflect._
 import com.basho.riak.spark.rdd.connector.RiakConnector
 import com.basho.riak.spark.rdd.{ReadConf, RiakTSRDD}
 import com.basho.riak.spark.util.TimeSeriesToSparkSqlConversion
@@ -40,8 +41,8 @@ import scala.collection.convert.decorateAsScala._
 private[riak] class RiakRelation(
         bucket: String,
         connector: RiakConnector,
-        readConf: ReadConf,
-        writeConf: WriteConf,
+        val readConf: ReadConf,
+        val writeConf: WriteConf,
         override val sqlContext: SQLContext,
         userSpecifiedSchema: Option[StructType])
   extends BaseRelation with PrunedFilteredScan with InsertableRelation with Logging {
@@ -78,8 +79,9 @@ private[riak] class RiakRelation(
     case Some(st: StructType) => st
   }
 
-  private[this] val baseRdd: RiakTSRDD[Row] =
-    sqlContext.sparkContext.riakTSBucket[Row](bucket)
+  private[this] val baseRdd: RiakTSRDD[Row] = {
+    sqlContext.sparkContext.riakTSBucket[Row](bucket, readConf)(implicitly[ClassTag[Row]], connector)
+  }
 
    def buildScan(): RDD[Row] =
     baseRdd.asInstanceOf[RDD[Row]]
@@ -133,6 +135,7 @@ private[riak] class RiakRelation(
     }
 
     implicit val rwf = SqlDataMapper.factory[Row]
+    implicit val riakConnector = connector
     data.rdd.saveToRiakTS(bucket, writeConf = writeConf)
   }
 }
@@ -145,9 +148,11 @@ object RiakRelation {
              bucket: String,
              sqlContext: SQLContext,
              schema: Option[StructType] = None,
-             connector: Option[RiakConnector] = None): RiakRelation = {
+             connector: Option[RiakConnector] = None,
+             readConf: ReadConf = null,
+             writeConf: WriteConf = null): RiakRelation = {
 
     new RiakRelation(bucket, connector.getOrElse(RiakConnector(sqlContext.sparkContext.getConf)),
-      null, null, sqlContext, schema)
+      readConf, writeConf, sqlContext, schema)
   }
 }

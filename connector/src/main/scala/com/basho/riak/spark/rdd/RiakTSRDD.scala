@@ -125,10 +125,10 @@ class RiakTSRDD[R] private[spark](
   * @since 1.1.0
   */
 object RiakTSRDD {
-  def apply[T](sc: SparkContext, bucketName: String)
-              (implicit ct: ClassTag[T]): RiakTSRDD[T] =
+  def apply[T](sc: SparkContext, bucketName: String, readConf: ReadConf)
+              (implicit ct: ClassTag[T], connector: RiakConnector): RiakTSRDD[T] =
     new RiakTSRDD[T](
-      sc, RiakConnector(sc.getConf), bucketName)
+      sc, connector, bucketName)
 }
 
 
