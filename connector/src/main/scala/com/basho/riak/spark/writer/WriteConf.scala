@@ -32,14 +32,24 @@ object WriteConf {
 
   val DefaultWriteQuorum = 1
 
-  def fromSparkConf(conf: SparkConf): WriteConf = {
+  /** Creates WriteConf based on properties provided to Spark Conf
+  *
+  * @param conf SparkConf of Spark context with Riak-related properties
+  */
+  def apply(conf: SparkConf): WriteConf = {
     WriteConf(
       writeQuorum = conf.getInt(WriteQuorumProperty, DefaultWriteQuorum)
     )
   }
   
-  def fromOptions(options: Map[String, String], conf: SparkConf): WriteConf = {
-    val writeConf = fromSparkConf(conf)
+  /** Creates WriteConf based on an externally provided map of properties 
+  *   to override those of SparkCon 
+  *
+  * @param conf SparkConf of Spark context to be taken as defaults
+  * @param options externally provided map of properties 
+  */
+  def apply(conf: SparkConf, options: Map[String, String]): WriteConf = {
+    val writeConf = WriteConf(conf)
     writeConf.overrideProperties(options)
   }
 }

@@ -42,7 +42,7 @@ public class RDDJavaFunctions<T> {
     
     public void saveToRiak(String bucketName, String bucketType) {
       new RDDFunctions<>(rdd).saveToRiak(bucketName, bucketType, 
-          WriteConf.fromSparkConf(getConf()), RiakConnector.apply(getConf()),
+          WriteConf.apply(getConf()), RiakConnector.apply(getConf()),
           DefaultWriteDataMapper.factory());
     }
       
@@ -69,7 +69,7 @@ public class RDDJavaFunctions<T> {
             WriteDataMapperFactory<T, Tuple2<String, Object>> vwf
     ) {
         new RDDFunctions<>(rdd).saveToRiak(bucketName, "default",
-                WriteConf.fromSparkConf(getConf()), RiakConnector.apply(getConf()), vwf);
+                WriteConf.apply(getConf()), RiakConnector.apply(getConf()), vwf);
     }
 
     public void saveToRiak(
@@ -95,7 +95,7 @@ public class RDDJavaFunctions<T> {
         final WriteDataMapperFactory<T, RowDef> factory = (WriteDataMapperFactory<T, RowDef>) WriteDataMapperFactory$.MODULE$.sqlRowFactory();
         final String bucketTypeStr ="default";
         saveToRiakTS(RiakConnector.apply(getConf()), bucketTypeStr, bucketName,
-                WriteConf.fromSparkConf(getConf()), factory);
+                WriteConf.apply(getConf()), factory);
     }
 
     public static class JobFunc<T, U> extends AbstractFunction1<Iterator<T>, Void> implements Serializable {

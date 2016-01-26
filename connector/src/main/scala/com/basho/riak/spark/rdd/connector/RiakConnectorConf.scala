@@ -60,6 +60,10 @@ object RiakConnectorConf extends Logging {
     }
   }
 
+  /** Creates RiakConnectorConf based on properties provided to Spark Conf
+  *
+  * @param conf SparkConf of Spark context with Riak-related properties
+  */
   def apply(conf: SparkConf): RiakConnectorConf = {
     val minConnections = conf.get(RiakMinConnectionPerHostProperty, DEFAULT_MIN_CONNECTIONS.toString).toInt
     val maxConnections = conf.get(RiakMaxConnectionPerHostProperty, DEFAULT_MAX_CONNECTIONS.toString).toInt
@@ -69,6 +73,13 @@ object RiakConnectorConf extends Logging {
     RiakConnectorConf(hosts, minConnections, maxConnections)
   }
   
+  
+  /** Creates RiakConnectorConf based on an externally provided map of properties 
+  *   to override those of SparkCon 
+  *
+  * @param conf SparkConf of Spark context to be taken as defaults
+  * @param options externally provided map of properties 
+  */
   def apply(conf: SparkConf, options: Map[String, String]): RiakConnectorConf = {
     val riakConf = RiakConnectorConf(conf)
     riakConf.overrideProperties(options)

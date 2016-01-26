@@ -78,7 +78,11 @@ object ReadConf {
     defaultProperties.getProperty(useStreamingValuesPropName, "false")
     .toBoolean
 
-  def fromSparkConf(conf: SparkConf): ReadConf = {
+  /** Creates ReadConf based on properties provided to Spark Conf
+  *
+  * @param conf SparkConf of Spark context with Riak-related properties
+  */
+  def apply(conf: SparkConf): ReadConf = {
     ReadConf(
       fetchSize = conf.getInt(fetchSizePropName, DefaultFetchSize),
       splitCount = conf.getInt(splitCountPropName, DefaultSplitCount),
@@ -86,8 +90,14 @@ object ReadConf {
     )
   }
   
-  def fromOptions(options: Map[String, String], conf: SparkConf): ReadConf = {
-    val readConf = fromSparkConf(conf)
+  /** Creates ReadConf based on an externally provided map of properties 
+  *   to override those of SparkCon 
+  *
+  * @param conf SparkConf of Spark context to be taken as defaults
+  * @param options externally provided map of properties 
+  */
+  def apply(conf: SparkConf, options: Map[String, String]): ReadConf = {
+    val readConf = ReadConf(conf)
     readConf.overrideProperties(options)
   }
 }

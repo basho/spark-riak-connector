@@ -96,7 +96,7 @@ object DefaultSource {
     val existingConf = sqlContext.sparkContext.getConf
     val bucketDef = parseBucketDef(parameters)
     val riakConnector = parseRiakConnectionOptions(parameters, existingConf)
-    val readConf = ReadConf.fromOptions(parameters, existingConf)
+    val readConf = ReadConf(existingConf, parameters)
     RiakRelation(bucketDef.bucket, sqlContext, schema, Some(riakConnector), readConf = readConf)
   }
   
@@ -104,7 +104,7 @@ object DefaultSource {
     val existingConf = sqlContext.sparkContext.getConf
     val bucketDef = parseBucketDef(parameters)
     val riakConnector = parseRiakConnectionOptions(parameters, existingConf)
-    val writeConf = WriteConf.fromOptions(parameters, existingConf)
+    val writeConf = WriteConf(existingConf, parameters)
     RiakRelation(bucketDef.bucket, sqlContext, schema, Some(riakConnector), writeConf = writeConf)
   }
 }
