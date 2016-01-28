@@ -104,6 +104,7 @@ spark.riak.connections.max                     | Maximum number of parallel conn
 spark.riak.input.fetch-size                    | Number of keys to fetch in a single round-trip to Riak | 1000          | KV
 spark.riak.input.split.count                   | Desired minimum number of Spark partitions to divide the data into | 10| KV
 spark.riak.output.wquorum                      | Quorum value on write                                              | 1 | KV
+spark.riak.connections.inactivity.timeout      | Time to keep connection to Riak alive in milliseconds | 1000 | KV/TS
 
 
 Example:
