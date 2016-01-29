@@ -76,7 +76,7 @@ class OptionsTest {
   @Test
   def noReadOptionsShouldResultInKeepingInitialProperties(): Unit = {
     val rel = source.createRelation(sqlContext,
-      Map("path" -> "path")).asInstanceOf[RiakRelation]
+      Map("path" -> "path"), dummySchema).asInstanceOf[RiakRelation]
     val riakConnector = getConnector(rel)
     val writeConf = rel.writeConf
     val riakConf = getRiakConnectorConf(riakConnector)
@@ -109,7 +109,7 @@ class OptionsTest {
   def writeOptionsOnReadShouldNotAfffectProperties(): Unit = {
     val newQuorum = 1
     val rel = source.createRelation(sqlContext,
-      Map("path" -> "path", "spark.riak.output.wquorum" -> newQuorum.toString)).asInstanceOf[RiakRelation]
+      Map("path" -> "path", "spark.riak.output.wquorum" -> newQuorum.toString), dummySchema).asInstanceOf[RiakRelation]
     val writeConf = rel.writeConf
     assertNull(writeConf)
   }
@@ -139,7 +139,7 @@ class OptionsTest {
     val newFetchSize = 100
     val newSplitCount = 10
     val rel = source.createRelation(sqlContext, Map("path" -> "path", "spark.riak.input.fetch-size" -> newFetchSize.toString,
-      "spark.riak.input.split.count" -> newSplitCount.toString)).asInstanceOf[RiakRelation]
+      "spark.riak.input.split.count" -> newSplitCount.toString), dummySchema).asInstanceOf[RiakRelation]
     val readConf = rel.readConf
     assertEquals(newFetchSize, readConf.fetchSize)
     assertEquals(newSplitCount, readConf.splitCount)
@@ -153,7 +153,7 @@ class OptionsTest {
     val rel = source.createRelation(sqlContext,
       Map("path" -> "path", "spark.riak.connection.host" -> newHost,
         "spark.riak.connections.min" -> newConnectionsMin.toString,
-        "spark.riak.connections.max" -> newConnectionsMax.toString)).asInstanceOf[RiakRelation]
+        "spark.riak.connections.max" -> newConnectionsMax.toString), dummySchema).asInstanceOf[RiakRelation]
     val riakConnector = getConnector(rel)
     val riakConf = getRiakConnectorConf(riakConnector)
     assertEquals(toHostAndPorts(newHost), riakConf.hosts)
@@ -165,7 +165,7 @@ class OptionsTest {
   def riakConnectionOptionsShouldChangeOnlySpecifiedProperties(): Unit = {
     val newHost = "newHost:9999"
     val rel = source.createRelation(sqlContext,
-      Map("path" -> "path", "spark.riak.connection.host" -> newHost)).asInstanceOf[RiakRelation]
+      Map("path" -> "path", "spark.riak.connection.host" -> newHost), dummySchema).asInstanceOf[RiakRelation]
     val riakConnector = getConnector(rel)
     val riakConf = getRiakConnectorConf(riakConnector)
     assertEquals(toHostAndPorts(newHost), riakConf.hosts)

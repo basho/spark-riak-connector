@@ -79,12 +79,10 @@ private[riak] class RiakRelation(
     case Some(st: StructType) => st
   }
 
-  private[this] val baseRdd: RiakTSRDD[Row] = {
-    sqlContext.sparkContext.riakTSBucket[Row](bucket, readConf)(implicitly[ClassTag[Row]], connector)
-  }
+  private[this] val baseRdd: RiakTSRDD[Row] = sqlContext.sparkContext
+    .riakTSBucket[Row](bucket, readConf, Some(schema))(implicitly[ClassTag[Row]], connector)
 
-   def buildScan(): RDD[Row] =
-    baseRdd.asInstanceOf[RDD[Row]]
+   def buildScan(): RDD[Row] = baseRdd.asInstanceOf[RDD[Row]]
 
   override def buildScan(requiredColumns: Array[String], filters: Array[Filter]): RDD[Row] = {
 

@@ -22,6 +22,7 @@ import com.basho.riak.spark.query.{TSQueryData, QueryTS}
 import com.basho.riak.spark.rdd.connector.RiakConnector
 import com.basho.riak.spark.rdd.partitioner.{RiakTSPartition, RiakTSPartitioner}
 import com.basho.riak.spark.util.{TSConversionUtil, CountingIterator, DataConvertingIterator}
+import org.apache.spark.sql.types.StructType
 import org.apache.spark.{TaskContext, Partition, Logging, SparkContext}
 import org.apache.spark.rdd.RDD
 
@@ -35,6 +36,7 @@ class RiakTSRDD[R] private[spark](
      @transient sc: SparkContext,
      val connector: RiakConnector,
      val bucketName: String,
+     val schema:Option[StructType] = None,
      columnNames: Option[Seq[String]] = None,
      whereConstraints: Option[(String, Seq[Any])] = None,
      val query: Option[String] = None,
@@ -68,13 +70,16 @@ class RiakTSRDD[R] private[spark](
   }
 
   private def computeTS(partitionIdx: Int, context: TaskContext, queryData: TSQueryData) = {
+    // this implicit value is using to pass user-defined schema to 'com.basho.riak.spark.util.TSConversionUtil$.from'
+    implicit val schema = this.schema
+
     val startTime = System.currentTimeMillis()
+
     val q = new QueryTS(BucketDef(bucketName, bucketName), queryData, readConf)
-
     val session = connector.openSession()
-    val result: (Seq[ColumnDescription], Seq[Row]) = q.nextChunk(session)
+    val chunk: (Seq[ColumnDescription], Seq[Row]) = q.nextChunk(session)
+    val convertingIterator: Iterator[R] = DataConvertingIterator.createTSConverting[R](chunk, TSConversionUtil.from[R])
 
-    val convertingIterator = DataConvertingIterator.createTSConverting[R](result, TSConversionUtil.from[R])
     val countingIterator = CountingIterator[R](convertingIterator)
     context.addTaskCompletionListener { (context) =>
       val endTime = System.currentTimeMillis()
@@ -99,10 +104,11 @@ class RiakTSRDD[R] private[spark](
 
   private def copy(
         query: Option[String] = this.query,
+        schema: Option[StructType] = schema,
         columnNames: Option[Seq[String]] = columnNames,
         where: Option[(String, Seq[Any])] = whereConstraints,
         readConf: ReadConf = readConf, connector: RiakConnector = connector): RiakTSRDD[R] =
-    new RiakTSRDD(sc, connector, bucketName, columnNames, where, query, readConf)
+    new RiakTSRDD(sc, connector, bucketName, schema, columnNames, where, query, readConf)
 
   def select(columns: String*): RiakTSRDD[R] = {
     copy(columnNames = Some(columns))
@@ -127,8 +133,11 @@ class RiakTSRDD[R] private[spark](
 object RiakTSRDD {
   def apply[T](sc: SparkContext, bucketName: String, readConf: ReadConf)
               (implicit ct: ClassTag[T], connector: RiakConnector): RiakTSRDD[T] =
-    new RiakTSRDD[T](
-      sc, connector, bucketName)
+    new RiakTSRDD[T](sc, connector, bucketName)
+
+  def apply[T](sc: SparkContext, bucketName: String, readConf: ReadConf, schema: Option[StructType])
+              (implicit ct: ClassTag[T], connector: RiakConnector): RiakTSRDD[T] =
+    new RiakTSRDD[T](sc, connector, bucketName, schema)
 }
 
 

@@ -24,6 +24,7 @@ import com.basho.riak.spark.rdd.connector.RiakConnector
 import com.basho.riak.spark.rdd.{RiakTSRDD, RiakRDD, ReadConf}
 import com.basho.riak.spark.util.RiakObjectConversionUtil
 import org.apache.spark.SparkContext
+import org.apache.spark.sql.types.StructType
 
 import scala.reflect.ClassTag
 import scala.runtime.AbstractFunction2
@@ -39,9 +40,9 @@ class SparkContextFunctions(@transient val sc: SparkContext) extends Serializabl
     }
   }
 
-  def riakTSBucket[T](bucketName: String, readConf: ReadConf = ReadConf(sc.getConf))
+  def riakTSBucket[T](bucketName: String, readConf: ReadConf = ReadConf(sc.getConf), schema: Option[StructType] = None)
                    (implicit ct: ClassTag[T], connector: RiakConnector = RiakConnector(sc.getConf)): RiakTSRDD[T] =
-    RiakTSRDD[T](sc, bucketName, readConf = readConf)
+    RiakTSRDD[T](sc, bucketName, readConf = readConf, schema = schema)
 
   def riakBucket[T](bucketName: String)
                    (implicit ct: ClassTag[T]): RiakRDD[T] =

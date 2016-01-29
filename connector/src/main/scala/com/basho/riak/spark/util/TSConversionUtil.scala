@@ -24,6 +24,7 @@ import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
 import org.apache.spark.sql.types._
 import scala.collection.convert.decorateAll._
 import java.sql.Timestamp
+import org.apache.spark.sql.{Row => SparkRow}
 
 import scala.reflect.ClassTag
 
@@ -42,7 +43,7 @@ object TimeSeriesToSparkSqlConversion {
       cell.getVarcharAsUTF8String
 
     case LongType =>
-      cell.getLong
+      if (cell.hasTimestamp) cell.getTimestamp else cell.getLong
 
     case IntegerType =>
       cell.getLong.toInt
@@ -51,14 +52,14 @@ object TimeSeriesToSparkSqlConversion {
       cell.getDouble
 
     case TimestampType =>
-      new Timestamp(cell.getTimestamp)
+      if (cell.hasLong) new Timestamp(cell.getLong) else new Timestamp(cell.getTimestamp)
 
     case _ =>
       throw new IllegalStateException(s"Unhandled cell type ${sf.dataType.typeName}")
   }
 
   def asDataType(columnType: String): DataType = {
-    asDataType( ColumnType.valueOf(columnType.toUpperCase()))
+    asDataType(ColumnType.valueOf(columnType.toUpperCase()))
   }
 
   def asDataType(columnType: ColumnType): DataType =
@@ -72,35 +73,45 @@ object TimeSeriesToSparkSqlConversion {
     }
 
   private def asStructField(columnDescription: ColumnDescription): org.apache.spark.sql.types.StructField = {
-    val ft = asDataType(columnDescription.getType )
+    val ft = asDataType(columnDescription.getType)
     StructField(columnDescription.getName, ft)
   }
 
-  def asSparkRow(schema: StructType, row: Row): org.apache.spark.sql.Row = {
-    val values = for {c <- schema zip row.getCellsCopy.asScala} yield {
-      cellValue(c._1, c._2)
+  def asSparkRow(schema: StructType, row: Row, columns: Option[Seq[ColumnDescription]] = None): SparkRow = {
+    val values = columns match {
+      case None => (schema zip row.getCellsCopy.asScala).map { case (n, v) => cellValue(n, v) }
+      case Some(c) =>
+        validateSchema(schema, c.map(_.getName))
+        c.zipWithIndex.map { case (cd, i) =>
+          cellValue(schema(cd.getName), row.getCellsCopy.asScala(i))
+        }
     }
     new GenericRowWithSchema(values.toArray, schema)
   }
 
-  def asSparkSchema(columns: Seq[ColumnDescription]): StructType = {
-    val fields = for {c <- columns} yield {
-      asStructField(c)
-    }
-    StructType(fields)
+  def asSparkSchema(columns: Seq[ColumnDescription]): StructType = StructType(columns.map(asStructField))
+
+  private def validateSchema(schema: StructType, columns: Seq[String]): Unit = {
+    val msg = "Provided schema does not match the riak row columns"
+    require(schema.length == columns.length, msg)
+    require(schema.forall(sf => columns.contains(sf.name)), msg)
   }
 }
 
 object TSConversionUtil {
   private val classOfSparkRow = classOf[org.apache.spark.sql.Row]
 
-
-  def from[T: ClassTag](columns: Seq[ColumnDescription], row: Row): T = {
+  def from[T: ClassTag](columns: Seq[ColumnDescription], row: Row)
+                       (implicit schema: Option[StructType] = None): T = {
     val ct = implicitly[ClassTag[T]]
 
     if (ct.runtimeClass == classOfSparkRow) {
-      val schema = TimeSeriesToSparkSqlConversion.asSparkSchema(columns)
-      TimeSeriesToSparkSqlConversion.asSparkRow(schema, row).asInstanceOf[T]
+      (schema match {
+        case Some(structType) => (structType, Some(columns))
+        case None => (TimeSeriesToSparkSqlConversion.asSparkSchema(columns), None)
+      }) match {
+        case (st, cs) => TimeSeriesToSparkSqlConversion.asSparkRow(st, row, cs).asInstanceOf[T]
+      }
     } else {
       row.asInstanceOf[T]
     }
