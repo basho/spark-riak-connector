@@ -19,7 +19,7 @@ package org.apache.spark.sql.riak
 
 import com.basho.riak.spark._
 import scala.reflect._
-import com.basho.riak.spark.rdd.connector.RiakConnector
+import com.basho.riak.spark.rdd.connector.{RiakConnectorConf, RiakConnector}
 import com.basho.riak.spark.rdd.{ReadConf, RiakTSRDD}
 import com.basho.riak.spark.util.TimeSeriesToSparkSqlConversion
 import com.basho.riak.spark.writer.WriteConf
@@ -68,7 +68,7 @@ private[riak] class RiakRelation(
         val fields = for {r: com.basho.riak.client.core.query.timeseries.Row <- response.getRowsCopy.asScala } yield {
           val cells = r.getCellsCopy
           val name: String = cells.get(0).getVarcharAsUTF8String
-          val t: DataType = TimeSeriesToSparkSqlConversion.asDataType(cells.get(1).getVarcharAsUTF8String)
+          val t: DataType = TimeSeriesToSparkSqlConversion.asDataType(cells.get(1).getVarcharAsUTF8String, readConf.tsTimestampBinding)
           val nullable: Boolean = cells.get(2).getBoolean
 
           StructField(name, t, nullable)
@@ -142,15 +142,23 @@ private[riak] class RiakRelation(
   * @author Sergey Galkin <srggal at gmail dot com>
   */
 object RiakRelation {
-  def apply(
-             bucket: String,
-             sqlContext: SQLContext,
-             schema: Option[StructType] = None,
-             connector: Option[RiakConnector] = None,
-             readConf: ReadConf = null,
-             writeConf: WriteConf = null): RiakRelation = {
+  def apply(bucket: String,
+            sqlContext: SQLContext,
+            schema: Option[StructType] = None,
+            connector: Option[RiakConnector] = None,
+            readConf: ReadConf,
+            writeConf: WriteConf): RiakRelation = {
 
     new RiakRelation(bucket, connector.getOrElse(RiakConnector(sqlContext.sparkContext.getConf)),
       readConf, writeConf, sqlContext, schema)
+  }
+
+  def apply(sqlContext: SQLContext, parameters: Map[String, String], schema: Option[StructType]): RiakRelation = {
+    val existingConf = sqlContext.sparkContext.getConf
+    val bucketDef = BucketDef(parameters(DefaultSource.RiakBucketProperty), None)
+    val riakConnector = new RiakConnector(RiakConnectorConf(existingConf, parameters))
+    val readConf = ReadConf(existingConf, parameters)
+    val writeConf = WriteConf(existingConf, parameters)
+    RiakRelation(bucketDef.bucket, sqlContext, schema, Some(riakConnector), readConf, writeConf)
   }
 }

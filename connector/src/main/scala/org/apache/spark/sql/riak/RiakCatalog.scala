@@ -22,7 +22,9 @@ import java.util.concurrent.ExecutionException
 import com.basho.riak.client.core.netty.RiakResponseException
 import com.basho.riak.client.core.operations.FetchBucketPropsOperation
 import com.basho.riak.client.core.query.Namespace
+import com.basho.riak.spark.rdd.ReadConf
 import com.basho.riak.spark.rdd.connector.RiakConnector
+import com.basho.riak.spark.writer.WriteConf
 import com.google.common.cache.{CacheBuilder, CacheLoader, LoadingCache}
 import org.apache.spark.Logging
 import org.apache.spark.sql.catalyst.{TableIdentifier, SimpleCatalystConf}
@@ -34,7 +36,10 @@ import org.apache.spark.sql.execution.datasources.LogicalRelation
   * @author Sergey Galkin <srggal at gmail dot com>
   * @since 1.2.0
   */
-private[sql] class RiakCatalog(rsc: RiakSQLContext, riakConnector: RiakConnector) extends Catalog with Logging {
+private[sql] class RiakCatalog(rsc: RiakSQLContext,
+                               riakConnector: RiakConnector,
+                               readConf: ReadConf,
+                               writeConf: WriteConf) extends Catalog with Logging {
   private val CACHE_SIZE = 1000
 
   /** A cache of Spark SQL data source tables that have been accessed. Cache is thread safe. */
@@ -102,7 +107,7 @@ private[sql] class RiakCatalog(rsc: RiakSQLContext, riakConnector: RiakConnector
 
   /** Build logic plan from a RiakRelation */
   private def buildRelation(tableIdent: String): LogicalPlan = {
-    val relation = RiakRelation(tableIdent, rsc, None, Some(riakConnector))
+    val relation = RiakRelation(tableIdent, rsc, None, Some(riakConnector), readConf, writeConf)
     Subquery(tableIdent, LogicalRelation(relation))
   }
 

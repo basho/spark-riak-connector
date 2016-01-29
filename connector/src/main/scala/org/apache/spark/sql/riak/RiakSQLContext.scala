@@ -17,7 +17,9 @@
  *******************************************************************************/
 package org.apache.spark.sql.riak
 
+import com.basho.riak.spark.rdd.ReadConf
 import com.basho.riak.spark.rdd.connector.RiakConnector
+import com.basho.riak.spark.writer.WriteConf
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.{DataFrame, SQLContext}
 
@@ -32,7 +34,8 @@ class RiakSQLContext(sc: SparkContext) extends SQLContext(sc) {
 
   /** A catalyst metadata catalog that points to Riak. */
   @transient
-  override protected[sql] lazy val catalog = new RiakCatalog(this, RiakConnector(sc.getConf))
+  override protected[sql] lazy val catalog = new RiakCatalog(
+    this, RiakConnector(sc.getConf), ReadConf(sc.getConf), WriteConf(sc.getConf))
 
   /** Executes SQL query against Riak TS and returns DataFrame representing the result. */
   def riakTsSql(tsQuery: String): DataFrame = new DataFrame(this, super.parseSql(tsQuery))

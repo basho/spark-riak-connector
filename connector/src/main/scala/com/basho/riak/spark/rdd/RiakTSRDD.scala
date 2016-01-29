@@ -89,8 +89,9 @@ class RiakTSRDD[R] private[spark](
   }
 
   private def computeTS(partitionIdx: Int, context: TaskContext, queryData: TSQueryData) = {
-    // this implicit value is using to pass user-defined schema to 'com.basho.riak.spark.util.TSConversionUtil$.from'
+    // this implicit values is using to pass parameters to 'com.basho.riak.spark.util.TSConversionUtil$.from'
     implicit val schema = this.schema
+    implicit val tsTimestampBinding = readConf.tsTimestampBinding
 
     val startTime = System.currentTimeMillis()
     val q = new QueryTS(BucketDef(bucketName, bucketName), queryData, readConf)
@@ -159,11 +160,11 @@ class RiakTSRDD[R] private[spark](
 object RiakTSRDD {
   def apply[T](sc: SparkContext, bucketName: String, readConf: ReadConf)
               (implicit ct: ClassTag[T], connector: RiakConnector): RiakTSRDD[T] =
-    new RiakTSRDD[T](sc, connector, bucketName)
+    new RiakTSRDD[T](sc, connector, bucketName, readConf = readConf)
 
   def apply[T](sc: SparkContext, bucketName: String, readConf: ReadConf, schema: Option[StructType])
               (implicit ct: ClassTag[T], connector: RiakConnector): RiakTSRDD[T] =
-    new RiakTSRDD[T](sc, connector, bucketName, schema)
+    new RiakTSRDD[T](sc, connector, bucketName, schema, readConf = readConf)
 }
 
 

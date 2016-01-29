@@ -78,10 +78,8 @@ class OptionsTest {
     val rel = source.createRelation(sqlContext,
       Map("path" -> "path"), dummySchema).asInstanceOf[RiakRelation]
     val riakConnector = getConnector(rel)
-    val writeConf = rel.writeConf
     val riakConf = getRiakConnectorConf(riakConnector)
     val readConf = rel.readConf
-    assertNull(writeConf)
     assertEquals(initialFetchSize, readConf.fetchSize)
     assertEquals(initialSplitCount, readConf.splitCount)
     assertEquals(hostAndPorts, riakConf.hosts)
@@ -96,8 +94,6 @@ class OptionsTest {
     val riakConnector = getConnector(rel)
     val writeConf = rel.writeConf
     val riakConf = getRiakConnectorConf(riakConnector)
-    val readConf = rel.readConf
-    assertNull(readConf)
     assertEquals(initialWquorum, writeConf.writeQuorum)
 
     assertEquals(hostAndPorts, riakConf.hosts)
@@ -106,23 +102,21 @@ class OptionsTest {
   }
 
   @Test
-  def writeOptionsOnReadShouldNotAfffectProperties(): Unit = {
+  def writeOptionsOnReadShouldNotAffectProperties(): Unit = {
     val newQuorum = 1
     val rel = source.createRelation(sqlContext,
       Map("path" -> "path", "spark.riak.output.wquorum" -> newQuorum.toString), dummySchema).asInstanceOf[RiakRelation]
     val writeConf = rel.writeConf
-    assertNull(writeConf)
   }
 
   @Test
-  def readOptionsOnWriteShouldNotAfffectProperties(): Unit = {
+  def readOptionsOnWriteShouldNotAffectProperties(): Unit = {
     val newFetchSize = 100
     val newSplitCount = 10
     val rel = source.createRelation(sqlContext, SaveMode.Append,
       Map("path" -> "path", "spark.riak.input.fetch-size" -> newFetchSize.toString,
         "spark.riak.input.split.count" -> newSplitCount.toString), df).asInstanceOf[RiakRelation]
     val readConf = rel.readConf
-    assertNull(readConf)
   }
 
   @Test
@@ -135,7 +129,7 @@ class OptionsTest {
   }
 
   @Test
-  def readOptionsOnReadShouldAfffectProperties(): Unit = {
+  def readOptionsOnReadShouldAffectProperties(): Unit = {
     val newFetchSize = 100
     val newSplitCount = 10
     val rel = source.createRelation(sqlContext, Map("path" -> "path", "spark.riak.input.fetch-size" -> newFetchSize.toString,

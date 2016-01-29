@@ -23,12 +23,14 @@ import java.util.Properties
 import org.apache.spark.SparkConf
 
 /** RDD read settings
+ *
   * @param fetchSize number of keys to fetch in a single round-trip to Riak
   * @param splitCount desired minimum number of Spark partitions to divide the data into
  */
 case class ReadConf (
-  fetchSize: Int = ReadConf.DefaultFetchSize,
-  splitCount: Int = ReadConf.DefaultSplitCount,
+  val fetchSize: Int = ReadConf.DefaultFetchSize,
+  val splitCount: Int = ReadConf.DefaultSplitCount,
+  val tsTimestampBinding: TsTimestampBindingType = ReadConf.DefaultTsTimestampBinding,
 
   /**
     * Turns on streaming values support for PEx.
@@ -43,20 +45,22 @@ case class ReadConf (
     */
   useStreamingValuesForFBRead: Boolean = ReadConf.DefaultUseStreamingValues4FBRead
 ) {
-  
+
   def overrideProperties(options: Map[String, String]): ReadConf = {
     val newFetchSize = options.getOrElse(ReadConf.fetchSizePropName, fetchSize.toString).toInt
     val newSplitCount = options.getOrElse(ReadConf.splitCountPropName, splitCount.toString).toInt
     val newUseStreamingValuesForFBRead = options.getOrElse(ReadConf.useStreamingValuesPropName, useStreamingValuesForFBRead.toString).toBoolean
-    ReadConf(newFetchSize, newSplitCount, newUseStreamingValuesForFBRead)
+    val newTsTimestampBinding = TsTimestampBindingType(options.getOrElse(ReadConf.tsBindingsTimestamp, tsTimestampBinding.value))
+    ReadConf(newFetchSize, newSplitCount, newTsTimestampBinding, newUseStreamingValuesForFBRead)
   }
 }
 
 object ReadConf {
-  
-  val fetchSizePropName = "spark.riak.input.fetch-size"
-  val splitCountPropName = "spark.riak.input.split.count"
-  val useStreamingValuesPropName = "spark.riak.fullbucket.use-streaming-values"
+
+  final val splitCountPropName = "spark.riak.input.split.count"
+  final val useStreamingValuesPropName = "spark.riak.fullbucket.use-streaming-values"
+  final val fetchSizePropName = "spark.riak.input.fetch-size"
+  final val tsBindingsTimestamp = "spark.riakts.bindings.timestamp"
 
   private val defaultProperties: Properties =
      getClass.getResourceAsStream("/ee-default.properties") match {
@@ -69,12 +73,14 @@ object ReadConf {
          new Properties()
      }
 
-  val DefaultFetchSize = 1000
+  final val DefaultTsTimestampBinding = UseTimestamp
+
+  final val DefaultFetchSize = 1000
 
   // TODO: Need to think about the proper default value
-  val DefaultSplitCount = 10
+  final val DefaultSplitCount = 10
 
-  val DefaultUseStreamingValues4FBRead: Boolean =
+  final val DefaultUseStreamingValues4FBRead: Boolean =
     defaultProperties.getProperty(useStreamingValuesPropName, "false")
     .toBoolean
 
@@ -86,10 +92,11 @@ object ReadConf {
     ReadConf(
       fetchSize = conf.getInt(fetchSizePropName, DefaultFetchSize),
       splitCount = conf.getInt(splitCountPropName, DefaultSplitCount),
+      tsTimestampBinding = TsTimestampBindingType(conf.get(tsBindingsTimestamp, DefaultTsTimestampBinding.value)),
       useStreamingValuesForFBRead = conf.getBoolean(useStreamingValuesPropName, DefaultUseStreamingValues4FBRead)
     )
   }
-  
+
   /** Creates ReadConf based on an externally provided map of properties
   *   to override those of SparkCon
   *
