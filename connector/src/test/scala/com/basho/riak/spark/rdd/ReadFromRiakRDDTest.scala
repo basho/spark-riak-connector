@@ -17,29 +17,36 @@
  */
 package com.basho.riak.spark.rdd
 
+import java.io.Serializable
 import java.math.BigInteger
+import java.sql.Timestamp
+import java.time.Instant
 import java.util.UUID
+
+import com.basho.riak.client.api.convert.{Converter, ConverterFactory}
+import com.basho.riak.client.core.util.BinaryValue
+import com.basho.riak.spark._
 import org.junit.Assert._
 import org.junit.Test
 import org.junit.experimental.categories.Category
-import com.basho.riak.spark._
 
 case class UserTS(timestamp: String, user_id: String)
 
 @Category(Array(classOf[IntegrationTests]))
 class ReadFromRiakRDDTest extends AbstractRDDTest{
+
   private val CREATION_INDEX = "creationNo"
 
   protected override def jsonData(): String =
-    "[" +
-      " { key: 'key-1', indexes: {creationNo: 1, category: 'neighbor'}, value: {user_id: 'u1', timestamp: '2014-11-24T13:14:04.823Z'}}" +
-      ",{ key: 'key-2', indexes: {creationNo: 2, category: 'visitor'}, value:  {user_id: 'u1', timestamp: '2014-11-24T13:15:04.824Z'}}" +
-      ",{ key: 'key-3', indexes: {creationNo: 3, category: 'neighbor'}, value: {user_id: 'u1', timestamp: '2014-11-24T13:18:04'}}" +
-      ",{ key: 'key-4', indexes: {creationNo: 4, category: 'stranger'}, value: {user_id: 'u2', timestamp: '2014-11-24T13:14:04Z'}}" +
-      ",{ key: 'key-5', indexes: {creationNo: 5, category: 'stranger'}, value: {user_id: 'u3', timestamp: '2014-11-24T13:16:04.823Z'}}" +
-      ",{ key: 'key-6', indexes: {creationNo: 6, category: 'stranger'}, value: {user_id: 'u3', timestamp: '2014-11-24T13:21:04.825Z'}}" +
-      ",{ key: 'key-7', indexes: {creationNo: 7, category: 'stranger'}, value: {user_id: 'u3', timestamp: '2014-11-24T12:01:04.825Z'}}" +
-    "]"
+    """[
+      |  { key: 'key-1', indexes: {creationNo: 1, category: 'neighbor'}, value: {user_id: 'u1', timestamp: '2014-11-24T13:14:04.823Z'}}
+      | ,{ key: 'key-2', indexes: {creationNo: 2, category: 'visitor'}, value:  {user_id: 'u1', timestamp: '2014-11-24T13:15:04.824Z'}}
+      | ,{ key: 'key-3', indexes: {creationNo: 3, category: 'neighbor'}, value: {user_id: 'u1', timestamp: '2014-11-24T13:18:04Z'}}
+      | ,{ key: 'key-4', indexes: {creationNo: 4, category: 'stranger'}, value: {user_id: 'u2', timestamp: '2014-11-24T13:14:04Z'}}
+      | ,{ key: 'key-5', indexes: {creationNo: 5, category: 'stranger'}, value: {user_id: 'u3', timestamp: '2014-11-24T13:16:04.823Z'}}
+      | ,{ key: 'key-6', indexes: {creationNo: 6, category: 'stranger'}, value: {user_id: 'u3', timestamp: '2014-11-24T13:21:04.825Z'}}
+      | ,{ key: 'key-7', indexes: {creationNo: 7, category: 'stranger'}, value: {user_id: 'u3', timestamp: '2014-11-24T12:01:04.825Z'}}
+      | ]""".stripMargin
 
   protected override def initSparkConf() =
     super.initSparkConf()
@@ -56,7 +63,7 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
       "[" +
         "{timestamp: '2014-11-24T13:14:04.823Z', user_id: 'u1'}," +
         "{timestamp: '2014-11-24T13:15:04.824Z', user_id: 'u1'}," +
-        "{timestamp: '2014-11-24T13:18:04', user_id: 'u1'}," +
+        "{timestamp: '2014-11-24T13:18:04Z', user_id: 'u1'}," +
         "{timestamp: '2014-11-24T13:14:04Z', user_id: 'u2'}" +
       "]"
       , data)
@@ -74,7 +81,7 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
       "[" +
         "{timestamp: '2014-11-24T13:14:04.823Z', user_id: 'u1'}," +
         "{timestamp: '2014-11-24T13:15:04.824Z', user_id: 'u1'}," +
-        "{timestamp: '2014-11-24T13:18:04', user_id: 'u1'}" +
+        "{timestamp: '2014-11-24T13:18:04Z', user_id: 'u1'}" +
       "]"
       , data)
   }
@@ -148,7 +155,7 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
     assertEqualsUsingJSONIgnoreOrder(
       "[" +
         "{timestamp: '2014-11-24T13:14:04.823Z', user_id: 'u1'}" +
-        ",{timestamp: '2014-11-24T13:18:04', user_id: 'u1'}" +
+        ",{timestamp: '2014-11-24T13:18:04Z', user_id: 'u1'}" +
         ",{timestamp: '2014-11-24T13:16:04.823Z', user_id: 'u3'}" +
         "]",
       data
@@ -181,7 +188,7 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
         "[0, [" +
         "     {user_id: 'u1', timestamp: '2014-11-24T13:14:04.823Z'}" +
         "     ,{user_id: 'u1', timestamp: '2014-11-24T13:15:04.824Z'}" +
-        "     ,{user_id: 'u1', timestamp: '2014-11-24T13:18:04'}" +
+        "     ,{user_id: 'u1', timestamp: '2014-11-24T13:18:04Z'}" +
         "]]" +
 
         // The 2nd partition should contsins items; 4,5,6
@@ -215,7 +222,7 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
         // 1st partition should contains 2 neighbors
         "[0, [" +
         " {user_id: 'u1', timestamp: '2014-11-24T13:14:04.823Z'}" +
-        " ,{user_id: 'u1', timestamp: '2014-11-24T13:18:04'}" +
+        " ,{user_id: 'u1', timestamp: '2014-11-24T13:18:04Z'}" +
         "]]" +
 
         // 2nd partition should contains 1 visitor
@@ -270,7 +277,7 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
       "[" +
         "{timestamp: '2014-11-24T13:14:04.823Z', user_id: 'u1'}," +
         "{timestamp: '2014-11-24T13:15:04.824Z', user_id: 'u1'}," +
-        "{timestamp: '2014-11-24T13:18:04', user_id: 'u1'}" +
+        "{timestamp: '2014-11-24T13:18:04Z', user_id: 'u1'}" +
         "]"
       , data)
   }
@@ -291,5 +298,39 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
     val allValues = data.map{case (k,v)=> v}.flatten
 
     assertEquals(7, allValues.size)
+  }
+
+  @Test
+  def readDataUsingCustomConverterFactory(): Unit = {
+    // Using default Json conversion from java client to extract convert UserTS data into pairs (user_id -> timestamp)
+    ConverterFactory.getInstance.registerConverterForClass(
+      classOf[(String, Timestamp)], new Converter[(String, Timestamp)](classOf[(String, Timestamp)]) {
+
+        override def toDomain(binaryValue: BinaryValue, s: String): (String, Timestamp) = {
+          val jsonConverter = ConverterFactory.getInstance.getConverter(classOf[UserTS])
+          val user = jsonConverter.toDomain(binaryValue, s).asInstanceOf[UserTS]
+          val instant = Instant.parse(user.timestamp)
+          (user.user_id, new Timestamp(instant.toEpochMilli))
+        }
+
+        override def fromDomain(t: (String, Timestamp)): Converter[(String, Timestamp)]#ContentAndType =
+          throw new RuntimeException("Not implemented")
+      })
+
+    val rdd = sc.riakBucket[(String, Timestamp)](DEFAULT_NAMESPACE)
+      .query2iRange(CREATION_INDEX, 3, 6)
+
+    // calculating minimal timestamp per user
+    val data = rdd
+      .reduceByKey((v1, v2) => if (v1.before(v2)) v1 else v2)
+      .collect()
+
+    assertTrue(data.forall(_.isInstanceOf[(String, Timestamp)]))
+    assertEqualsUsingJSONIgnoreOrder(
+      """[
+        | ["u2","2014-11-24T13:14:04.000+0000"],
+        | ["u3","2014-11-24T13:16:04.823+0000"],
+        | ["u1","2014-11-24T13:18:04.000+0000"]
+        |]""".stripMargin, data)
   }
 }
