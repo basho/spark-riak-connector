@@ -51,7 +51,10 @@ class RiakTSRDD[R] private[spark](
       "SELECT " +
         (
           columnNames match {
-            case None => "*"
+            case None => schema match {
+              case Some(s) => s.fieldNames.mkString(", ")
+              case None => "*"
+            }
             case Some(c: Seq[String]) => c.mkString(", ")
           }
           ) +
@@ -69,16 +72,33 @@ class RiakTSRDD[R] private[spark](
     RiakTSPartitioner.partitions(connector.hosts, TSQueryData(sql, values))
   }
 
+  private def validateSchema(schema: StructType, columns: Seq[ColumnDescription]): Unit = {
+    val columnNames = columns.map(_.getName)
+
+    schema.fieldNames.diff(columnNames).toList match {
+      case Nil => columnNames.diff(schema.fieldNames) match {
+        case Nil =>
+        case diff =>
+          throw new IllegalArgumentException(s"Provided schema has nothing about the following fields returned by query: ${diff.mkString(", ")}")
+      }
+      case diff =>
+        throw new IllegalArgumentException(s"Provided schema contains fields that are not returned by query: ${diff.mkString(", ")}")
+    }
+  }
+
   private def computeTS(partitionIdx: Int, context: TaskContext, queryData: TSQueryData) = {
     // this implicit value is using to pass user-defined schema to 'com.basho.riak.spark.util.TSConversionUtil$.from'
     implicit val schema = this.schema
 
     val startTime = System.currentTimeMillis()
-
     val q = new QueryTS(BucketDef(bucketName, bucketName), queryData, readConf)
+
     val session = connector.openSession()
-    val chunk: (Seq[ColumnDescription], Seq[Row]) = q.nextChunk(session)
-    val convertingIterator: Iterator[R] = DataConvertingIterator.createTSConverting[R](chunk, TSConversionUtil.from[R])
+    val convertingIterator: Iterator[R] = q.nextChunk(session) match {
+      case (cds, rows) =>
+        if (this.schema.isDefined) validateSchema(schema.get, cds)
+        DataConvertingIterator.createTSConverting[R]((cds, rows), TSConversionUtil.from[R])
+    }
 
     val countingIterator = CountingIterator[R](convertingIterator)
     context.addTaskCompletionListener { (context) =>
@@ -112,6 +132,10 @@ class RiakTSRDD[R] private[spark](
 
   def select(columns: String*): RiakTSRDD[R] = {
     copy(columnNames = Some(columns))
+  }
+
+  def schema(structType: StructType):RiakTSRDD[R] = {
+    copy(schema = Option(structType))
   }
 
   /**
