@@ -256,14 +256,14 @@ object OFACDemo {
     val addHeader = List("ent_num", "Add_num", "Address","City_State_ZIP","Country", "Add_remarks")
 
     // Read SDN.CSV file into RDD
-    val sdn_file = Source.fromURL("http://www.treasury.gov/ofac/downloads/sdn.csv").mkString.split("\n").map(_.trim)
+    val sdn_file = Source.fromURL("https://www.treasury.gov/ofac/downloads/sdn.csv").getLines.map(_.trim).toSeq
     val sdn = sc.parallelize(sdn_file).map(x => {
       val row = x.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)").map(_.replace("\"","").trim)
       (row(0), sdnHeader.zip(row))
     }).filter(_._1 != "")
 
     // Read ADD.CSV file into RDD
-    val addr_file = Source.fromURL("http://www.treasury.gov/ofac/downloads/add.csv").mkString.split("\n").map(_.trim)
+    val addr_file = Source.fromURL("https://www.treasury.gov/ofac/downloads/add.csv").getLines.map(_.trim).toSeq
     val addr = sc.parallelize(addr_file).map(x => {
       val row = x.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)").map(_.replace("\"","").trim)
       (row(0), addHeader.tail.zip(row.tail))
