@@ -80,7 +80,7 @@ private[riak] class RiakRelation(
   }
 
   private[this] val baseRdd: RiakTSRDD[Row] = sqlContext.sparkContext
-    .riakTSBucket[Row](bucket, readConf, Some(schema))(implicitly[ClassTag[Row]], connector)
+    .riakTSBucket[Row](bucket, readConf, userSpecifiedSchema)(implicitly[ClassTag[Row]], connector)
 
    def buildScan(): RDD[Row] = baseRdd.asInstanceOf[RDD[Row]]
 

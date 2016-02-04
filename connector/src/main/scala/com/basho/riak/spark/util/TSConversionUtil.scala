@@ -55,7 +55,7 @@ object TimeSeriesToSparkSqlConversion {
       if (cell.hasLong) new Timestamp(cell.getLong) else new Timestamp(cell.getTimestamp)
 
     case _ =>
-      throw new IllegalStateException(s"Unhandled cell type ${sf.dataType.typeName}")
+      throw new IllegalStateException(s"Unhandled cell type ${sf.dataType.typeName} for field ${sf.name}")
   }
 
   def asDataType(columnType: String): DataType = {
@@ -69,7 +69,7 @@ object TimeSeriesToSparkSqlConversion {
       case ColumnType.SINT64 => LongType
       case ColumnType.TIMESTAMP => TimestampType
       case ColumnType.VARCHAR => StringType
-      case _ => throw new IllegalStateException("Unsupported column type '" + columnType + "'")
+      case _ => throw new IllegalStateException(s"Unsupported column type $columnType")
     }
 
   private def asStructField(columnDescription: ColumnDescription): org.apache.spark.sql.types.StructField = {
@@ -81,7 +81,6 @@ object TimeSeriesToSparkSqlConversion {
     val values = columns match {
       case None => (schema zip row.getCellsCopy.asScala).map { case (n, v) => cellValue(n, v) }
       case Some(c) =>
-        validateSchema(schema, c.map(_.getName))
         c.zipWithIndex.map { case (cd, i) =>
           cellValue(schema(cd.getName), row.getCellsCopy.asScala(i))
         }
@@ -90,12 +89,6 @@ object TimeSeriesToSparkSqlConversion {
   }
 
   def asSparkSchema(columns: Seq[ColumnDescription]): StructType = StructType(columns.map(asStructField))
-
-  private def validateSchema(schema: StructType, columns: Seq[String]): Unit = {
-    val msg = "Provided schema does not match the riak row columns"
-    require(schema.length == columns.length, msg)
-    require(schema.forall(sf => columns.contains(sf.name)), msg)
-  }
 }
 
 object TSConversionUtil {
