@@ -105,7 +105,7 @@ public class TimeSeriesJavaReadTest extends AbstractJavaTimeSeriesTest {
                 .format("org.apache.spark.sql.riak")
                 .schema(schema())
                 .load(bucketName())
-                .filter(String.format("time > CAST(%s AS TIMESTAMP) AND time < CAST(%s AS TIMESTAMP) AND surrogate_key = 1 AND family = 'f'", queryFrom(), queryTo()));
+                .filter(String.format("time >= CAST('%s' AS TIMESTAMP) AND time <= CAST('%s' AS TIMESTAMP) AND surrogate_key = 1 AND family = 'f'", fromStr(), toStr()));
         df = df.select(functions.callUDF("getMillis", df.col("time")).as("time"), df.col("family"), df.col("surrogate_key"), df.col("user_id"), df.col("temperature_k"));
 
         // Explicit cast due to compilation error "Object cannot be converted to java.lang.String[]"
@@ -135,7 +135,7 @@ public class TimeSeriesJavaReadTest extends AbstractJavaTimeSeriesTest {
                 .format("org.apache.spark.sql.riak")
                 .schema(structType)
                 .load(bucketName())
-                .filter(String.format("time > %s AND time < %s AND surrogate_key = 1 AND family = 'f'", queryFrom(), queryTo()));
+                .filter(String.format("time >= %s AND time <= %s AND surrogate_key = 1 AND family = 'f'", queryFromMillis(), queryToMillis()));
         df = df.select(df.col("time"), df.col("family"), df.col("surrogate_key"), df.col("user_id"), df.col("temperature_k"));
 
         // Explicit cast due to compilation error "Object cannot be converted to java.lang.String[]"

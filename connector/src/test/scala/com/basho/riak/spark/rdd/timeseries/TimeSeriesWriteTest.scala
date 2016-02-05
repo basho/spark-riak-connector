@@ -113,7 +113,7 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) with AbstractRDD
       .format("org.apache.spark.sql.riak")
       .schema(schema)
       .load(bucketName)
-      .filter(s"time > CAST($queryFrom AS TIMESTAMP) AND time < CAST($queryTo AS TIMESTAMP) AND surrogate_key = 1 AND family = 'f'")
+      .filter(s"time >= CAST('$fromStr' AS TIMESTAMP) AND time <= CAST('$toStr' AS TIMESTAMP) AND surrogate_key = 1 AND family = 'f'")
       // adding select statement to apply timestamp transformations
       .select(udfGetMillis($"time") as "time", $"family", $"surrogate_key", $"user_id", $"temperature_k")
 
@@ -158,7 +158,7 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) with AbstractRDD
       .format("org.apache.spark.sql.riak")
       .schema(schema)
       .load(bucketName)
-      .filter(s"time > CAST($queryFrom AS TIMESTAMP) AND time < CAST($queryTo AS TIMESTAMP) AND surrogate_key = 1 AND family = 'f'")
+      .filter(s"time >= CAST('$fromStr' AS TIMESTAMP) AND time <= CAST('$toStr' AS TIMESTAMP) AND surrogate_key = 1 AND family = 'f'")
       // adding select statement to apply timestamp transformations
       .select(udfGetMillis($"time") as "time", $"family", $"surrogate_key", $"user_id", $"temperature_k")
 

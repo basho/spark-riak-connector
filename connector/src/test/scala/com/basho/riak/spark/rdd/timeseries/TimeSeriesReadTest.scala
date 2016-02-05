@@ -27,6 +27,8 @@ import org.junit.Assert.assertTrue
 import org.junit.rules.ExpectedException
 import org.junit.{Rule, Test}
 import org.junit.experimental.categories.Category
+import java.text.SimpleDateFormat
+import java.util.Date
 
 /**
   * @author Sergey Galkin <srggal at gmail dot com>
@@ -146,8 +148,8 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
     val df = sqlContext.sql(s"""
         | SELECT getMillis(time) as time, user_id, temperature_k
         | FROM $bucketName
-        | WHERE time > CAST($queryFrom AS TIMESTAMP)
-        |   AND time < CAST($queryTo AS TIMESTAMP)
+        | WHERE time >= CAST('$fromStr' AS TIMESTAMP)
+        |   AND time <= CAST('$toStr' AS TIMESTAMP)
         |   AND surrogate_key = 1
         |   AND family = 'f'
       """.stripMargin)
@@ -183,7 +185,7 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
       // For real usage no needs to provide schema manually
       .schema(schema)
       .load(bucketName)
-      .filter(s"time > CAST($queryFrom AS TIMESTAMP) AND time < CAST($queryTo AS TIMESTAMP) " +
+      .filter(s"time >= CAST('$fromStr' AS TIMESTAMP) AND time <= CAST('$toStr' AS TIMESTAMP) " +
         s"AND surrogate_key = 1 AND family = 'f'")
       // adding select statement to apply timestamp transformations to not deal with timezones
       .select(udfGetMillis($"time") as "time", $"family", $"surrogate_key", $"user_id", $"temperature_k")
@@ -222,7 +224,7 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
       .format("org.apache.spark.sql.riak")
       .schema(newSchema)
       .load(bucketName)
-      .filter(s"time > $queryFrom AND time < $queryTo AND surrogate_key = 1 AND family = 'f'")
+      .filter(s"time >= $queryFromMillis AND time <= $queryToMillis AND surrogate_key = 1 AND family = 'f'")
       .select($"time", $"family", $"surrogate_key", $"user_id", $"temperature_k")
 
     // -- verification
@@ -265,7 +267,7 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
       .format("org.apache.spark.sql.riak")
       .schema(structType)
       .load(bucketName)
-      .filter(s"time > $queryFrom AND time < $queryTo AND surrogate_key = 1 AND family = 'f'")
+      .filter(s"time >= $queryFromMillis AND time <= $queryToMillis AND surrogate_key = 1 AND family = 'f'")
       .select($"time", $"family", $"surrogate_key", $"user_id", $"temperature_k")
       .collect()
   }
@@ -283,8 +285,8 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
       .sql(s"""
          | SELECT user_id
          | FROM test
-         | WHERE time > CAST($queryFrom AS TIMESTAMP)
-         |   AND time < CAST($queryTo AS TIMESTAMP)
+         | WHERE time >= CAST('$fromStr' AS TIMESTAMP)
+         |   AND time <= CAST('$toStr' AS TIMESTAMP)
          |   AND surrogate_key = 1
          |   AND family = 'f'
          |""".stripMargin)
@@ -307,7 +309,7 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
 
     val rdd = sc.riakTSBucket[org.apache.spark.sql.Row](bucketName)
       .select("time", "user_id", "temperature_k")
-      .where(s"time > $queryFrom AND time < $queryTo AND surrogate_key = 1 AND family = 'f'")
+      .where(s"time >= $queryFromMillis AND time <= $queryToMillis AND surrogate_key = 1 AND family = 'f'")
 
     val data = rdd.map(r => TimeSeriesData(r.getTimestamp(0).getTime, r.getString(1), r.getDouble(2)))
       .toDF()
@@ -336,7 +338,7 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
 
     val rdd = sc.riakTSBucket[org.apache.spark.sql.Row](bucketName, schema = Some(structType))
       .select("time", "user_id", "temperature_k")
-      .where(s"time > $queryFrom AND time < $queryTo AND surrogate_key = 1 AND family = 'f'")
+      .where(s"time > $queryFromMillis AND time < $queryToMillis AND surrogate_key = 1 AND family = 'f'")
 
     val data = rdd.map(r => TimeSeriesData(r.getLong(0), r.getString(1), r.getDouble(2)))
       .toDF()
@@ -366,7 +368,7 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
 
     val rdd = sc.riakTSBucket[org.apache.spark.sql.Row](bucketName, schema = Some(structType))
       .select("time", "user_id", "temperature_k")
-      .where(s"time > $queryFrom AND time < $queryTo AND surrogate_key = 1 AND family = 'f'")
+      .where(s"time > $queryFromMillis AND time < $queryToMillis AND surrogate_key = 1 AND family = 'f'")
       .collect()
   }
 
@@ -384,7 +386,7 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
 
     val rdd = sc.riakTSBucket[org.apache.spark.sql.Row](bucketName, schema = Some(structType))
       .select("time", "user_id", "temperature_k")
-      .where(s"time > $queryFrom AND time < $queryTo AND surrogate_key = 1 AND family = 'f'")
+      .where(s"time > $queryFromMillis AND time < $queryToMillis AND surrogate_key = 1 AND family = 'f'")
       .collect()
   }
 
@@ -400,7 +402,7 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
 
     val rdd = sc.riakTSBucket[org.apache.spark.sql.Row](bucketName, schema = Some(structType))
       .select("time", "user_id", "temperature_k")
-      .where(s"time > $queryFrom AND time < $queryTo AND surrogate_key = 1 AND family = 'f'")
+      .where(s"time > $queryFromMillis AND time < $queryToMillis AND surrogate_key = 1 AND family = 'f'")
       .collect()
   }
 
@@ -417,7 +419,7 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
 
     val rdd = sc.riakTSBucket[org.apache.spark.sql.Row](bucketName)
       .schema(structType)
-      .where(s"time > $queryFrom AND time < $queryTo AND surrogate_key = 1 AND family = 'f'")
+      .where(s"time > $queryFromMillis AND time < $queryToMillis AND surrogate_key = 1 AND family = 'f'")
 
     val data = rdd.map(r => TimeSeriesData(r.getLong(0), r.getString(1), r.getDouble(2)))
       .toDF()
@@ -447,7 +449,7 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
 
     val rdd = sc.riakTSBucket[org.apache.spark.sql.Row](bucketName)
       .schema(structType)
-      .where(s"time > $queryFrom AND time < $queryTo AND surrogate_key = 1 AND family = 'f'")
+      .where(s"time > $queryFromMillis AND time < $queryToMillis AND surrogate_key = 1 AND family = 'f'")
       .collect()
   }
 }
