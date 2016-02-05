@@ -21,6 +21,7 @@ import com.basho.riak.spark._
 import com.basho.riak.spark.rdd.{AbstractRDDTest, RiakTSTests}
 import com.basho.riak.spark.util.TimeSeriesToSparkSqlConversion
 import com.basho.riak.spark.writer.WriteDataMapperFactory._
+import org.apache.spark.SparkException
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Row, SQLContext, SaveMode}
@@ -67,6 +68,15 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) with AbstractRDD
         |]
       """.stripMargin, data)
   }
+  
+  @Test
+  def saveInvalidDataToRiak(): Unit = {
+    expectedException.expect(classOf[SparkException])
+    expectedException.expectMessage("Invalid data found at row index(es) 1")
+
+    sc.parallelize(Seq(Row("invalid", "data", "types")))
+      .saveToRiakTS(bucketName)
+  }
 
   @Test
   def saveDataFrameWithSchemaToRiak(): Unit = {
@@ -103,13 +113,13 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) with AbstractRDD
 
     val sourceDF =  getSourceDF(sqlContext)
 
-    sourceDF.write
+    sourceDF.write.option("spark.riak.connection.host", "192.168.161.134:8087")
       .format("org.apache.spark.sql.riak")
       .mode(SaveMode.Append)
       .save(bucketName)
 
     // -- verification
-    val df = sqlContext.read
+    val df = sqlContext.read.option("spark.riak.connection.host", "192.168.161.134:8087")
       .format("org.apache.spark.sql.riak")
       .schema(schema)
       .load(bucketName)
