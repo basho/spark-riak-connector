@@ -62,9 +62,11 @@ class RiakTSRDD[R] private[spark](
         (
           whereConstraints match {
             case None => ""
-            case Some(x: (String, Seq[(String, Any)])) =>
-              values = x._2.map(k => k._2)
-              s" WHERE ${x._1}"
+            case Some(x) => x match {
+              case (n, vs) =>
+                values = vs.map { case (_, v) => v }
+                s" WHERE $n"
+            }
           }
           )
     )

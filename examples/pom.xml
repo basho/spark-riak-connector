@@ -14,9 +14,24 @@
 
     <dependencies>
         <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-swing</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-reflect</artifactId>
+        </dependency>
+
+        <dependency>
             <groupId>com.github.wookietreiber</groupId>
             <artifactId>scala-chart_${scala.major.version}</artifactId>
             <version>0.4.2</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.scala-lang</groupId>
+                    <artifactId>scala-swing</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>

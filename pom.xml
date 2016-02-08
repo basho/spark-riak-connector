@@ -250,6 +250,14 @@
                                         </excludes>
                                     </bannedDependencies>
 
+                                    <bannedDependencies>
+                                        <searchTransitive>true</searchTransitive>
+                                        <excludes>
+                                            <exclude>org.scala-lang:*:(,${scala.version}),(${scala.version},)</exclude>
+                                        </excludes>
+                                        <message>Wrong scala version found in classpath. Only scala ${scala.version} is allowed.</message>
+                                    </bannedDependencies>
+
                                     <requireMavenVersion>
                                         <version>3.0</version>
                                     </requireMavenVersion>
@@ -391,6 +399,16 @@
                 <version>${scala.version}</version>
             </dependency>
             <dependency>
+                <groupId>org.scala-lang</groupId>
+                <artifactId>scala-swing</artifactId>
+                <version>${scala.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.scala-lang</groupId>
+                <artifactId>scala-reflect</artifactId>
+                <version>${scala.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>com.fasterxml.jackson.module</groupId>
                 <artifactId>jackson-module-scala_${scala.major.version}</artifactId>
 
@@ -403,6 +421,10 @@
                     <exclusion>
                         <groupId>com.google.guava</groupId>
                         <artifactId>guava</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.scala-lang</groupId>
+                        <artifactId>scala-reflect</artifactId>
                     </exclusion>
                 </exclusions>
             </dependency>
@@ -420,6 +442,10 @@
                         <groupId>commons-logging</groupId>
                         <artifactId>commons-logging</artifactId>
                     </exclusion>
+                    <exclusion>
+                        <groupId>org.scala-lang</groupId>
+                        <artifactId>scalap</artifactId>
+                    </exclusion>
                 </exclusions>
             </dependency>
 
@@ -427,6 +453,12 @@
 				<groupId>org.apache.spark</groupId>
 				<artifactId>spark-sql_${scala.major.version}</artifactId>
 				<version>${spark.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.scala-lang</groupId>
+                        <artifactId>scala-reflect</artifactId>
+                    </exclusion>
+                </exclusions>
 			</dependency>
             <!-- Test dependencies -->
             <dependency>
