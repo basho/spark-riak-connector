@@ -21,7 +21,7 @@ import scala.collection.JavaConversions._
 @PrepareForTest(Array(classOf[SessionCache]))
 class RiakConnectorTests {
 
-  private val conf = RiakConnectorConf(HostAndPort.hostsFromString("1.1.1.1", 8087).toSet, 1, 2)
+  private val conf = RiakConnectorConf(HostAndPort.hostsFromString("1.1.1.1", 8087).toSet, 1, 2, 1000)
   private val connector = new RiakConnector(conf)
 
   @Before
@@ -58,6 +58,38 @@ class RiakConnectorTests {
     assertTrue(client_1 eq client_2)
   }
 
+  @Test
+  def timeoutedSessionShouldBeEvicted(): Unit = {
+    val hosts = HostAndPort.hostsFromString("2.2.2.2", 8780).toSeq
+
+    val session1 = connector.openSession(Some(hosts))
+    val client1 = session1.unwrap
+    session1.close()
+    
+    Thread.sleep(RiakConnectorConf.defaultInactivityTimeout + 1000)
+
+    val session2 = connector.openSession(Some(hosts))
+    assertNotSame(client1, session2.unwrap)
+  }
+
+  @Test
+  def sessionShouldNotBeEvictedWhenHasAliveRef(): Unit = {
+    val hosts = HostAndPort.hostsFromString("2.2.2.2", 8780).toSeq
+
+    val session1 = connector.openSession(Some(hosts))
+    val session2 = connector.openSession(Some(hosts))
+
+    assertSame(session1.unwrap, session2.unwrap) // session is in cache
+   
+    session1.close
+
+    Thread.sleep(RiakConnectorConf.defaultInactivityTimeout + 1000)
+    
+    verify(session2.unwrap, never()).shutdown
+    val session3 = connector.openSession(Some(hosts))
+    assertSame(session2.unwrap, session3.unwrap) // session is still in cache
+  }
+  
   @Test
   def openSessionWithEqualHostsShouldReturnSessionFromPool(): Unit = {
     val hosts = conf.hosts.toSeq
