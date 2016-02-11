@@ -21,6 +21,8 @@ import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.SaveMode
 import org.apache.spark.sql.riak.RiakSQLContext
+import java.text.SimpleDateFormat
+import java.util.Date
 
 /**
  * Example shows how Spark DataFrames can be used with Riak TS
@@ -75,15 +77,17 @@ object SimpleScalaRiakTSDataframesExample {
       .save(tableName)
 
     val timeVals = inputDF.select("time").rdd.map(_.getTimestamp(0).getTime).collect
-    val from = timeVals.min
-    val to = timeVals.max
+
+    val dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
+    val from = dateFormat.format(new Date(timeVals.min))
+    val to = dateFormat.format(new Date(timeVals.max))
 
     // Simple Riak range query to DF
     println("-------------------------------- Range query ------------------------------------")
     val df = sqlContext.read
       .format("org.apache.spark.sql.riak")
       .load(tableName)
-      .filter(s"time >= CAST($from AS TIMESTAMP) AND time <= CAST($to AS TIMESTAMP) AND  weather = 'sunny' AND family = 'f'")
+      .filter(s"time >= CAST('$from' AS TIMESTAMP) AND time <= CAST('$to' AS TIMESTAMP) AND  weather = 'sunny' AND family = 'f'")
     df.printSchema
     df.show
 
@@ -91,7 +95,7 @@ object SimpleScalaRiakTSDataframesExample {
     println("-------------------------- Reading with RiakSQLContext --------------------------")
     val riakSqlContext = new RiakSQLContext(sc)
     val alternativeDf = riakSqlContext.sql(
-      s"SELECT * from $tableName WHERE time >= CAST($from AS TIMESTAMP) AND time <= CAST($to AS TIMESTAMP) AND  weather = 'sunny' AND family = 'f'")
+      s"SELECT * from $tableName WHERE time >= CAST('$from' AS TIMESTAMP) AND time <= CAST('$to' AS TIMESTAMP) AND  weather = 'sunny' AND family = 'f'")
     alternativeDf.printSchema
     alternativeDf.show
   }
