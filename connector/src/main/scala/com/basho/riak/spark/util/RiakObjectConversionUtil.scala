@@ -24,6 +24,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 
 import scala.reflect.ClassTag
+import scala.runtime.Nothing$
 
 object RiakObjectConversionUtil {
 
@@ -39,8 +40,15 @@ object RiakObjectConversionUtil {
     mapper.get
   }
 
-  def from[T: ClassTag](location: Location, ro: RiakObject): T =
-    ConverterFactory.getInstance.getConverter(implicitly[ClassTag[T]].runtimeClass).toDomain(ro, location)
+  def from[T](location: Location, ro: RiakObject)(implicit ct: ClassTag[T]): T = (ct.runtimeClass match {
+    // It's necessary to identify cases when parameter type is not specified (when T is Nothing)
+    case x: Class[_] if x == classOf[Nothing$] => parseContentTypeAndCharset(ro.getContentType) match {
+      case ("text/plain", _) => ConverterFactory.getInstance.getConverter(classOf[String])
+      case _ => throw new IllegalStateException("Bucket type is not specified. Riak object cannot be parsed.")
+    }
+    case x: Class[_] => ConverterFactory.getInstance.getConverter(x)
+  }).toDomain(ro, location)
+
 
   def to[T](value: T): RiakObject = {
     // TODO: we need to think about smarter approach to handle primitive types such as int, long, etc.
@@ -58,4 +66,9 @@ object RiakObjectConversionUtil {
           .setValue(BinaryValue.create(v))
     }
   }
+
+  private def parseContentTypeAndCharset(contentType: String): (String, String) =
+    contentType.split(";").map(x => x.trim.toLowerCase).toList match {
+      case ct :: others => ct -> others.find(x => x.startsWith("charset")).getOrElse("UTF-8")
+    }
 }
