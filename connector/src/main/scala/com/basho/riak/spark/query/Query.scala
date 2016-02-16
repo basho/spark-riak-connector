@@ -53,7 +53,7 @@ trait LocationQuery[T] extends Query[T] {
     r match {
       case (_, Nil) =>
         (None, Nil)
-      case (nextToken: T, locations: Iterable[Location]) =>
+      case (nextToken, locations) =>
         /**
          * To be 100% sure that massive fetch doesn't lead to the connection pool starvation,
          * fetch will be performed by the smaller chunks of keys.

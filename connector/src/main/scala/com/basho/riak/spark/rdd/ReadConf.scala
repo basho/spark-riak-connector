@@ -44,10 +44,10 @@ case class ReadConf (
   useStreamingValuesForFBRead: Boolean = ReadConf.DefaultUseStreamingValues4FBRead
 ) {
   
-  def overrideProperties(options: Map[String, String]): ReadConf = {    
+  def overrideProperties(options: Map[String, String]): ReadConf = {
     val newFetchSize = options.getOrElse(ReadConf.fetchSizePropName, fetchSize.toString).toInt
-    val newSplitCount = options.getOrElse(ReadConf.splitCountPropName, splitCount.toString).toInt 
-    val newUseStreamingValuesForFBRead = options.getOrElse(ReadConf.useStreamingValuesPropName, useStreamingValuesForFBRead.toString).toBoolean 
+    val newSplitCount = options.getOrElse(ReadConf.splitCountPropName, splitCount.toString).toInt
+    val newUseStreamingValuesForFBRead = options.getOrElse(ReadConf.useStreamingValuesPropName, useStreamingValuesForFBRead.toString).toBoolean
     ReadConf(newFetchSize, newSplitCount, newUseStreamingValuesForFBRead)
   }
 }
@@ -90,11 +90,11 @@ object ReadConf {
     )
   }
   
-  /** Creates ReadConf based on an externally provided map of properties 
-  *   to override those of SparkCon 
+  /** Creates ReadConf based on an externally provided map of properties
+  *   to override those of SparkCon
   *
   * @param conf SparkConf of Spark context to be taken as defaults
-  * @param options externally provided map of properties 
+  * @param options externally provided map of properties
   */
   def apply(conf: SparkConf, options: Map[String, String]): ReadConf = {
     val readConf = ReadConf(conf)

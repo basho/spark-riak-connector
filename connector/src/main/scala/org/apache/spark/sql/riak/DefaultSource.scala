@@ -17,18 +17,13 @@
   */
 package org.apache.spark.sql.riak
 
-import org.apache.spark.sql.{DataFrame, SaveMode, SQLContext}
+import com.basho.riak.spark.rdd.ReadConf
+import com.basho.riak.spark.rdd.connector.{RiakConnector, RiakConnectorConf}
+import com.basho.riak.spark.writer.WriteConf
+import org.apache.spark.SparkConf
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types.StructType
-import com.basho.riak.spark.rdd.connector.RiakConnectorConf
-import com.basho.riak.client.api.RiakClient
-import com.basho.riak.spark.rdd.connector.RiakConnector
-import com.basho.riak.client.core.RiakNode
-import org.apache.spark.SparkConf
-import com.basho.riak.client.core.util.HostAndPort
-import scala.collection.JavaConversions._
-import com.basho.riak.spark.rdd.ReadConf
-import com.basho.riak.spark.writer.WriteConf
+import org.apache.spark.sql.{DataFrame, SQLContext, SaveMode}
 
 /**
   * Riak data source extends [[RelationProvider]], [[SchemaRelationProvider]] and [[CreatableRelationProvider]].

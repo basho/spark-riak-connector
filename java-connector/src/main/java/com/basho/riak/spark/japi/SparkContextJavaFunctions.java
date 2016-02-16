@@ -71,6 +71,7 @@ public class SparkContextJavaFunctions {
         return this.riakBucket(ns.getBucketNameAsString(), ns.getBucketTypeAsString(), valueClass);
     }
 
+    @SuppressWarnings("unchecked")
     public <T> RiakJavaRDD<T> riakBucket(String bucketName, String bucketType, Class<T> valueClass) {
         final ClassTag<T> classTag = getClassTag(valueClass);
         final String bucketTypeStr = bucketType == null || bucketType.isEmpty() ? "default" : bucketType;

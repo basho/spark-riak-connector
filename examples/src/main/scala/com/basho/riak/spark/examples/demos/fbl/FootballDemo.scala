@@ -302,17 +302,19 @@ object FootballDemo {
     }
   }
 
-  private def valueAsInt(values:Option[_]):Int = {
-    values match {
-      case Some(x:String) =>
+  private def valueAsInt(values: Option[_]): Int = values match {
+    case Some(x) => x match {
+      case x: String =>
         val v = x.trim
-        if(v.isEmpty){
+        if (v.isEmpty) {
           0
         } else {
           v.toInt
         }
-      case None => 0
+      case _ => throw new RuntimeException("Only string converter is implemented")
     }
+
+    case None => 0
   }
 
   private def setSparkOpt(sparkConf: SparkConf, option: String, defaultOptVal: String): SparkConf = {
