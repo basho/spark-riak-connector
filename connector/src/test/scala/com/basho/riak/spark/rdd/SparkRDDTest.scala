@@ -89,13 +89,6 @@ class SparkRDDTest extends AbstractRDDTest {
     assertEqualsUsingJSON("[['u1',3],['u2',1],['u3',2]]", data)
   }
 
-  @Test
-  def readDataForSpecifiedBucketKeys(): Unit = {
-    rdd = sc.riakBucket(DEFAULT_NAMESPACE)
-
-
-  }
-
   @Ignore("Need to fix Tuple2 desiarilization")
   @Test
   def storePairRDDWithDefaultMapper(): Unit = {

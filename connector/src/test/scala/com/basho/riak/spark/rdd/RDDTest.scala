@@ -55,13 +55,6 @@ class RDDTest extends AbstractRDDTest{
     rdd.compute(partitions.iterator.next(), tc).toList
   }
 
-  @Test
-  def first(){
-    val rdd = sc.riakBucket(DEFAULT_NAMESPACE)
-      .query2iRange(CREATION_INDEX, 1, 10)
-
-  }
-
   @Ignore("Ignored until the fix for '2i inconsistency reads' will be released")
   @Test
   def check2IPageableProcessing() = {

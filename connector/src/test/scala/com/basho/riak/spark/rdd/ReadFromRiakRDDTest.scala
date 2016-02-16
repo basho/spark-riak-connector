@@ -26,14 +26,21 @@ import java.util.UUID
 import com.basho.riak.client.api.convert.{Converter, ConverterFactory}
 import com.basho.riak.client.core.util.BinaryValue
 import com.basho.riak.spark._
+import org.apache.spark.SparkException
 import org.junit.Assert._
-import org.junit.Test
+import org.junit.{Rule, Test}
 import org.junit.experimental.categories.Category
+import org.junit.rules.ExpectedException
 
 case class UserTS(timestamp: String, user_id: String)
 
 @Category(Array(classOf[IntegrationTests]))
 class ReadFromRiakRDDTest extends AbstractRDDTest{
+
+  val _expectedException: ExpectedException = ExpectedException.none()
+
+  @Rule
+  def expectedException: ExpectedException = _expectedException
 
   private val CREATION_INDEX = "creationNo"
 
@@ -51,6 +58,21 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
   protected override def initSparkConf() =
     super.initSparkConf()
       .setAppName("Bunch of read RDD tests")
+
+  @Test
+  def readJsonDataFromBucketWithoutTypeShouldFail():Unit = {
+    expectedException.expect(classOf[SparkException])
+    expectedException.expectMessage("Bucket type is not specified. Riak object cannot be parsed.")
+
+    sc.riakBucket(DEFAULT_NAMESPACE).query2iRange(CREATION_INDEX, 1, 10).collect()
+  }
+
+  @Test
+  def readTextDataFromBucketWithoutTypeShouldReturnValues():Unit = {
+    sc.parallelize(List(Tuple1("key1"), Tuple1("key2"), Tuple1("key3"))).saveToRiak(DEFAULT_NAMESPACE_4STORE)
+    val rdd = sc.riakBucket(DEFAULT_NAMESPACE_4STORE).queryAll()
+    assertEquals(3, rdd.count())
+  }
 
   @Test
   @Category(Array(classOf[RegressionTests]))
