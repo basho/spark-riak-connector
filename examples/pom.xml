@@ -44,7 +44,7 @@
             <groupId>com.basho.riak</groupId>
             <artifactId>spark-riak-connector</artifactId>
             <version>${project.version}</version>
-            <classifier>shaded</classifier>
+            <classifier>uber</classifier>
         </dependency>
         <dependency>
             <groupId>com.basho.riak</groupId>
