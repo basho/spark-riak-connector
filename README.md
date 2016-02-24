@@ -6,7 +6,7 @@ Spark Riak connector allows you to expose data stored in Riak buckets as Spark R
 
 ## Compatibility
 * Compatible with Riak KV, bundled inside BDP 1.x
-* Compatible with Apache Spark 1.4 or later
+* Compatible with Apache Spark 1.5.2 or later
 * Compatible with Scala 2.10 or later
 * Compatible with Java 8
 
@@ -20,6 +20,8 @@ Spark Riak connector allows you to expose data stored in Riak buckets as Spark R
 * Provides mapping and data conversion for JSON formatted values
 * Provides ability to construct an RDD by using a 2i string index or a set of indexes
 * Provides ability to construct an RDD by using a 2i range query or a set of ranges 
+* Provides ability to perform range queries over Riak TS bucket
+* Provides ability to construct Dataframes from Riak TS bucket
 
 
 ## Building
@@ -94,13 +96,16 @@ from the spark-shell and set within the $SPARK_HOME/conf/spark-default.conf.
 
 The following options are available on `SparkConf` object:
 
-Property name                                  | Description                                       | Default value
------------------------------------------------|---------------------------------------------------|--------------------
-spark.riak.connection.host                     | IP:port of a Riak node protobuf interface         | 127.0.0.1:8087
-spark.riak.connections.min                     | Minimum number of parallel connections to Riak    | 10
-spark.riak.connections.max                     | Maximum number of parallel connections to Riak    | 30
-spark.riak.input.fetch-size                    | Number of keys to fetch in a single round-trip to Riak | 1000
-
+Property name                                  | Description                                       | Default value      | Riak Type
+-----------------------------------------------|---------------------------------------------------|--------------------|-------------
+spark.riak.connection.host                     | IP:port of a Riak node protobuf interface         | 127.0.0.1:8087     | KV/TS
+spark.riak.connections.min                     | Minimum number of parallel connections to Riak    | 10                 | KV/TS
+spark.riak.connections.max                     | Maximum number of parallel connections to Riak    | 30                 | KV/TS
+spark.riak.input.fetch-size                    | Number of keys to fetch in a single round-trip to Riak | 1000          | KV
+spark.riak.input.split.count                   | Desired minimum number of Spark partitions to divide the data into | 10| KV
+spark.riak.output.wquorum                      | Quorum value on write                                              | 1 | KV
+spark.riak.connections.inactivity.timeout      | Time to keep connection to Riak alive in milliseconds | 1000 | KV/TS
+spark.riakts.bindings.timestamp                | To treat/convert Riak TS timestamp columns either as a Long (UNIX milliseconds) or as a Timestamps during the automatic schema discovery. Valid values are: <ul><li>useLong</li><li>useTimestamp</li><ul> | useTimestamp | TS
 
 Example:
 
@@ -191,6 +196,14 @@ Riak TS buckets can be queried using sql() function:
 
 ```scala
 val rdd = sc.riakTSBucket(tableName).sql(s"SELECT * FROM $tableName WHERE time >= $from AND time <= $to")
+```
+
+### Saving rdd to Riak TS bucket
+
+Existing rdd of org.apache.spark.sql.Row> can be saved to Riak TS as follows
+
+```scala
+rdd.saveToRiakTS(TABLE_NAME);
 ```
 
 ## Examples

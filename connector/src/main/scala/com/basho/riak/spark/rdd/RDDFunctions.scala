@@ -36,7 +36,7 @@ class RDDFunctions[T](rdd: RDD[T]) extends Serializable {
    */
   def saveToRiak(bucketName: String,
                       bucketType: String = "default",
-                      writeConf: WriteConf = WriteConf.fromSparkConf(sparkContext.getConf))
+                      writeConf: WriteConf = WriteConf(sparkContext.getConf))
                      (implicit connector: RiakConnector = RiakConnector(sparkContext.getConf),
                       vwf: WriteDataMapperFactory[T, KeyValue]): Unit = {
     val writer = RiakWriter[T](connector, bucketType, bucketName, writeConf )
@@ -48,7 +48,7 @@ class RDDFunctions[T](rdd: RDD[T]) extends Serializable {
     saveToRiak(ns.getBucketNameAsString, ns.getBucketTypeAsString)
   }
 
-  def saveAsRiakBucket(bucketDef: BucketDef, writeConf: WriteConf = WriteConf.fromSparkConf(sparkContext.getConf))
+  def saveAsRiakBucket(bucketDef: BucketDef, writeConf: WriteConf = WriteConf(sparkContext.getConf))
                       (implicit connector: RiakConnector = RiakConnector(sparkContext.getConf),
                        vwf: WriteDataMapperFactory[T, KeyValue]): Unit = {
 
@@ -58,7 +58,7 @@ class RDDFunctions[T](rdd: RDD[T]) extends Serializable {
 
   def saveToRiakTS(bucketName: String,
                    bucketType: String = "default",
-                   writeConf: WriteConf = WriteConf.fromSparkConf(sparkContext.getConf))
+                   writeConf: WriteConf = WriteConf(sparkContext.getConf))
                   (implicit evidence: T <:< SparkRow,
                    connector: RiakConnector = RiakConnector(sparkContext.getConf),
                    vwf: WriteDataMapperFactory[T, RowDef]): Unit = {

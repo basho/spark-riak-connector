@@ -46,8 +46,8 @@ class RiakConnector(conf: RiakConnectorConf)
         _config
 
       case Some(h: Seq[HostAndPort]) =>
-        new RiakConnectorConf(hosts = Set(h: _*), minConnections = _config.minConnections,
-          maxConnections = _config.maxConnections)
+        RiakConnectorConf(hosts = Set(h: _*), minConnections = _config.minConnections,
+          maxConnections = _config.maxConnections, inactivityTimeout = _config.inactivityTimeout)
     }
 
     RiakConnector.openSession(cfg)
@@ -95,9 +95,10 @@ object RiakConnector extends Logging {
 
   /** Returns a RiakConnector created from explicitly given connection configuration. */
   def apply(hosts: Set[HostAndPort], minConnections: Int = RiakConnectorConf.DEFAULT_MIN_CONNECTIONS,
-            maxConnections: Int = RiakConnectorConf.DEFAULT_MAX_CONNECTIONS): RiakConnector = {
+            maxConnections: Int = RiakConnectorConf.DEFAULT_MAX_CONNECTIONS, 
+            inactivityTimeout: Long = RiakConnectorConf.defaultInactivityTimeout): RiakConnector = {
 
-    val config = RiakConnectorConf(hosts, minConnections, maxConnections)
+    val config = RiakConnectorConf(hosts, minConnections, maxConnections, inactivityTimeout)
     new RiakConnector(config)
   }
 }

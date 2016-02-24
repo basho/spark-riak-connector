@@ -29,9 +29,12 @@ import com.basho.riak.spark.rdd.AbstractRiakSparkTest
 import org.apache.spark.Logging
 import org.apache.spark.sql.types._
 import org.junit.Assert._
-import org.junit.Assume
+import org.junit.{Rule, Assume}
+import org.junit.rules.ExpectedException
 import scala.collection.JavaConversions._
 import java.sql.Timestamp
+import java.text.SimpleDateFormat
+import java.util.Date
 
 case class TimeSeriesData(time: Long, user_id: String, temperature_k: Double)
 
@@ -39,6 +42,11 @@ case class TimeSeriesData(time: Long, user_id: String, temperature_k: Double)
   * @author Sergey Galkin <srggal at gmail dot com>
   */
 abstract class AbstractTimeSeriesTest(val createTestDate: Boolean = true) extends AbstractRiakSparkTest with Logging {
+
+  val _expectedException: ExpectedException = ExpectedException.none()
+
+  @Rule
+  def expectedException: ExpectedException = _expectedException
 
   protected def getMillis = (t: Timestamp) => t.getTime
 
@@ -57,7 +65,6 @@ abstract class AbstractTimeSeriesTest(val createTestDate: Boolean = true) extend
     TimeSeriesData(111111, "bryce", 305.37),
     TimeSeriesData(111222, "bryce", 300.12),
     TimeSeriesData(111333, "bryce", 295.95),
-
     TimeSeriesData(111444, "ratman", 362.121),
     TimeSeriesData(111555, "ratman", 3502.212)
   )
@@ -65,9 +72,13 @@ abstract class AbstractTimeSeriesTest(val createTestDate: Boolean = true) extend
   val tsRangeStart: Calendar = mkTimestamp(testData.minBy(_.time).time)
   val tsRangeEnd: Calendar = mkTimestamp(testData.maxBy(_.time).time)
 
-  val queryFrom = tsRangeStart.getTimeInMillis - 5
-  val queryTo = tsRangeEnd.getTimeInMillis + 10
-
+  val queryFromMillis = tsRangeStart.getTimeInMillis - 5 
+  val queryToMillis = tsRangeEnd.getTimeInMillis + 10
+  
+  val dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
+  val fromStr = dateFormat.format(new Date(queryFromMillis)) // for spark 1.6
+  val toStr = dateFormat.format(new Date(queryToMillis)) // for spark 1.6
+    
   val riakTSRows = testData.map(f => new Row(
     new Cell(1) /*surrogate_key*/ ,
     new Cell("f") /* family */ ,
@@ -75,8 +86,8 @@ abstract class AbstractTimeSeriesTest(val createTestDate: Boolean = true) extend
     new Cell(f.user_id),
     new Cell(f.temperature_k)))
 
-  val sqlWhereClause: String = s"WHERE time > $queryFrom AND " +
-    s"time < $queryTo AND surrogate_key = 1 AND family = 'f'"
+  val sqlWhereClause: String = s"WHERE time >= $queryFromMillis AND " +
+    s"time <= $queryToMillis AND surrogate_key = 1 AND family = 'f'"
 
   val sqlQuery: String = s"SELECT surrogate_key, family, time, user_id, temperature_k " +
     s"FROM $bucketName $sqlWhereClause"

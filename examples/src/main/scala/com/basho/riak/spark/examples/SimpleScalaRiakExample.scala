@@ -39,7 +39,7 @@ object SimpleScalaRiakExample {
         ", {key: 'key-6', indexes: {creationNo: 6}, value: 'value6'}" +
     "]"
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
 
     val sparkConf = new SparkConf()
       .setAppName("Simple Scala Riak Demo")
@@ -50,11 +50,11 @@ object SimpleScalaRiakExample {
 
 
     createTestData(sparkConf)
-      val sc = new SparkContext(sparkConf)
-      val rdd = sc.riakBucket(SOURCE_DATA)
-        .queryAll()
+    val sc = new SparkContext(sparkConf)
+    val rdd = sc.riakBucket(SOURCE_DATA)
+      .queryAll()
 
-      println(s"Execution result: ${rdd.count()}")
+    println(s"Execution result: ${rdd.count()}")
   }
 
   private def createTestData(sparkConf: SparkConf): Unit = {

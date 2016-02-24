@@ -20,7 +20,8 @@ package com.basho.riak.spark.rdd.timeseries
 import java.sql.Timestamp
 import java.util.{Calendar, Date}
 
-import com.basho.riak.client.core.query.timeseries.{Cell, Row}
+import com.basho.riak.client.core.query.timeseries.ColumnDescription.ColumnType._
+import com.basho.riak.client.core.query.timeseries.{ColumnDescription, Cell, Row}
 import com.basho.riak.client.core.util.BinaryValue
 import com.basho.riak.spark.util.TimeSeriesToSparkSqlConversion
 import org.apache.spark.Logging
@@ -30,24 +31,29 @@ import org.junit.Test
 
 import scala.collection.JavaConversions._
 
-class TSConversionTest extends Logging{
+class TSConversionTest extends Logging {
 
   case class SampleClass(int: Integer, date: Date, string: String)
 
-  private def mkStructType(dataType: DataType*): StructType = {
-    val fields = for {(dt, i) <-dataType.zipWithIndex} yield {
-      StructField("f" +i, dt)
-    }
+  private def mkStructType(dataType: DataType*): StructType =
+    StructType(dataType.zipWithIndex.map { case (dt, i) => StructField("f" + i, dt) })
 
-    StructType(fields)
-  }
+  private def mkColumnDescriptions(dataType: ColumnDescription.ColumnType*): Seq[ColumnDescription] =
+    dataType.zipWithIndex.map { case (dt, i) => new ColumnDescription("f" + i, dt) }
 
-  private def singleCellTest [T] (value: T, dataType: DataType, cell: Cell): Unit = {
+  private def singleCellTest[T](value: T, dataType: DataType, cell: Cell, columns: Option[Seq[ColumnDescription]] = None): Unit = {
     val singleCellRow = new Row(cell)
-    val sparkRow = TimeSeriesToSparkSqlConversion.asSparkRow( mkStructType(dataType), singleCellRow)
+    val sparkRow = TimeSeriesToSparkSqlConversion.asSparkRow(mkStructType(dataType), singleCellRow, columns)
     assertEquals(1, sparkRow.length)
     assertNotNull(sparkRow.getAs[T](0))
-    assertSeqEquals(Seq(value), sparkRow.toSeq)
+    assertEquals(dataType, sparkRow.schema(0).dataType)
+    columns match {
+      case Some(cs) if value.isInstanceOf[Timestamp] && dataType == LongType =>
+        assertSeqEquals(Seq(value.asInstanceOf[Timestamp].getTime), sparkRow.toSeq) // check timestamp-to-long conversion
+      case Some(cs) if value.isInstanceOf[Long] && dataType == TimestampType =>
+        assertSeqEquals(Seq(new Timestamp(value.asInstanceOf[Long])), sparkRow.toSeq) // check long-to-timestamp conversion
+      case None => assertSeqEquals(Seq(value), sparkRow.toSeq)
+    }
   }
 
   @Test
@@ -66,6 +72,18 @@ class TSConversionTest extends Logging{
   }
 
   @Test
+  def singleRowSingleTimestampToLongCellTest(): Unit = {
+    val timestamp = new Timestamp(1L) // gets mapped as integer
+    singleCellTest(timestamp, LongType, new Cell(timestamp), Some(mkColumnDescriptions(TIMESTAMP)))
+  }
+
+  @Test
+  def singleRowSingleLongToTimestampCellTest(): Unit = {
+    val long = 1L // gets mapped as integer
+    singleCellTest(long, TimestampType, new Cell(long), Some(mkColumnDescriptions(SINT64)))
+  }
+
+  @Test
   def singleRowSingleLongCellMaxValueTest(): Unit = {
     val long = Long.MaxValue
     singleCellTest(long, LongType, new Cell(long))
@@ -73,7 +91,7 @@ class TSConversionTest extends Logging{
 
   @Test
   def singleRowSingleStringCellTest(): Unit = {
-    val string= "abc"
+    val string = "abc"
     singleCellTest(string, StringType, new Cell(string))
   }
 
@@ -127,19 +145,42 @@ class TSConversionTest extends Logging{
 
     val cells = List(new Cell(1), new Cell(date), new Cell("abc"))
     val row = new Row(cells)
-    val sparkRow = TimeSeriesToSparkSqlConversion.asSparkRow(mkStructType(LongType, TimestampType, StringType),row)
+    val sparkRow = TimeSeriesToSparkSqlConversion.asSparkRow(mkStructType(LongType, TimestampType, StringType), row)
     val expected = List(1L, new Timestamp(millis), "abc")
     assertSeqEquals(expected, sparkRow.toSeq)
   }
 
-  private def compareElementwise(a: Seq[Any], b: Seq[Any]): Boolean = {
-    a match {
-      case Nil => true
-      case x::xs =>
-          val bh = b.head
-          val a = x.equals(b.head)
-          x.equals(b.head) && compareElementwise(xs, b.tail)
-    }
+  @Test
+  def singleRowMultipleCellsTimestampToLongTest(): Unit = {
+    val millis = System.currentTimeMillis
+    val date = new Date(millis)
+
+    val cells = List(new Cell(1), new Cell(date), new Cell("abc"))
+    val row = new Row(cells)
+    val columnDescriptions = Some(mkColumnDescriptions(SINT64, TIMESTAMP, VARCHAR))
+    val sparkRow = TimeSeriesToSparkSqlConversion.asSparkRow(
+      mkStructType(LongType, LongType, StringType), row, columnDescriptions)
+    val expected = List(1L, millis, "abc")
+    assertSeqEquals(expected, sparkRow.toSeq)
+  }
+
+  @Test
+  def singleRowMultipleCellsLongToTimestampTest(): Unit = {
+    val millis = System.currentTimeMillis
+    val date = new Date(millis)
+
+    val cells = List(new Cell(1), new Cell(date), new Cell("abc"))
+    val row = new Row(cells)
+    val columnDescriptions = Some(mkColumnDescriptions(SINT64, SINT64, VARCHAR))
+    val sparkRow = TimeSeriesToSparkSqlConversion.asSparkRow(
+      mkStructType(LongType, TimestampType, StringType), row, columnDescriptions)
+    val expected = List(1L, new Timestamp(millis), "abc")
+    assertSeqEquals(expected, sparkRow.toSeq)
+  }
+
+  private def compareElementwise(a: Seq[Any], b: Seq[Any]): Boolean = a match {
+    case Nil => true
+    case x :: xs => x.equals(b.head) && compareElementwise(xs, b.tail)
   }
 
   private def assertSeqEquals(expected: Seq[Any], actual: Seq[Any]): Unit = {

@@ -17,53 +17,38 @@
  */
 package com.basho.riak.spark.util
 
-import com.basho.riak.client.api.convert.JSONConverter
+import com.basho.riak.client.api.convert.{ConverterFactory, JSONConverter}
 import com.basho.riak.client.core.query.{Location, RiakObject}
 import com.basho.riak.client.core.util.BinaryValue
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 
 import scala.reflect.ClassTag
+import scala.runtime.Nothing$
 
 object RiakObjectConversionUtil {
+
+  //  Need to register Scala module for proper processing of Scala classes
+  JSONConverter.registerJacksonModule(DefaultScalaModule)
+
   private var mapper: Option[ObjectMapper] = None
-  private val classOfRiakObject = classOf[RiakObject]
 
-  private def objectMapper():ObjectMapper ={
-    if(mapper.isEmpty){
-
-      /**
-       * Need to register Scala module for proper processing of Scala classes
-       */
-      JSONConverter.registerJacksonModule(DefaultScalaModule)
+  private def objectMapper(): ObjectMapper = {
+    if (mapper.isEmpty) {
       mapper = Some(JSONConverter.getObjectMapper)
     }
     mapper.get
   }
 
-  def from[T: ClassTag](location: Location, ro: RiakObject ): T = {
-    val ct = implicitly[ClassTag[T]]
-
-    if( ct.runtimeClass == classOfRiakObject){
-      // pass through conversion
-      ro.asInstanceOf[T]
-    } else {
-      val (contentType, charset) = parseContentTypeAndCharset(ro.getContentType)
-
-      contentType match {
-          case "application/json" if !ct.runtimeClass.equals(classOf[java.lang.String]) =>
-            // from https://gist.github.com/rinmalavi/6422520
-            objectMapper().readValue[T](ro.getValue.unsafeGetValue(), ct.runtimeClass.asInstanceOf[Class[T]])
-
-          case _ =>
-            if (ct.runtimeClass.equals(classOf[java.lang.String])) {
-              ro.getValue.toStringUtf8.asInstanceOf[T]
-            } else {
-              ro.getValue.asInstanceOf[T]
-            }
-        }
+  def from[T](location: Location, ro: RiakObject)(implicit ct: ClassTag[T]): T = (ct.runtimeClass match {
+    // It's necessary to identify cases when parameter type is not specified (when T is Nothing)
+    case x: Class[_] if x == classOf[Nothing$] => parseContentTypeAndCharset(ro.getContentType) match {
+      case ("text/plain", _) => ConverterFactory.getInstance.getConverter(classOf[String])
+      case _ => throw new IllegalStateException("Bucket type is not specified. Riak object cannot be parsed.")
     }
-  }
+    case x: Class[_] => ConverterFactory.getInstance.getConverter(x)
+  }).toDomain(ro, location)
+
 
   def to[T](value: T): RiakObject = {
     // TODO: we need to think about smarter approach to handle primitive types such as int, long, etc.
@@ -82,15 +67,8 @@ object RiakObjectConversionUtil {
     }
   }
 
-  private def parseContentTypeAndCharset(contentType: String): (String,String) ={
-    val d = contentType.split(";").transform(x=> x.trim.toLowerCase)
-
-    var charset = "UTF-8"
-    for( i <- 1 to d.length-1){
-      if(d(i).startsWith("charset")){
-        charset = d(i).substring(d(i).indexOf("=") + 1)
-      }
+  private def parseContentTypeAndCharset(contentType: String): (String, String) =
+    contentType.split(";").map(x => x.trim.toLowerCase).toList match {
+      case ct :: others => ct -> others.find(x => x.startsWith("charset")).getOrElse("UTF-8")
     }
-    d(0)->charset
-  }
 }

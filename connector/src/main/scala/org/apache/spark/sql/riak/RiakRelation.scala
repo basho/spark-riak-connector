@@ -1,25 +1,25 @@
-/**
-  * Copyright (c) 2015 Basho Technologies, Inc.
-  *
-  * This file is provided to you under the Apache License,
-  * Version 2.0 (the "License"); you may not use this file
-  * except in compliance with the License.  You may obtain
-  * a copy of the License at
-  *
-  * http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing,
-  * software distributed under the License is distributed on an
-  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-  * KIND, either express or implied.  See the License for the
-  * specific language governing permissions and limitations
-  * under the License.
-  */
+/*******************************************************************************
+ * Copyright (c) 2016 IBM Corp.
+ * 
+ * Created by Basho Technologies for IBM
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License. 
+ *******************************************************************************/
 package org.apache.spark.sql.riak
 
-import com.basho.riak.client.core.query.timeseries.ColumnDescription
 import com.basho.riak.spark._
-import com.basho.riak.spark.rdd.connector.RiakConnector
+import scala.reflect._
+import com.basho.riak.spark.rdd.connector.{RiakConnectorConf, RiakConnector}
 import com.basho.riak.spark.rdd.{ReadConf, RiakTSRDD}
 import com.basho.riak.spark.util.TimeSeriesToSparkSqlConversion
 import com.basho.riak.spark.writer.WriteConf
@@ -41,8 +41,8 @@ import scala.collection.convert.decorateAsScala._
 private[riak] class RiakRelation(
         bucket: String,
         connector: RiakConnector,
-        readConf: ReadConf,
-        writeConf: WriteConf,
+        val readConf: ReadConf,
+        val writeConf: WriteConf,
         override val sqlContext: SQLContext,
         userSpecifiedSchema: Option[StructType])
   extends BaseRelation with PrunedFilteredScan with InsertableRelation with Logging {
@@ -68,7 +68,7 @@ private[riak] class RiakRelation(
         val fields = for {r: com.basho.riak.client.core.query.timeseries.Row <- response.getRowsCopy.asScala } yield {
           val cells = r.getCellsCopy
           val name: String = cells.get(0).getVarcharAsUTF8String
-          val t: DataType = TimeSeriesToSparkSqlConversion.asDataType(cells.get(1).getVarcharAsUTF8String)
+          val t: DataType = TimeSeriesToSparkSqlConversion.asDataType(cells.get(1).getVarcharAsUTF8String, readConf.tsTimestampBinding)
           val nullable: Boolean = cells.get(2).getBoolean
 
           StructField(name, t, nullable)
@@ -79,10 +79,10 @@ private[riak] class RiakRelation(
     case Some(st: StructType) => st
   }
 
-  private[this] val baseRdd: RiakTSRDD[Row] =
-    sqlContext.sparkContext.riakTSBucket[Row](bucket)
+  private[this] val baseRdd: RiakTSRDD[Row] = sqlContext.sparkContext
+    .riakTSBucket[Row](bucket, readConf, userSpecifiedSchema)(implicitly[ClassTag[Row]], connector)
 
-  def buildScan(): RDD[Row] = baseRdd.asInstanceOf[RDD[Row]]
+   def buildScan(): RDD[Row] = baseRdd.asInstanceOf[RDD[Row]]
 
   override def buildScan(requiredColumns: Array[String], filters: Array[Filter]): RDD[Row] = {
 
@@ -133,6 +133,7 @@ private[riak] class RiakRelation(
     }
 
     implicit val rwf = SqlDataMapper.factory[Row]
+    implicit val riakConnector = connector
     data.rdd.saveToRiakTS(bucket, writeConf = writeConf)
   }
 }
@@ -141,13 +142,23 @@ private[riak] class RiakRelation(
   * @author Sergey Galkin <srggal at gmail dot com>
   */
 object RiakRelation {
-  def apply(
-             bucket: String,
-             sqlContext: SQLContext,
-             schema: Option[StructType] = None,
-             connector: Option[RiakConnector] = None): RiakRelation = {
+  def apply(bucket: String,
+            sqlContext: SQLContext,
+            schema: Option[StructType] = None,
+            connector: Option[RiakConnector] = None,
+            readConf: ReadConf,
+            writeConf: WriteConf): RiakRelation = {
 
     new RiakRelation(bucket, connector.getOrElse(RiakConnector(sqlContext.sparkContext.getConf)),
-      null, null, sqlContext, schema)
+      readConf, writeConf, sqlContext, schema)
+  }
+
+  def apply(sqlContext: SQLContext, parameters: Map[String, String], schema: Option[StructType]): RiakRelation = {
+    val existingConf = sqlContext.sparkContext.getConf
+    val bucketDef = BucketDef(parameters(DefaultSource.RiakBucketProperty), None)
+    val riakConnector = new RiakConnector(RiakConnectorConf(existingConf, parameters))
+    val readConf = ReadConf(existingConf, parameters)
+    val writeConf = WriteConf(existingConf, parameters)
+    RiakRelation(bucketDef.bucket, sqlContext, schema, Some(riakConnector), readConf, writeConf)
   }
 }

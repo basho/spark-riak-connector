@@ -18,16 +18,16 @@
 package com.basho.riak.spark.rdd.connector
 
 import java.io.IOException
-import java.lang.reflect.{InvocationTargetException, Method, InvocationHandler, Proxy}
+import java.lang.reflect.{ InvocationTargetException, Method, InvocationHandler, Proxy }
 import java.util.concurrent.atomic.AtomicLong
-
-import com.basho.riak.client.api.{RiakCommand, RiakClient}
-import com.basho.riak.client.core.{RiakFuture, FutureOperation, RiakCluster, RiakNode}
+import com.basho.riak.client.api.{ RiakCommand, RiakClient }
+import com.basho.riak.client.core.{ RiakFuture, FutureOperation, RiakCluster, RiakNode }
 import com.basho.riak.client.core.util.HostAndPort
 import com.google.common.cache._
 import org.apache.spark.Logging
 import scala.collection.JavaConverters._
-
+import java.util.concurrent.{ ThreadFactory, Executors, TimeUnit }
+import scala.collection.concurrent.TrieMap
 
 /**
   * Simple [[RiakSession]] Cache/Pool.
@@ -37,12 +37,15 @@ import scala.collection.JavaConverters._
   */
 class SessionCache(val cacheSize: Int) extends Logging {
 
+  // Sessions to be released after timeout
+  private val expiredSessions = TrieMap[CachedSession, Long]()
+
   private[this] val cachedSessions: LoadingCache[RiakConnectorConf, CachedSession] = {
     val cacheLoader = new CacheLoader[RiakConnectorConf, CachedSession]() {
       override def load(conf: RiakConnectorConf): CachedSession = {
         logDebug(s"Creating new Riak CachedSession: $conf")
 
-        new CachedSession(conf, createClient(conf))
+        new CachedSession(conf, createClient(conf), release(_, conf.inactivityTimeout))
 
           /**
             * Additional reference prevents from closing after the first release:
@@ -73,16 +76,20 @@ class SessionCache(val cacheSize: Int) extends Logging {
     Proxy.newProxyInstance(
       session.getClass.getClassLoader,
       Array(classOf[RiakSession]),
-      new SessionProxy(session)
-    ).asInstanceOf[RiakSession]
+      new SessionProxy(session)).asInstanceOf[RiakSession]
   }
 
   def shutdown(): Unit = {
+    checkForExpiredSessionsThread.interrupt()
     invalidateAll()
   }
 
   def invalidateAll(): Unit = {
     cachedSessions.invalidateAll()
+  }
+
+  def evict(key: RiakConnectorConf): Unit = {
+    cachedSessions.invalidate(key)
   }
 
   private def createClient(conf: RiakConnectorConf): RiakClient = {
@@ -94,7 +101,6 @@ class SessionCache(val cacheSize: Int) extends Logging {
       val builder = new RiakNode.Builder()
         .withMinConnections(conf.minConnections)
         .withMaxConnections(conf.maxConnections)
-
 
       val nodes = conf.hosts.map { (h: HostAndPort) =>
         builder.withRemoteAddress(h.getHost)
@@ -113,6 +119,61 @@ class SessionCache(val cacheSize: Int) extends Logging {
           s"Failed to create RiakClient(java) for $endpointsStr", e)
     }
   }
+
+  private def releaseDeferred(session: CachedSession, releaseDelayMillis: Long): Unit = {
+    val newTime = System.currentTimeMillis + releaseDelayMillis
+    val releaseTime = expiredSessions.remove(session) match {
+      case Some(oldTime) => math.max(oldTime, newTime)
+      case None          => newTime
+    }
+    expiredSessions.put(session, releaseTime)
+  }
+
+  private def releaseImmediately(session: CachedSession): Unit = {
+    if (session.getRefCount == 1) {
+      evict(session.conf)
+      logTrace(s"Session was released by timeout: ${session.conf}")
+    }
+  }
+
+  def release(session: CachedSession, timeout: Long = 0): Unit = {
+    if (timeout == 0 || !checkForExpiredSessionsThread.isAlive) {
+      releaseImmediately(session)
+    } else {
+      releaseDeferred(session, timeout)
+    }
+  }
+
+  private val checkForExpiredSessionsThread: Thread = new Thread("session-cleaner") {
+    private val checkRate = 100
+
+    setDaemon(true)
+
+    override def run(): Unit = {
+      logDebug(s"Started checking for expired sessions")
+      try {
+        while (!isInterrupted) {
+          val now = System.currentTimeMillis
+          for ((session, time) <- expiredSessions) {
+            if (time <= now && expiredSessions.remove(session).isDefined) {
+              try {
+                releaseImmediately(session)
+              } catch {
+                case e: Exception => logError(s"Unexpected exception while releasing expired session: ${session.conf}", e)
+              }
+            }
+          }
+          Thread.sleep(checkRate);
+        }
+      } catch {
+        case e: InterruptedException => {
+          logWarning(s"Session Cleaner was interrunpted", e)
+        }
+      }
+      logDebug(s"Checking for expired sessions stopped")
+    }
+  }
+  checkForExpiredSessionsThread.start
 }
 
 /**
@@ -133,10 +194,8 @@ private class SessionProxy(session: CachedSession) extends InvocationHandler {
             closed = true
           }
           method.invoke(session, args: _*)
-        }
-        catch {
-          case e: InvocationTargetException =>
-            throw e.getCause
+        } catch {
+          case e: InvocationTargetException => throw e.getCause
         }
     }
   }
@@ -146,7 +205,7 @@ private class SessionProxy(session: CachedSession) extends InvocationHandler {
   * @author Sergey Galkin <srggal at gmail dot com>
   * @since 1.2.0
   */
-class CachedSession(conf: RiakConnectorConf, riakClient: RiakClient) extends RiakSession with Logging {
+class CachedSession(val conf: RiakConnectorConf, riakClient: RiakClient, afterClose: CachedSession => Any) extends RiakSession with Logging {
   private var closed: Boolean = false
   private val refCount: AtomicLong = new AtomicLong(0)
 
@@ -165,6 +224,10 @@ class CachedSession(conf: RiakConnectorConf, riakClient: RiakClient) extends Ria
     this
   }
 
+  def getRefCount(): Long = {
+    refCount.get
+  }
+
   override def execute[T, S](command: RiakCommand[T, S]): T = {
     checkThatSessionIsActive()
     riakClient.execute(command)
@@ -178,27 +241,32 @@ class CachedSession(conf: RiakConnectorConf, riakClient: RiakClient) extends Ria
   override def minConnectionsPerNode: Int = {
     checkThatSessionIsActive()
     riakClient.getRiakCluster.getNodes.asScala match {
-      case Seq(first: RiakNode, rest@_ *) => first.getMinConnections
-      case _ => throw new IllegalArgumentException("requirement failed: At least 1 node required to obtain minConnection info")
+      case Seq(first: RiakNode, rest @ _*) => first.getMinConnections
+      case _                               => throw new IllegalArgumentException("requirement failed: At least 1 node required to obtain minConnection info")
     }
   }
 
   override def maxConnectionsPerNode: Int = {
     checkThatSessionIsActive()
     riakClient.getRiakCluster.getNodes.asScala match {
-      case Seq(first: RiakNode, rest@_ *) => first.getMaxConnections
-      case _ => throw new IllegalArgumentException("requirement failed: At least 1 node required to obtain maxConnection info")
+      case Seq(first: RiakNode, rest @ _*) => first.getMaxConnections
+      case _                               => throw new IllegalArgumentException("requirement failed: At least 1 node required to obtain maxConnection info")
     }
   }
 
   override def close(): Unit = {
     checkThatSessionIsActive()
-    if (0 == refCount.decrementAndGet()) {
-      unwrap().shutdown()
-      logDebug(s"Riak CachedSession was destroyed/shutdown: $conf")
-      closed = true
+    refCount.decrementAndGet() match {
+      case 0 =>
+        unwrap().shutdown()
+        logDebug(s"Riak CachedSession was destroyed/shutdown: $conf")
+        closed = true
+      case 1 =>
+        afterClose(this)
+      case _ => // Nothing to do
     }
   }
 
   override def isClosed: Boolean = closed
 }
+

@@ -19,21 +19,19 @@ package com.basho.riak.spark.rdd
 
 import java.util.concurrent.atomic.AtomicLong
 
-import org.junit.experimental.categories.Category
 import com.basho.riak.client.api.RiakClient
 import com.basho.riak.client.api.annotations.{RiakIndex, RiakKey}
-import com.basho.riak.client.core.query.{Namespace, Location, RiakObject}
 import com.basho.riak.client.core.query.indexes.LongIntIndex
+import com.basho.riak.client.core.query.{Location, Namespace, RiakObject}
+import com.basho.riak.spark._
 import com.basho.riak.spark.util.RiakObjectConversionUtil
 import com.basho.riak.spark.writer.{WriteDataMapper, WriteDataMapperFactory}
 import org.apache.spark.rdd.RDD
+import org.junit.Assert._
 import org.junit.Test
+import org.junit.experimental.categories.Category
 
 import scala.annotation.meta.field
-
-import com.basho.riak.spark._
-
-import org.junit.Assert._
 
 /**
  * Domain Object for ORM checks
@@ -49,14 +47,15 @@ case class ORMDomainObject(
 
 @Category(Array(classOf[RiakCommonTests]))
 class RDDStoreTest  extends AbstractRDDTest {
+
   @Test
   def storePairRDDUsingCustomMapper(): Unit = {
-    val perUserTotals = sc.parallelize(List("u2"->1, "u3"->2, "u1"->3))
+    val perUserTotals = sc.parallelize(List("u2" -> 1, "u3" -> 2, "u1" -> 3))
 
     /**
-     * Custom value writer factory which uses totals as a key.
-     */
-    implicit val vwf = new WriteDataMapperFactory[(String,Int), KeyValue]{
+      * Custom value writer factory which uses totals as a key.
+      */
+    implicit val vwf = new WriteDataMapperFactory[(String, Int), KeyValue] {
       override def dataMapper(bucket: BucketDef): WriteDataMapper[(String, Int), KeyValue] = {
         new WriteDataMapper[(String, Int), KeyValue] {
           override def mapValue(value: (String, Int)): KeyValue = {
@@ -72,11 +71,11 @@ class RDDStoreTest  extends AbstractRDDTest {
 
     // Since Riak may returns results in any order, we need to ignore order at all
     assertEqualsUsingJSONIgnoreOrder(
-      "[" +
-        "['2','u3']," +
-        "['3','u1']," +
-        "['1','u2']" +
-        "]", data)
+      """[
+        | ['2','u3'],
+        | ['3','u1'],
+        | ['1','u2']
+        | ]""".stripMargin, data)
   }
 
   @Test
@@ -91,21 +90,22 @@ class RDDStoreTest  extends AbstractRDDTest {
       .queryBucketKeys("u1", "u2")
       .collect()
 
-    // TODO: Remove  ${json-unit.ignore} as soon as read conversion logic will be re-implemented to use java client Converter.toDomain method,
-    assertEqualsUsingJSONIgnoreOrder("[" +
-      "{login:'user 1', group_id:'${json-unit.ignore}', user_id:'${json-unit.ignore}'}," +
-      "{login:'user 2', group_id:'${json-unit.ignore}', user_id:'${json-unit.ignore}'}" +
-      "]", dataByKeys)
+    assertEqualsUsingJSONIgnoreOrder(
+      """[
+        | {login:'user 1', group_id:100, user_id:'u1'},
+        | {login:'user 2', group_id:200, user_id:'u2'}
+        | ]""".stripMargin, dataByKeys)
 
     val dataBy2iRange = sc.riakBucket[ORMDomainObject](DEFAULT_NAMESPACE_4STORE)
       .query2iRange("groupId", 100L, 200L)
       .collect()
 
-    assertEqualsUsingJSONIgnoreOrder("[" +
-      "{login:'user 1', group_id:'${json-unit.ignore}', user_id:'${json-unit.ignore}'}," +
-      "{login:'user 2', group_id:'${json-unit.ignore}', user_id:'${json-unit.ignore}'}," +
-      "{login:'user 3', group_id:'${json-unit.ignore}', user_id:'${json-unit.ignore}'}" +
-      "]", dataBy2iRange)
+    assertEqualsUsingJSONIgnoreOrder(
+      """[
+        | {login:'user 1', group_id:100, user_id:'u1'},
+        | {login:'user 2', group_id:200, user_id:'u2'},
+        | {login:'user 3', group_id:100, user_id:'u3'}
+        | ]""".stripMargin, dataBy2iRange)
   }
 
   @Test
@@ -143,27 +143,23 @@ class RDDStoreTest  extends AbstractRDDTest {
       .query2iRange("creationNo", 0L, size - 1)
       .collect()
 
-    assertEqualsUsingJSONIgnoreOrder(
-      "[" +
-        "1," +
-        "2," +
-        "3," +
-        "4" +
-        "]", data)
+    assertEqualsUsingJSONIgnoreOrder("[1,2,3,4]", data)
   }
+
   @Test
-  def storeTuple1() = {
+  def storeTuple1():Unit = {
     sc.parallelize(List(Tuple1("key1"), Tuple1("key2"), Tuple1("key3")), 1)
       .saveToRiak(DEFAULT_NAMESPACE_4STORE)
 
     val t1Data = fetchAllFromBucket(DEFAULT_NAMESPACE_4STORE)
 
     // Keys should be generated on the Riak side, therefore they will be ignored
-    assertEqualsUsingJSONIgnoreOrder("[" +
-      "['${json-unit.ignore}', 'key1']," +
-      "['${json-unit.ignore}', 'key2']," +
-      "['${json-unit.ignore}', 'key3']" +
-      "]", t1Data)
+    assertEqualsUsingJSONIgnoreOrder(
+      """[
+        | ['${json-unit.ignore}', 'key1'],
+        | ['${json-unit.ignore}', 'key2'],
+        | ['${json-unit.ignore}', 'key3']
+        | ]""".stripMargin, t1Data)
 
     verifyContentTypeEntireTheBucket("text/plain", DEFAULT_NAMESPACE_4STORE)
   }
@@ -210,11 +206,12 @@ class RDDStoreTest  extends AbstractRDDTest {
     val lData = fetchAllFromBucket(DEFAULT_NAMESPACE_4STORE)
 
     // Keys should be generated on the Riak side, therefore they will be ignored
-    assertEqualsUsingJSONIgnoreOrder("[" +
-        "['${json-unit.ignore}', '[\"key1\",1]']," +
-        "['${json-unit.ignore}', '[\"key2\",2]']," +
-        "['${json-unit.ignore}', '[\"key3\",3]']" +
-      "]", lData)
+    assertEqualsUsingJSONIgnoreOrder(
+      """[
+        | ['${json-unit.ignore}', '["key1",1]'],
+        | ['${json-unit.ignore}', '["key2",2]'],
+        | ['${json-unit.ignore}', '["key3",3]']
+        | ]""".stripMargin, lData)
 
     verifyContentTypeEntireTheBucket("application/json", DEFAULT_NAMESPACE_4STORE)
   }

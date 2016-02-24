@@ -30,3 +30,7 @@ RIAK_PORT="8087"
 
 DRIVER_MEM="512M"
 EXECUTOR_MEM="512M"
+
+
+SPARK_JARS=$(echo $FWDIR/lib/*.jar | tr ' ' ',')
+EXAMPLES_JARS=$(echo $FWDIR/examples-jar/*.jar | tr ' ' ',')

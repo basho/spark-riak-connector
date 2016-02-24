@@ -19,11 +19,13 @@ package com.basho.riak.spark.util
 
 import com.basho.riak.client.core.query.timeseries.ColumnDescription.ColumnType
 import com.basho.riak.client.core.query.timeseries.{Cell, Row, ColumnDescription}
+import com.basho.riak.spark.rdd.{UseTimestamp, UseLong, TsTimestampBindingType}
 import com.fasterxml.jackson.core.`type`.TypeReference
 import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
 import org.apache.spark.sql.types._
 import scala.collection.convert.decorateAll._
 import java.sql.Timestamp
+import org.apache.spark.sql.{Row => SparkRow}
 
 import scala.reflect.ClassTag
 
@@ -42,7 +44,7 @@ object TimeSeriesToSparkSqlConversion {
       cell.getVarcharAsUTF8String
 
     case LongType =>
-      cell.getLong
+      if (cell.hasTimestamp) cell.getTimestamp else cell.getLong
 
     case IntegerType =>
       cell.getLong.toInt
@@ -51,56 +53,69 @@ object TimeSeriesToSparkSqlConversion {
       cell.getDouble
 
     case TimestampType =>
-      new Timestamp(cell.getTimestamp)
+      if (cell.hasLong) new Timestamp(cell.getLong) else new Timestamp(cell.getTimestamp)
 
     case _ =>
-      throw new IllegalStateException(s"Unhandled cell type ${sf.dataType.typeName}")
+      throw new IllegalStateException(s"Unhandled cell type ${sf.dataType.typeName} for field ${sf.name}")
   }
 
-  def asDataType(columnType: String): DataType = {
-    asDataType( ColumnType.valueOf(columnType.toUpperCase()))
+  def asDataType(columnType: String, tsTimestampBinding:TsTimestampBindingType): DataType = {
+    asDataType(ColumnType.valueOf(columnType.toUpperCase()), tsTimestampBinding)
   }
 
-  def asDataType(columnType: ColumnType): DataType =
+  def asDataType(columnType: ColumnType, tsTimestampBinding: TsTimestampBindingType): DataType =
     columnType match {
       case ColumnType.BOOLEAN => BooleanType
       case ColumnType.DOUBLE => DoubleType
       case ColumnType.SINT64 => LongType
-      case ColumnType.TIMESTAMP => TimestampType
+      case ColumnType.TIMESTAMP => tsTimestampBinding match {
+        case UseLong => LongType
+        case UseTimestamp => TimestampType
+      }
       case ColumnType.VARCHAR => StringType
-      case _ => throw new IllegalStateException("Unsupported column type '" + columnType + "'")
+      case _ => throw new IllegalStateException(s"Unsupported column type $columnType")
     }
 
-  private def asStructField(columnDescription: ColumnDescription): org.apache.spark.sql.types.StructField = {
-    val ft = asDataType(columnDescription.getType )
+  private def asStructField(columnDescription: ColumnDescription, tsTimestampBinding:TsTimestampBindingType): StructField = {
+    val ft = asDataType(columnDescription.getType, tsTimestampBinding)
     StructField(columnDescription.getName, ft)
   }
 
-  def asSparkRow(schema: StructType, row: Row): org.apache.spark.sql.Row = {
-    val values = for {c <- schema zip row.getCellsCopy.asScala} yield {
-      cellValue(c._1, c._2)
+  def asSparkRow(schema: StructType, row: Row, columns: Option[Seq[ColumnDescription]] = None): SparkRow = {
+    val values = columns match {
+      case None => (schema zip row.getCellsCopy.asScala).map { case (n, v) => cellValue(n, v) }
+      case Some(c) =>
+        c.zipWithIndex.map { case (cd, i) =>
+          cellValue(schema(cd.getName), row.getCellsCopy.asScala(i))
+        }
     }
     new GenericRowWithSchema(values.toArray, schema)
   }
 
-  def asSparkSchema(columns: Seq[ColumnDescription]): StructType = {
-    val fields = for {c <- columns} yield {
-      asStructField(c)
-    }
-    StructType(fields)
+  def asSparkSchema(columns: Seq[ColumnDescription], tsTimestampBinding:TsTimestampBindingType): StructType =
+    StructType(columns.map(c => asStructField(c, tsTimestampBinding)))
+
+  private def validateSchema(schema: StructType, columns: Seq[String]): Unit = {
+    val msg = "Provided schema does not match the riak row columns"
+    require(schema.length == columns.length, msg)
+    require(schema.forall(sf => columns.contains(sf.name)), msg)
   }
 }
 
 object TSConversionUtil {
-  private val classOfSparkRow = classOf[org.apache.spark.sql.Row]
+  private val classOfSparkRow = classOf[SparkRow]
 
-
-  def from[T: ClassTag](columns: Seq[ColumnDescription], row: Row): T = {
+  def from[T: ClassTag](columns: Seq[ColumnDescription], row: Row)
+                       (implicit schema: Option[StructType] = None, tsTimestampBinding:TsTimestampBindingType): T = {
     val ct = implicitly[ClassTag[T]]
 
     if (ct.runtimeClass == classOfSparkRow) {
-      val schema = TimeSeriesToSparkSqlConversion.asSparkSchema(columns)
-      TimeSeriesToSparkSqlConversion.asSparkRow(schema, row).asInstanceOf[T]
+      (schema match {
+        case Some(structType) => (structType, Some(columns))
+        case None => (TimeSeriesToSparkSqlConversion.asSparkSchema(columns, tsTimestampBinding), None)
+      }) match {
+        case (st, cs) => TimeSeriesToSparkSqlConversion.asSparkRow(st, row, cs).asInstanceOf[T]
+      }
     } else {
       row.asInstanceOf[T]
     }
