@@ -113,13 +113,13 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) with AbstractRDD
 
     val sourceDF =  getSourceDF(sqlContext)
 
-    sourceDF.write.option("spark.riak.connection.host", "192.168.161.134:8087")
+    sourceDF.write
       .format("org.apache.spark.sql.riak")
       .mode(SaveMode.Append)
       .save(bucketName)
 
     // -- verification
-    val df = sqlContext.read.option("spark.riak.connection.host", "192.168.161.134:8087")
+    val df = sqlContext.read
       .format("org.apache.spark.sql.riak")
       .schema(schema)
       .load(bucketName)

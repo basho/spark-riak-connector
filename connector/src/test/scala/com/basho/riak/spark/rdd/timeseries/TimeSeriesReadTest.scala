@@ -22,12 +22,11 @@ import com.basho.riak.spark.toSparkContextFunctions
 import org.apache.spark.SparkException
 import org.apache.spark.sql.riak.RiakSQLContext
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.SQLContext
-import org.junit.Assert.assertTrue
-import org.junit.Test
 import org.junit.experimental.categories.Category
-import java.text.SimpleDateFormat
-import java.util.Date
+import org.apache.spark.sql.SQLContext
+import org.junit.Assert.assertEquals
+import org.junit.Test
+import org.apache.spark.sql.functions.udf
 
 /**
   * @author Sergey Galkin <srggal at gmail dot com>
@@ -149,7 +148,6 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
       """.stripMargin)
 
     // -- verification
-    df.printSchema()
     val data = df.toJSON.collect()
 
     assertEqualsUsingJSONIgnoreOrder(
@@ -169,7 +167,6 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
     val sqlContext = new SQLContext(sc)
     sqlContext.udf.register("getMillis", getMillis) // transforms timestamp to not deal with timezones
 
-    import org.apache.spark.sql.functions.udf
     import sqlContext.implicits._
 
     val udfGetMillis = udf(getMillis)
@@ -185,12 +182,10 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
       .select(udfGetMillis($"time") as "time", $"family", $"surrogate_key", $"user_id", $"temperature_k")
 
     // -- verification
-    df.printSchema()
     val data = df.toJSON.collect()
 
     assertEqualsUsingJSONIgnoreOrder(
-      """
-        |[
+      """[
         |   {surrogate_key:1, family: 'f', time: 111111, user_id:'bryce', temperature_k:305.37},
         |   {surrogate_key:1, family: 'f', time: 111222, user_id:'bryce', temperature_k:300.12},
         |   {surrogate_key:1, family: 'f', time: 111333, user_id:'bryce', temperature_k:295.95},
@@ -235,8 +230,7 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
         |]
       """.stripMargin, stringify(data))
 
-    // iteration is needed because result could have different field order
-    newSchema.foreach(sf => assertTrue(df.schema.contains(sf)))
+    newSchema.foreach(sf => assertEquals(sf.dataType, df.schema(sf.name).dataType))
   }
 
   @Test
@@ -445,5 +439,101 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
       .schema(structType)
       .where(s"time > $queryFromMillis AND time < $queryToMillis AND surrogate_key = 1 AND family = 'f'")
       .collect()
+  }
+
+  @Test
+  def dataFrameReadShouldHandleTimestampAsLong(): Unit = {
+    val sqlContext = new SQLContext(sc)
+
+    import sqlContext.implicits._
+
+    val df = sqlContext.read
+      .format("org.apache.spark.sql.riak")
+      .option("spark.riakts.bindings.timestamp", "useLong")
+      .load(bucketName)
+
+    assertEquals(LongType, df.schema("time").dataType)
+
+    val data = df
+      .filter(s"time > $queryFromMillis AND time < $queryToMillis AND surrogate_key = 1 AND family = 'f'")
+      .select($"time", $"family", $"surrogate_key", $"user_id", $"temperature_k")
+      .toJSON
+      .collect()
+
+    assertEqualsUsingJSONIgnoreOrder(
+      """
+        |[
+        |   {surrogate_key:1, family: 'f', time: 111111, user_id:'bryce', temperature_k:305.37},
+        |   {surrogate_key:1, family: 'f', time: 111222, user_id:'bryce', temperature_k:300.12},
+        |   {surrogate_key:1, family: 'f', time: 111333, user_id:'bryce', temperature_k:295.95},
+        |   {surrogate_key:1, family: 'f', time: 111444, user_id:'ratman', temperature_k:362.121},
+        |   {surrogate_key:1, family: 'f', time: 111555, user_id:'ratman', temperature_k:3502.212}
+        |]
+      """.stripMargin, stringify(data))
+  }
+}
+
+@Category(Array(classOf[RiakTSTests]))
+class TimeSeriesReadWithoutSchemaTest extends AbstractTimeSeriesTest with AbstractRDDTest {
+
+  @Test
+  def riakTSRDDToDataFrame(): Unit = {
+    val sqlContext = new org.apache.spark.sql.SQLContext(sc)
+
+    import sqlContext.implicits._
+
+    val df = sc.riakTSBucket[org.apache.spark.sql.Row](bucketName)
+      .sql(s"SELECT time, user_id, temperature_k FROM $bucketName $sqlWhereClause")
+      .map(r => TimeSeriesData(r.getLong(0), r.getString(1), r.getDouble(2)))
+      .toDF()
+
+    df.registerTempTable("test")
+
+    val data = sqlContext.sql("select * from test").toJSON.collect()
+
+    // -- verification
+    assertEqualsUsingJSONIgnoreOrder(
+      """
+        |[
+        |   {time:111111, user_id:'bryce', temperature_k:305.37},
+        |   {time:111222, user_id:'bryce', temperature_k:300.12},
+        |   {time:111333, user_id:'bryce', temperature_k:295.95},
+        |   {time:111444, user_id:'ratman', temperature_k:362.121},
+        |   {time:111555, user_id:'ratman', temperature_k:3502.212}
+        |]
+      """.stripMargin, stringify(data))
+  }
+
+  @Test
+  def dataFrameReadShouldHandleTimestampAsTimestamp(): Unit = {
+    val sqlContext = new SQLContext(sc)
+    sqlContext.udf.register("getMillis", getMillis) // transforms timestamp to not deal with timezones
+
+    import sqlContext.implicits._
+
+    val udfGetMillis = udf(getMillis)
+
+    val df = sqlContext.read
+      .format("org.apache.spark.sql.riak")
+      .option("spark.riakts.bindings.timestamp", "useTimestamp")
+      .load(bucketName)
+
+    assertEquals(TimestampType, df.schema("time").dataType)
+
+    val data = df
+      .filter(s"time > CAST($fromStr AS TIMESTAMP) AND time < CAST($toStr AS TIMESTAMP) AND surrogate_key = 1 AND family = 'f'")
+      .select(udfGetMillis($"time") as "time", $"family", $"surrogate_key", $"user_id", $"temperature_k")
+      .toJSON
+      .collect()
+
+    assertEqualsUsingJSONIgnoreOrder(
+      """[
+        |   {surrogate_key:1, family: 'f', time: 111111, user_id:'bryce', temperature_k:305.37},
+        |   {surrogate_key:1, family: 'f', time: 111222, user_id:'bryce', temperature_k:300.12},
+        |   {surrogate_key:1, family: 'f', time: 111333, user_id:'bryce', temperature_k:295.95},
+        |   {surrogate_key:1, family: 'f', time: 111444, user_id:'ratman', temperature_k:362.121},
+        |   {surrogate_key:1, family: 'f', time: 111555, user_id:'ratman', temperature_k:3502.212}
+        |]
+      """.stripMargin, stringify(data))
   }
 }

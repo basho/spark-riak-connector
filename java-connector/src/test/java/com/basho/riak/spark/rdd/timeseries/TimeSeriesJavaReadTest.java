@@ -18,6 +18,7 @@
 package com.basho.riak.spark.rdd.timeseries;
 
 import com.basho.riak.spark.rdd.RiakTSTests;
+import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.sql.DataFrame;
 import org.apache.spark.sql.Row;
@@ -153,6 +154,28 @@ public class TimeSeriesJavaReadTest extends AbstractJavaTimeSeriesTest {
                 .schema(structType)
                 .load(bucketName())
                 .filter(String.format("time >= %s AND time <= %s AND surrogate_key = 1 AND family = 'f'", queryFromMillis(), queryToMillis()));
+        df = df.select(df.col("time"), df.col("family"), df.col("surrogate_key"), df.col("user_id"), df.col("temperature_k"));
+
+        // Explicit cast due to compilation error "Object cannot be converted to java.lang.String[]"
+        String[] data = (String[]) df.toJSON().collect();
+        assertEqualsUsingJSONIgnoreOrder("[" +
+                "{surrogate_key:1, family: 'f', time: 111111, user_id:'bryce', temperature_k:305.37}," +
+                "{surrogate_key:1, family: 'f', time: 111222, user_id:'bryce', temperature_k:300.12}," +
+                "{surrogate_key:1, family: 'f', time: 111333, user_id:'bryce', temperature_k:295.95}," +
+                "{surrogate_key:1, family: 'f', time: 111444, user_id:'ratman', temperature_k:362.121}," +
+                "{surrogate_key:1, family: 'f', time: 111555, user_id:'ratman', temperature_k:3502.212} " +
+                "]", stringify(data));
+    }
+
+    @Test
+    public void dataFrameReadShouldHandleTimestampAsLong() {
+        SQLContext sqlContext = new SQLContext(jsc);
+
+        DataFrame df = sqlContext.read()
+                .format("org.apache.spark.sql.riak")
+                .option("spark.riakts.bindings.timestamp", "useLong")
+                .load(bucketName())
+                .filter(String.format("time > %s AND time < %s AND surrogate_key = 1 AND family = 'f'", queryFromMillis(), queryToMillis()));
         df = df.select(df.col("time"), df.col("family"), df.col("surrogate_key"), df.col("user_id"), df.col("temperature_k"));
 
         // Explicit cast due to compilation error "Object cannot be converted to java.lang.String[]"

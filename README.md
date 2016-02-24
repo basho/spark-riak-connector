@@ -105,7 +105,7 @@ spark.riak.input.fetch-size                    | Number of keys to fetch in a si
 spark.riak.input.split.count                   | Desired minimum number of Spark partitions to divide the data into | 10| KV
 spark.riak.output.wquorum                      | Quorum value on write                                              | 1 | KV
 spark.riak.connections.inactivity.timeout      | Time to keep connection to Riak alive in milliseconds | 1000 | KV/TS
-
+spark.riakts.bindings.timestamp                | To treat/convert Riak TS timestamp columns either as a Long (UNIX milliseconds) or as a Timestamps during the automatic schema discovery. Valid values are: <ul><li>useLong</li><li>useTimestamp</li><ul> | useTimestamp | TS
 
 Example:
 
