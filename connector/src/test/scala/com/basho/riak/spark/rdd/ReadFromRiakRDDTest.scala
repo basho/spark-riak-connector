@@ -323,6 +323,15 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
   }
 
   @Test
+  def testPartitionsCount() = {
+    val readConf = ReadConf(sc.getConf)
+    val partitions = sc.riakBucket[UserTS](DEFAULT_NAMESPACE)
+      .query2iRangeLocal("creationNo", 1, 1000).getPartitions
+
+    assertEquals(readConf.splitCount, partitions.size)
+  }
+
+  @Test
   def readDataUsingCustomConverterFactory(): Unit = {
     // Using default Json conversion from java client to extract convert UserTS data into pairs (user_id -> timestamp)
     ConverterFactory.getInstance.registerConverterForClass(

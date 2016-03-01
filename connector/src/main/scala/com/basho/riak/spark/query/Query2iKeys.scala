@@ -17,15 +17,15 @@
  */
 package com.basho.riak.spark.query
 
+import scala.collection.mutable.ArrayBuffer
 import com.basho.riak.client.core.query.Location
 import com.basho.riak.spark.rdd.connector.RiakSession
 import com.basho.riak.spark.rdd.{ReadConf, BucketDef}
-
-import scala.collection.mutable.ArrayBuffer
+import com.basho.riak.client.core.operations.CoveragePlanOperation.Response.CoverageEntry
 
 private case class Query2iKeys[K](bucket: BucketDef, readConf:ReadConf, index: String, keys: Iterable[K]) extends QuerySubsetOfKeys[K] {
   private var query2iKey: Option[Query2iKeySingleOrRange[K]] = None
-  private var tokenNext: Option[String] = None
+  private var tokenNext: Option[Either[String, CoverageEntry]] = None
 
   // By default there should be an empty Serializable Iterator
   private var _iterator: Iterator[Location] = ArrayBuffer.empty[Location].iterator
