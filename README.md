@@ -206,6 +206,68 @@ Existing rdd of org.apache.spark.sql.Row> can be saved to Riak TS as follows
 rdd.saveToRiakTS(TABLE_NAME);
 ```
 
+### Reading data from Riak TS into Dataframe
+To read data from existing TS table *tableName* standard SQLContext means can be utilized with special **org.apache.spark.sql.riak** data format and using range query expression.
+For example, 
+```scala
+val schema = StructType(List(
+    StructField(name = "col1", dataType = StringType),
+    StructField(name = "col2", dataType = StringType),
+    StructField(name = "time", dataType = TimestampType),
+    ...
+)
+...
+val df = sqlContext.read   
+      .format("org.apache.spark.sql.riak")
+      .schema(schema)
+      .load(tableName)
+      .filter(s"time >= CAST($from AS TIMESTAMP) AND time <= CAST($to AS TIMESTAMP)")
+```
+Providing schema is optional. If it's not provided it will be inferred using schema discovery to return bucket structure from RiakTS.
+Any of the Spark Connector options can be provided in .option() or .options():
+```scala
+val df = sqlContext.read
+      .option("spark.riakts.bindings.timestamp", "useLong")    
+      .format("org.apache.spark.sql.riak")
+      ...
+```
+
+### Range query partitioning for RiakTS
+RiakTS is known to have limitation on range query: *time range must not exceed 5 quanta*. In order to get around this limitation or simply achieve higher read performance large ranges can be split into smaller subranges at partitioning time.
+To use this functionality it's required to provide the following options:
+* **spark.riak.partitioning.ts-range-field-name** to identify quantized field
+* **spark.riak.input.split.count** to identify number of partitions/subranges (default value is **10**)
+
+For example,
+```scala
+   val df = sqlContext.read
+      .option("spark.riak.input.split.count", "5")
+      .option("spark.riak.partitioning.ts-range-field-name", "time")
+      .format("org.apache.spark.sql.riak")
+      .schema(schema)
+      .load(tableName)
+      .filter(s"time >= CAST(111111 AS TIMESTAMP) AND time <= CAST(555555 AS TIMESTAMP) AND col1 = 'val1'")
+```
+Initial range query will be split into 5 subqueries (one per each partition) as follows:
+* ```time >= CAST(111111 AS TIMESTAMP) AND time < CAST(222222 AS TIMESTAMP) AND col1 = 'val1'```
+* ```time >= CAST(222222 AS TIMESTAMP) AND time < CAST(333333 AS TIMESTAMP) AND col1 = 'val1'```
+* ```time >= CAST(333333 AS TIMESTAMP) AND time < CAST(444444 AS TIMESTAMP) AND col1 = 'val1'```
+* ```time >= CAST(444444 AS TIMESTAMP) AND time < CAST(555555 AS TIMESTAMP) AND col1 = 'val1'```
+* ```time >= CAST(555555 AS TIMESTAMP) AND time < CAST(555556 AS TIMESTAMP) AND col1 = 'val1'```
+
+Not providing **spark.riak.partitioning.ts-range-field-name** property results into having single partition with initial query.
+
+### Save Dataframe to Riak TS
+Existing inputDF that has the same schema as TS bucket (column order and types) can be saved to Riak TS as follows: 
+```scala
+inputDF.write
+   .option("spark.riak.connection.hosts","myhost:10017")
+   .format("org.apache.spark.sql.riak")
+   .mode(SaveMode.Append)
+   .save(tableName)
+```
+So far *SaveMode.Append* is the only mode available.
+
 ## Examples
 
 Riak Spark connector comes with several sample programs and demos that can be found in the [**examples** folder](./examples)

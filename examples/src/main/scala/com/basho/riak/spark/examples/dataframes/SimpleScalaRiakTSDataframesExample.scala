@@ -119,6 +119,7 @@ object SimpleScalaRiakTSDataframesExample {
     // Simple Riak range query with schema provided and automatic timestamp to long conversion
     println("---Range query with provided schema and automatic timestamp to long conversion ---")
     val withSchemaProvidedLongTime = sqlContext.read
+      .option("spark.riak.partitioning.ts-range-field-name", "time")
       .format("org.apache.spark.sql.riak")
       .schema(schemaWithLong)
       .load(tableName)
@@ -129,6 +130,7 @@ object SimpleScalaRiakTSDataframesExample {
     // Simple Riak range query without providing schema
     println("-------------------- Range query with inferred schema ---------------------------")
     val df = sqlContext.read
+      .option("spark.riak.partitioning.ts-range-field-name", "time")
       .format("org.apache.spark.sql.riak")
       .load(tableName)
       .filter(s"time >= CAST('$from' AS TIMESTAMP) AND time <= CAST('$to' AS TIMESTAMP) AND  weather = 'sunny' AND family = 'f'")
@@ -138,6 +140,7 @@ object SimpleScalaRiakTSDataframesExample {
     // Simple Riak range query without providing schema and with useLong option for timestamp binding
     println("------ Range query with inferred schema and treating timestamps as Long (in milliseconds) ---------")
     val dfUseLong = sqlContext.read
+      .option("spark.riak.partitioning.ts-range-field-name", "time")
       .option("spark.riakts.bindings.timestamp", "useLong") // option to treat timestamps as Longs
       .format("org.apache.spark.sql.riak")
       .load(tableName)

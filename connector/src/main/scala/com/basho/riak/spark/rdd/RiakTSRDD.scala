@@ -25,8 +25,9 @@ import com.basho.riak.spark.util.{TSConversionUtil, CountingIterator, DataConver
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.{TaskContext, Partition, Logging, SparkContext}
 import org.apache.spark.rdd.RDD
-
 import scala.reflect.ClassTag
+import org.apache.spark.sql.sources.Filter
+import com.basho.riak.spark.rdd.partitioner.{ SinglePartitionRiakTSPartitioner, RangedRiakTSPartitioner }
 
 /**
   * @author Sergey Galkin <srggal at gmail dot com>
@@ -39,39 +40,18 @@ class RiakTSRDD[R] private[spark](
      val schema:Option[StructType] = None,
      columnNames: Option[Seq[String]] = None,
      whereConstraints: Option[(String, Seq[Any])] = None,
+     filters: Array[Filter] = Array(),
+     tsRangeFieldName: Option[String] = None,
      val query: Option[String] = None,
      val readConf: ReadConf = ReadConf())
     (implicit val ct: ClassTag[R])
   extends RDD[R](sc, Seq.empty) with Logging {
 
   override def getPartitions: Array[Partition] = {
-    // TODO: consider moving sql generation to TSQueryData companion
-    var values: Seq[Any] = Seq.empty[Nothing]
-    val sql = query.getOrElse(
-      "SELECT " +
-        (
-          columnNames match {
-            case None => schema match {
-              case Some(s) => s.fieldNames.mkString(", ")
-              case None => "*"
-            }
-            case Some(c: Seq[String]) => c.mkString(", ")
-          }
-          ) +
-        s" FROM $bucketName " +
-        (
-          whereConstraints match {
-            case None => ""
-            case Some(x) => x match {
-              case (n, vs) =>
-                values = vs.map { case (_, v) => v }
-                s" WHERE $n"
-            }
-          }
-          )
-    )
-
-    RiakTSPartitioner.partitions(connector.hosts, TSQueryData(sql, values))
+     tsRangeFieldName match {
+       case None => SinglePartitionRiakTSPartitioner.partitions(connector.hosts, bucketName, schema, columnNames, query, whereConstraints, filters)
+       case Some(name) => RangedRiakTSPartitioner.partitions(connector.hosts, bucketName, schema, columnNames, filters, name, readConf)
+     } 
   }
 
   private def validateSchema(schema: StructType, columns: Seq[ColumnDescription]): Unit = {
@@ -99,7 +79,7 @@ class RiakTSRDD[R] private[spark](
     val session = connector.openSession()
     val convertingIterator: Iterator[R] = q.nextChunk(session) match {
       case (cds, rows) =>
-        if (this.schema.isDefined) validateSchema(schema.get, cds)
+        if (this.schema.isDefined && !cds.isEmpty) validateSchema(schema.get, cds)
         DataConvertingIterator.createTSConverting[R]((cds, rows), TSConversionUtil.from[R])
     }
 
@@ -130,13 +110,15 @@ class RiakTSRDD[R] private[spark](
         schema: Option[StructType] = schema,
         columnNames: Option[Seq[String]] = columnNames,
         where: Option[(String, Seq[Any])] = whereConstraints,
-        readConf: ReadConf = readConf, connector: RiakConnector = connector): RiakTSRDD[R] =
-    new RiakTSRDD(sc, connector, bucketName, schema, columnNames, where, query, readConf)
+        readConf: ReadConf = readConf, connector: RiakConnector = connector,
+        filters: Array[Filter] = filters,
+        tsRangeFieldName: Option[String] = tsRangeFieldName): RiakTSRDD[R] =
+    new RiakTSRDD(sc, connector, bucketName, schema, columnNames, where, filters, tsRangeFieldName, query, readConf)
 
   def select(columns: String*): RiakTSRDD[R] = {
     copy(columnNames = Some(columns))
   }
-
+  
   def schema(structType: StructType):RiakTSRDD[R] = {
     copy(schema = Option(structType))
   }
@@ -150,6 +132,14 @@ class RiakTSRDD[R] private[spark](
 
   def sql(query: String): RiakTSRDD[R] = {
     copy(query = Some(query))
+  }
+  
+  def filter(filters: Array[Filter]): RiakTSRDD[R] = {
+    copy(filters = filters)
+  }
+  
+  def partitionByTimeRanges(tsRangeFieldName: String, filters: Array[Filter]): RiakTSRDD[R] = {
+    copy(tsRangeFieldName = Some(tsRangeFieldName), filters = filters)
   }
 }
 
