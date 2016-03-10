@@ -31,7 +31,7 @@
     <dependencySet>
       <outputDirectory>lib</outputDirectory>
       <includes>
-        <include>com.basho.riak:spark-riak-connector:jar:shaded</include>
+        <include>com.basho.riak:spark-riak-connector:jar:uber</include>
         <include>com.basho.riak:spark-riak-connector-java</include>
         <include>com.basho.riak:spark-riak-connector-test-utils</include>
 
