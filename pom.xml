@@ -430,6 +430,12 @@
                 <groupId>com.basho.riak</groupId>
                 <artifactId>dataplatform-riak-client</artifactId>
                 <version>1.5.1-SNAPSHOT</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>com.fasterxml.jackson.core</groupId>
+                        <artifactId>jackson-databind</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
             <dependency>
                 <groupId>org.scala-lang</groupId>
@@ -528,6 +534,17 @@
                 <groupId>org.powermock</groupId>
                 <artifactId>powermock-api-mockito</artifactId>
                 <version>1.6.4</version>
+            </dependency>
+            <dependency>
+                <groupId>com.basho.riak.test</groupId>
+                <artifactId>riak-test-docker</artifactId>
+                <version>1.0-SNAPSHOT</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>commons-logging</groupId>
+                        <artifactId>commons-logging</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
         </dependencies>
     </dependencyManagement>

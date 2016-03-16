@@ -431,7 +431,7 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
   @Test
   def readBySchemaWithoutColumnsWithUnknownField(): Unit = {
     expectedException.expect(classOf[SparkException])
-    expectedException.expectMessage("invalid_query: \nunexpected_select_field: unexpected field UNKNOWN_FIELD in select clause.")
+    expectedException.expectMessage("unexpected_select_field: unexpected field UNKNOWN_FIELD in select clause.")
 
     val structType = StructType(List(
       StructField(name = "UNKNOWN_FIELD", dataType = LongType),

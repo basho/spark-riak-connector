@@ -1,14 +1,18 @@
 package com.basho.riak.spark.query
 
 import com.basho.riak.client.api.commands.indexes.BinIndexQuery
-import com.basho.riak.client.api.commands.kv.FullBucketRead
+import com.basho.riak.client.api.commands.kv.CoveragePlan.Builder
+import com.basho.riak.client.api.commands.kv.{CoveragePlan, FullBucketRead}
+import com.basho.riak.client.core.NoNodesAvailableException
 import com.basho.riak.client.core.operations.CoveragePlanOperation.Response.CoverageEntry
 import com.basho.riak.client.core.query.{Location, Namespace, RiakObject}
 import com.basho.riak.client.core.util.BinaryValue
 import com.basho.riak.spark.rdd.connector.RiakConnector
 import com.basho.riak.spark.rdd.{BucketDef, ReadConf}
+import org.apache.commons.lang3.exception.ExceptionUtils
 
 import scala.collection.JavaConversions._
+import scala.util.control.Exception._
 
 case class QueryFullBucket(bucket: BucketDef,
                            readConf: ReadConf,
@@ -18,11 +22,46 @@ case class QueryFullBucket(bucket: BucketDef,
                           ) extends DirectLocationQuery[String] {
 
   override protected val coverageEntriesIt: Option[Iterator[CoverageEntry]] = Some(coverageEntries.iterator)
+  val unavailableEntries: List[CoverageEntry] = Nil
 
   override def nextChunk(nextToken: Option[Either[String, CoverageEntry]]
                         ): (Option[Either[String, CoverageEntry]], Iterable[(Location, RiakObject)]) = {
-    coverageEntry = nextCoverageEntry(nextToken)
 
+    def nextChunk(nextToken: Option[Either[String, CoverageEntry]],
+                  unavailableEntries: List[CoverageEntry]
+                 ): (Option[Either[String, CoverageEntry]], Iterable[(Location, RiakObject)]) = {
+      allCatch either fetchChunk(nextToken) match {
+        case Right(v) => v
+
+        /* If NoNodesAvailableException was caught it's a signal that current Riak node is unavailable and it's
+         * necessary to obtain alternative coverage entry for another node which contains data replications
+         * and re-query chunk using that alternative coverage entry */
+        case Left(e) if ExceptionUtils.getRootCause(e).isInstanceOf[NoNodesAvailableException] =>
+          val unavailableList = coverageEntry.get :: unavailableEntries
+          logWarning(s"Node '${primaryHost.get}' is not available. Alternative coverage entry must be requested.")
+          logDebug(s"Unable to execute query using current coverage entry: ${coverageEntry.get}.")
+          val cmd = new Builder(bucket.asNamespace())
+            .withMinPartitions(readConf.splitCount)
+            .withReplaceCoverageEntry(coverageEntry.get)
+            .withUnavailableCoverageEntries(unavailableList)
+            .build()
+          coverageEntry = riakConnector.withSessionDo(s => s.execute(cmd)) match {
+            case response: CoveragePlan.Response if response.iterator.hasNext =>
+              val alternative = response.iterator().next()
+              logDebug(s"Alternative coverage entry ($alternative) instead of (${coverageEntry.get}) is received.")
+              Some(alternative)
+            case _ => throw new IllegalStateException("Unable to get alternative coverage plan")
+          }
+          nextChunk(nextToken, unavailableList)
+        case Left(e) => throw e
+      }
+    }
+
+    coverageEntry = nextCoverageEntry(nextToken)
+    nextChunk(nextToken, List())
+  }
+
+  private def fetchChunk(nextToken: Option[Either[String, CoverageEntry]]) = {
     if (readConf.useStreamingValuesForFBRead) {
       // Direct fetch is using for BDP version where FullBucketRead query is supported
       oneStepFetch(nextToken)
@@ -39,11 +78,11 @@ case class QueryFullBucket(bucket: BucketDef,
       case (_, Nil) if coverageEntriesIt.get.hasNext => nextChunk(None)
       case (token, locations) =>
         val values = fetchValues(locations)
-        (token match {
-          case Some(Left(_)) => token
-          case _ if coverageEntriesIt.get.hasNext => Some(Right(coverageEntriesIt.get.next))
-          case _ => None
-        }) -> values
+        token match {
+          case Some(Left(_)) => token -> values
+          case _ if coverageEntriesIt.get.hasNext => Some(Right(coverageEntriesIt.get.next)) -> values
+          case _ => None -> values
+        }
     }
   }
 
