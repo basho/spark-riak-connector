@@ -19,17 +19,16 @@ package com.basho.riak.spark.rdd.timeseries
 
 import java.sql.Timestamp
 import java.util.{Calendar, Date}
-
 import com.basho.riak.client.core.query.timeseries.ColumnDescription.ColumnType._
 import com.basho.riak.client.core.query.timeseries.{ColumnDescription, Cell, Row}
 import com.basho.riak.client.core.util.BinaryValue
-import com.basho.riak.spark.util.TimeSeriesToSparkSqlConversion
+import com.basho.riak.spark.util.TSConversionUtil
 import org.apache.spark.Logging
 import org.apache.spark.sql.types._
 import org.junit.Assert._
 import org.junit.Test
-
 import scala.collection.JavaConversions._
+import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
 
 class TSConversionTest extends Logging {
 
@@ -43,7 +42,7 @@ class TSConversionTest extends Logging {
 
   private def singleCellTest[T](value: T, dataType: DataType, cell: Cell, columns: Option[Seq[ColumnDescription]] = None): Unit = {
     val singleCellRow = new Row(cell)
-    val sparkRow = TimeSeriesToSparkSqlConversion.asSparkRow(mkStructType(dataType), singleCellRow, columns)
+    val sparkRow = TSConversionUtil.asSparkRow(mkStructType(dataType), singleCellRow, columns)
     assertEquals(1, sparkRow.length)
     assertNotNull(sparkRow.getAs[T](0))
     assertEquals(dataType, sparkRow.schema(0).dataType)
@@ -60,7 +59,7 @@ class TSConversionTest extends Logging {
   def singleRowSingleIntCellTest(): Unit = {
     val int: Int = 1
     val singleCellRow = new Row(new Cell(int))
-    val sparkRow = TimeSeriesToSparkSqlConversion.asSparkRow(mkStructType(IntegerType), singleCellRow)
+    val sparkRow = TSConversionUtil.asSparkRow(mkStructType(IntegerType), singleCellRow)
 
     assertSeqEquals(Seq(int), sparkRow.toSeq)
   }
@@ -145,7 +144,7 @@ class TSConversionTest extends Logging {
 
     val cells = List(new Cell(1), new Cell(date), new Cell("abc"))
     val row = new Row(cells)
-    val sparkRow = TimeSeriesToSparkSqlConversion.asSparkRow(mkStructType(LongType, TimestampType, StringType), row)
+    val sparkRow = TSConversionUtil.asSparkRow(mkStructType(LongType, TimestampType, StringType), row)
     val expected = List(1L, new Timestamp(millis), "abc")
     assertSeqEquals(expected, sparkRow.toSeq)
   }
@@ -158,7 +157,7 @@ class TSConversionTest extends Logging {
     val cells = List(new Cell(1), new Cell(date), new Cell("abc"))
     val row = new Row(cells)
     val columnDescriptions = Some(mkColumnDescriptions(SINT64, TIMESTAMP, VARCHAR))
-    val sparkRow = TimeSeriesToSparkSqlConversion.asSparkRow(
+    val sparkRow = TSConversionUtil.asSparkRow(
       mkStructType(LongType, LongType, StringType), row, columnDescriptions)
     val expected = List(1L, millis, "abc")
     assertSeqEquals(expected, sparkRow.toSeq)
@@ -172,12 +171,60 @@ class TSConversionTest extends Logging {
     val cells = List(new Cell(1), new Cell(date), new Cell("abc"))
     val row = new Row(cells)
     val columnDescriptions = Some(mkColumnDescriptions(SINT64, SINT64, VARCHAR))
-    val sparkRow = TimeSeriesToSparkSqlConversion.asSparkRow(
+    val sparkRow = TSConversionUtil.asSparkRow(
       mkStructType(LongType, TimestampType, StringType), row, columnDescriptions)
     val expected = List(1L, new Timestamp(millis), "abc")
     assertSeqEquals(expected, sparkRow.toSeq)
   }
-
+  
+  @Test
+  def toRiakRowTest(): Unit = {
+    val schema = mkStructType(LongType, TimestampType, StringType)
+    val millis = System.currentTimeMillis
+    val date = new Date(millis)
+    val values = Array(1, date, "abc")
+    val sparkRow = new GenericRowWithSchema(values, schema)
+    val riakRow = TSConversionUtil.createRowByType(sparkRow)
+    
+    val cells = List(new Cell(1), new Cell(date), new Cell("abc"))
+    assertSeqEquals(cells, riakRow.getCellsCopy)
+  }
+  
+  @Test
+  def toRiakRowAndBackTest(): Unit = {
+    val schema = mkStructType(LongType, TimestampType, StringType)
+    val millis = System.currentTimeMillis
+    val date = new Timestamp(millis)
+    val values = Array(1L, date, "abc")
+    val sparkRow = new GenericRowWithSchema(values, schema)
+    val riakRow = TSConversionUtil.createRowByType(sparkRow)
+    val columnDescriptions = Some(mkColumnDescriptions(SINT64, TIMESTAMP, VARCHAR))
+    val sparkRow1 = TSConversionUtil.asSparkRow(schema, riakRow, columnDescriptions)
+    
+    assertSeqEquals(sparkRow.toSeq.toList, sparkRow1.toSeq.toList)
+  }
+  
+  @Test
+  def toColumnDefWithoutMetadataTest(): Unit = {
+    val field = StructField("field", LongType)
+    val colDescr = TSConversionUtil.asColumnDef(field)
+    assertEquals("field", colDescr.getName)
+    assertEquals(SINT64, colDescr.getType)
+    assertNull(colDescr.getLocalKeyOrdinal)
+    assertNull(colDescr.getPartitionKeyOrdinal)
+  }
+  
+  @Test
+  def toColumnDefWithMetadataTest(): Unit = {
+    val metadata = new MetadataBuilder().putLong(TSConversionUtil.localKeyOrdinalProp, 1).putLong(TSConversionUtil.partitionKeyOrdinalProp, 1).build()
+    val field = StructField("field", LongType, true, metadata)
+    val colDescr = TSConversionUtil.asColumnDef(field)
+    assertEquals("field", colDescr.getName)
+    assertEquals(SINT64, colDescr.getType)
+    assertEquals(1, colDescr.getLocalKeyOrdinal)
+    assertEquals(1, colDescr.getPartitionKeyOrdinal)
+  }
+  
   @Test
   def nullableConversionTest(): Unit = {
     val millis = System.currentTimeMillis
@@ -186,7 +233,7 @@ class TSConversionTest extends Logging {
     val cells = List(new Cell(1), new Cell(date), null)
     val row = new Row(cells)
     val columnDescriptions = Some(mkColumnDescriptions(SINT64, SINT64, VARCHAR))
-    val sparkRow = TimeSeriesToSparkSqlConversion.asSparkRow(
+    val sparkRow = TSConversionUtil.asSparkRow(
       mkStructType(LongType, TimestampType, StringType), row, columnDescriptions)
     val expected = List(1L, new Timestamp(millis), null)
     assertSeqEquals(expected, sparkRow.toSeq)

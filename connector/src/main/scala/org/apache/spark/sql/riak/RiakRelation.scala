@@ -21,7 +21,7 @@ import com.basho.riak.spark._
 import scala.reflect._
 import com.basho.riak.spark.rdd.connector.{RiakConnectorConf, RiakConnector}
 import com.basho.riak.spark.rdd.{ReadConf, RiakTSRDD}
-import com.basho.riak.spark.util.TimeSeriesToSparkSqlConversion
+import com.basho.riak.spark.util.TSConversionUtil
 import com.basho.riak.spark.writer.WriteConf
 import com.basho.riak.spark.writer.mapper.SqlDataMapper
 import org.apache.spark.Logging
@@ -30,6 +30,7 @@ import org.apache.spark.sql.sources.{InsertableRelation, BaseRelation, Filter, P
 import org.apache.spark.sql.types._
 import org.apache.spark.sql._
 import scala.collection.convert.decorateAsScala._
+import com.basho.riak.spark.query.QueryBucketDef
 
 /**
   * Implements [[BaseRelation]]]], [[InsertableRelation]]]] and [[PrunedFilteredScan]]]]
@@ -49,33 +50,11 @@ private[riak] class RiakRelation(
 
   override def schema: StructType = userSpecifiedSchema match {
     case None =>
-       // -- get schema from Riak TS
-      connector.withSessionDo(session => {
-        val request = new com.basho.riak.client.api.commands.timeseries.Query.Builder(s"DESCRIBE $bucket")
-                        .build()
-
-        val response = session.execute(request)
-
-        val columnDescs = response.getColumnDescriptionsCopy
-
-        require(
-          "Column".equals(columnDescs.get(0).getName)
-            && "Type".equals(columnDescs.get(1).getName)
-            && "Is Null".equals(columnDescs.get(2).getName),
-          "Describe response has unexpected fields order or it has unexpected format"
-        )
-
-        val fields = for {r: com.basho.riak.client.core.query.timeseries.Row <- response.getRowsCopy.asScala } yield {
-          val cells = r.getCellsCopy
-          val name: String = cells.get(0).getVarcharAsUTF8String
-          val t: DataType = TimeSeriesToSparkSqlConversion.asDataType(cells.get(1).getVarcharAsUTF8String, readConf.tsTimestampBinding)
-          val nullable: Boolean = cells.get(2).getBoolean
-
-          StructField(name, t, nullable)
-        }
-        StructType(fields)
-      })
-
+      val readSchemaQuery = QueryBucketDef(connector, readConf)
+      readSchemaQuery.getTableSchema(bucket) match {
+        case None        => throw new IllegalStateException(s"No bucket $bucket was found")
+        case Some(riakShema) => riakShema
+      }
     case Some(st: StructType) => st
   }
 

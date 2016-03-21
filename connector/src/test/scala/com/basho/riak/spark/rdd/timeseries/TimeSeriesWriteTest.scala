@@ -19,7 +19,6 @@ package com.basho.riak.spark.rdd.timeseries
 
 import com.basho.riak.spark._
 import com.basho.riak.spark.rdd.{AbstractRDDTest, RiakTSTests}
-import com.basho.riak.spark.util.TimeSeriesToSparkSqlConversion
 import com.basho.riak.spark.writer.WriteDataMapperFactory._
 import org.apache.spark.SparkException
 import org.apache.spark.rdd.RDD
@@ -28,6 +27,7 @@ import org.apache.spark.sql.{DataFrame, Row, SQLContext, SaveMode}
 import org.junit.Assert._
 import org.junit.Test
 import org.junit.experimental.categories.Category
+import com.basho.riak.spark.util.TSConversionUtil
 
 /**
   * @author Sergey Galkin <srggal at gmail dot com>
@@ -200,14 +200,14 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) with AbstractRDD
       org.apache.spark.sql.Row(2L, "f", 111222L, "test", 123.123),
       org.apache.spark.sql.Row(2L, "f", 111333L, "test", 345.34)
     )
-
-    val initialDF = getInitialDF(sqlContext, StructType(List(
+    val schema = StructType(List(
       StructField(name = "surrogate_key", dataType = LongType),
       StructField(name = "family", dataType = StringType),
       StructField(name = "time", dataType = LongType),
       StructField(name = "user_id", dataType = StringType),
-      StructField(name = "temperature_k", dataType = DoubleType))
-    ), tsRows)
+      StructField(name = "temperature_k", dataType = DoubleType)))
+
+    val initialDF = getInitialDF(sqlContext, schema, tsRows)
 
     initialDF.write
       .format("org.apache.spark.sql.riak")
@@ -216,17 +216,18 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) with AbstractRDD
 
     val df = sqlContext.read
       .format("org.apache.spark.sql.riak")
+      .schema(schema)
       .load(bucketName)
-      .filter(s"time >= CAST('$fromStr' AS TIMESTAMP) AND time <= CAST('$toStr' AS TIMESTAMP) AND surrogate_key = 2 AND family = 'f'")
+      .filter(s"time >= $queryFromMillis AND time <= $queryToMillis AND surrogate_key = 2 AND family = 'f'")
 
     val data = df.toJSON.collect()
     
     assertEqualsUsingJSONIgnoreOrder(
       """
         |[
-        |   {surrogate_key:2, family: 'f', time: '1970-01-01 03:01:51.111', user_id:'test'},
-        |   {surrogate_key:2, family: 'f', time: '1970-01-01 03:01:51.222', user_id:'test', temperature_k:123.123},
-        |   {surrogate_key:2, family: 'f', time: '1970-01-01 03:01:51.333', user_id:'test', temperature_k:345.34}
+        |   {surrogate_key:2, family: 'f', time: 111111, user_id:'test'},
+        |   {surrogate_key:2, family: 'f', time: 111222, user_id:'test', temperature_k:123.123},
+        |   {surrogate_key:2, family: 'f', time: 111333, user_id:'test', temperature_k:345.34}
         |]
       """.stripMargin, stringify(data))
   }
@@ -301,7 +302,7 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) with AbstractRDD
   }
 
   private def getSourceDF(sqlContext: SQLContext, structType:StructType = schema): DataFrame = {
-    val sparkRowsWithSchema = riakTSRows.map( r => TimeSeriesToSparkSqlConversion.asSparkRow(structType, r))
+    val sparkRowsWithSchema = riakTSRows.map( r => TSConversionUtil.asSparkRow(structType, r))
     val rdd: RDD[Row] = sqlContext.sparkContext.parallelize(sparkRowsWithSchema)
     sqlContext.createDataFrame(rdd, structType)
   }
