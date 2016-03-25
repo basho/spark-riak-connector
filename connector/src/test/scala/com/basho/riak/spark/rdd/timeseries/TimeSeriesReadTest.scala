@@ -484,7 +484,7 @@ class TimeSeriesReadWithoutSchemaTest extends AbstractTimeSeriesTest with Abstra
 
     val df = sc.riakTSBucket[org.apache.spark.sql.Row](bucketName)
       .sql(s"SELECT time, user_id, temperature_k FROM $bucketName $sqlWhereClause")
-      .map(r => TimeSeriesData(r.getLong(0), r.getString(1), r.getDouble(2)))
+      .map(r => TimeSeriesData(r.getTimestamp(0).getTime, r.getString(1), r.getDouble(2)))
       .toDF()
 
     df.registerTempTable("test")
@@ -521,7 +521,7 @@ class TimeSeriesReadWithoutSchemaTest extends AbstractTimeSeriesTest with Abstra
     assertEquals(TimestampType, df.schema("time").dataType)
 
     val data = df
-      .filter(s"time > CAST($fromStr AS TIMESTAMP) AND time < CAST($toStr AS TIMESTAMP) AND surrogate_key = 1 AND family = 'f'")
+      .filter(s"time > CAST('$fromStr' AS TIMESTAMP) AND time < CAST('$toStr' AS TIMESTAMP) AND surrogate_key = 1 AND family = 'f'")
       .select(udfGetMillis($"time") as "time", $"family", $"surrogate_key", $"user_id", $"temperature_k")
       .toJSON
       .collect()
