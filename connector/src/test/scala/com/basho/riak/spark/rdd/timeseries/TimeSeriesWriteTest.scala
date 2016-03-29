@@ -231,6 +231,75 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) with AbstractRDD
       """.stripMargin, stringify(data))
   }
 
+  @Test
+  def dataFrameFailOnWritingEmptyTime(): Unit = {
+    expectedException.expect(classOf[SparkException])
+    expectedException.expectMessage("Invalid data found at row index(es)")
+
+    val sqlContext = new SQLContext(sc)
+    val tsRows = Seq[org.apache.spark.sql.Row] (
+      org.apache.spark.sql.Row(2L, "f", None, "test", 123.123)
+    )
+
+    val initialDF = getInitialDF(sqlContext, StructType(List(
+      StructField(name = "surrogate_key", dataType = LongType),
+      StructField(name = "family", dataType = StringType),
+      StructField(name = "time", dataType = LongType),
+      StructField(name = "user_id", dataType = StringType),
+      StructField(name = "temperature_k", dataType = DoubleType))
+    ), tsRows)
+      initialDF.write
+        .format("org.apache.spark.sql.riak")
+        .mode(SaveMode.Append)
+        .save(bucketName)
+  }
+
+  @Test
+  def dataFrameFailOnWritingEmptySeries(): Unit = {
+    expectedException.expect(classOf[SparkException])
+    expectedException.expectMessage("Invalid data found at row index(es)")
+
+    val sqlContext = new SQLContext(sc)
+    val tsRows = Seq[org.apache.spark.sql.Row] (
+      org.apache.spark.sql.Row(None, "f", 111222L, "test", 123.123)
+    )
+
+    val initialDF = getInitialDF(sqlContext, StructType(List(
+      StructField(name = "surrogate_key", dataType = LongType),
+      StructField(name = "family", dataType = StringType),
+      StructField(name = "time", dataType = LongType),
+      StructField(name = "user_id", dataType = StringType),
+      StructField(name = "temperature_k", dataType = DoubleType))
+    ), tsRows)
+      initialDF.write
+        .format("org.apache.spark.sql.riak")
+        .mode(SaveMode.Append)
+        .save(bucketName)
+  }
+
+  @Test
+  def dataFrameFailOnWritingEmptyFamily(): Unit = {
+    expectedException.expect(classOf[SparkException])
+    expectedException.expectMessage("Invalid data found at row index(es)")
+
+    val sqlContext = new SQLContext(sc)
+    val tsRows = Seq[org.apache.spark.sql.Row] (
+      org.apache.spark.sql.Row(2L, None, 111222L, "test", 123.123)
+    )
+
+    val initialDF = getInitialDF(sqlContext, StructType(List(
+      StructField(name = "surrogate_key", dataType = LongType),
+      StructField(name = "family", dataType = StringType),
+      StructField(name = "time", dataType = LongType),
+      StructField(name = "user_id", dataType = StringType),
+      StructField(name = "temperature_k", dataType = DoubleType))
+    ), tsRows)
+      initialDF.write
+        .format("org.apache.spark.sql.riak")
+        .mode(SaveMode.Append)
+        .save(bucketName)
+  }
+
   private def getSourceDF(sqlContext: SQLContext, structType:StructType = schema): DataFrame = {
     val sparkRowsWithSchema = riakTSRows.map( r => TimeSeriesToSparkSqlConversion.asSparkRow(structType, r))
     val rdd: RDD[Row] = sqlContext.sparkContext.parallelize(sparkRowsWithSchema)
