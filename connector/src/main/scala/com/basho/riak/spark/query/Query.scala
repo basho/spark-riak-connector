@@ -19,13 +19,13 @@ package com.basho.riak.spark.query
 
 import com.basho.riak.client.api.cap.Quorum
 import com.basho.riak.client.api.commands.kv.{FetchValue, MultiFetch}
-import com.basho.riak.client.core.query.{RiakObject, Location}
+import com.basho.riak.client.core.query.{Location, RiakObject}
 import com.basho.riak.spark.rdd.connector.RiakSession
-import com.basho.riak.spark.rdd.{ReadConf, BucketDef}
-import scala.collection.JavaConversions._
-
-import scala.collection.mutable.ArrayBuffer
+import com.basho.riak.spark.rdd.{BucketDef, ReadConf}
 import org.apache.spark.Logging
+
+import scala.collection.JavaConversions._
+import scala.collection.mutable.ArrayBuffer
 
 /**
  * Generic Riak Query
@@ -42,81 +42,69 @@ trait Query[T] extends Serializable with Logging{
 trait LocationQuery[T] extends Query[T] {
   private val dataBuffer: ArrayBuffer[ResultT] = new ArrayBuffer[ResultT](readConf.fetchSize)
 
-  def nextLocationChunk(nextToken: Option[_], session: RiakSession): (Option[T], Iterable[Location])
+  protected def nextLocationChunk(nextToken: Option[_], session: RiakSession): (Option[T], Iterable[Location])
 
   def nextChunk(token: Option[_], session: RiakSession): (Option[T], Iterable[ResultT]) = {
-    val r = nextLocationChunk(token, session )
+    val r = nextLocationChunk(token, session)
     logDebug(s"nextLocationChunk(token=$token) returns:\n  token: ${r._1}\n  locations: ${r._2}")
-
-    dataBuffer.clear()
 
     r match {
       case (_, Nil) =>
         (None, Nil)
       case (nextToken, locations) =>
+
         /**
-         * To be 100% sure that massive fetch doesn't lead to the connection pool starvation,
-         * fetch will be performed by the smaller chunks of keys.
-         *
-         * Ideally the chunk size should be equal to the max number of connections for the RiakNode
-         */
+          * To be 100% sure that massive fetch doesn't lead to the connection pool starvation,
+          * fetch will be performed by the smaller chunks of keys.
+          *
+          * Ideally the chunk size should be equal to the max number of connections for the RiakNode
+          */
         val itChunkedLocations = locations.grouped(session.minConnectionsPerNode)
-        fetchValues(session, itChunkedLocations, dataBuffer)
-        (nextToken, dataBuffer.toList)
+        (nextToken, fetchValues(session, itChunkedLocations).toList)
     }
   }
 
-  private def fetchValues(riakSession: RiakSession, chunkedLocations: Iterator[Iterable[Location]], buffer: ArrayBuffer[(Location, RiakObject)]) ={
-
-    while(chunkedLocations.hasNext){
-      val builder = new MultiFetch.Builder()
-        .withOption(FetchValue.Option.R, Quorum.oneQuorum())
-
-      val locations = chunkedLocations.next()
+  protected def fetchValues(riakSession: RiakSession,
+                            chunkedLocations: Iterator[Iterable[Location]]): ArrayBuffer[ResultT] = {
+    dataBuffer.clear()
+    chunkedLocations.foreach { locations =>
       logTrace(s"Fetching ${locations.size} values...")
 
-      locations.foreach(builder.addLocation)
+      val builder = new MultiFetch.Builder()
+        .withOption(FetchValue.Option.R, Quorum.oneQuorum())
+        .addLocations(locations.toSeq)
 
-      val mfr = riakSession.execute(builder.build())
+      riakSession.execute(builder.build()) foreach { future =>
+        logTrace(s"Fetch value [${dataBuffer.size + 1}] for ${future.getQueryInfo}")
 
-
-      for {f <- mfr.getResponses} {
-
-        logTrace( s"Fetch value [${buffer.size + 1}] for ${f.getQueryInfo}")
-
-        val r = f.get()
-        val location = f.getQueryInfo
-
-        if (r.isNotFound) {
-          // TODO: add proper error handling
-          logWarning(s"Nothing was found for location '${f.getQueryInfo.getKeyAsString}'")
-        } else if (r.hasValues) {
-          if (r.getNumberOfValues > 1) {
+        val location = future.getQueryInfo
+        future.get() match {
+          case r: FetchValue.Response if r.isNotFound =>
+            logWarning(s"Nothing was found for location '${future.getQueryInfo.getKeyAsString}'") // TODO: add proper error handling
+          case r: FetchValue.Response if r.hasValues && r.getNumberOfValues > 1 =>
             throw new IllegalStateException(s"Fetch for '$location' returns more than one result: ${r.getNumberOfValues} actually")
-          }
-
-          val ro = r.getValue(classOf[RiakObject])
-          buffer += ((location, ro))
-        } else {
-          logWarning(s"There is no value for location '$location'")
+          case r: FetchValue.Response =>
+            dataBuffer += ((location, r.getValue(classOf[RiakObject])))
+          case _ => logWarning(s"There is no value for location '$location'")
         }
       }
     }
-    logDebug(s"${buffer.size} values were fetched")
+    logDebug(s"${dataBuffer.size} values were fetched")
+    dataBuffer
   }
 }
 
-object Query{
-  def apply[K](bucket: BucketDef, readConf:ReadConf, queryData: QueryData[K]): Query[_] = {
+object Query {
+  def apply[K](bucket: BucketDef, readConf: ReadConf, queryData: QueryData[K]): Query[_] = {
 
     val ce = queryData.coverageEntries
 
     queryData.keysOrRange match {
       case Some(Left(keys: Seq[K])) =>
-        if( queryData.index.isDefined){
+        if (queryData.index.isDefined) {
           // Query 2i Keys
           new Query2iKeys[K](bucket, readConf, queryData.index.get, keys)
-        }else{
+        } else {
           // Query Bucket Keys
           new QueryBucketKeys(bucket, readConf, keys.asInstanceOf[Seq[String]])
         }
@@ -136,11 +124,7 @@ object Query{
         val ce = queryData.coverageEntries.get
         require(ce.nonEmpty)
 
-        if(readConf.useStreamingValuesForFBRead){
-          new QueryFullBucket(bucket, readConf, ce)
-        } else {
-          new Query2iKeys(bucket, readConf, queryData.index.get, ce)
-        }
+        new QueryFullBucket(bucket, readConf, ce, queryData.index)
     }
   }
 }

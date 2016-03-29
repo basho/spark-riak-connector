@@ -32,6 +32,7 @@ private case class Query2iKeys[K](bucket: BucketDef, readConf:ReadConf, index: S
 
   private def chunkIsCollected(chunk: Iterable[Location]) = chunk.size >= readConf.fetchSize
 
+  // scalastyle:off cyclomatic.complexity
   override def locationsByKeys(keys: Iterator[K], session: RiakSession): (Boolean, Iterable[Location]) = {
     val dataBuffer = new ArrayBuffer[Location](readConf.fetchSize)
 
@@ -67,4 +68,5 @@ private case class Query2iKeys[K](bucket: BucketDef, readConf:ReadConf, index: S
     }
     tokenNext.isDefined -> dataBuffer
   }
+  // scalastyle:on cyclomatic.complexity
 }
