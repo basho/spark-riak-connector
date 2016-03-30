@@ -65,18 +65,18 @@ private[sql] class RiakCatalog(rsc: RiakSQLContext,
     cachedDataSourceTables.invalidateAll()
   }
 
-  override def unregisterTable(tableIdentifier: Seq[String]): Unit = {
+  override def unregisterTable(tableIdentifier: TableIdentifier): Unit = {
     val tableIdent = bucketIdent(tableIdentifier)
     cachedDataSourceTables.invalidate(tableIdent)
   }
 
-  override def lookupRelation(tableIdentifier: Seq[String], alias: Option[String]): LogicalPlan = {
+  override def lookupRelation(tableIdentifier: TableIdentifier, alias: Option[String]): LogicalPlan = {
     val tableIdent = bucketIdent(tableIdentifier)
     val tableLogicPlan = cachedDataSourceTables.get(tableIdent)
     alias.map(a => Subquery(a, tableLogicPlan)).getOrElse(tableLogicPlan)
   }
 
-  override def registerTable(tableIdentifier: Seq[String], plan: LogicalPlan): Unit = {
+  override def registerTable(tableIdentifier: TableIdentifier, plan: LogicalPlan): Unit = {
     val tableIdent = bucketIdent(tableIdentifier)
     cachedDataSourceTables.put(tableIdent, plan)
   }
@@ -85,7 +85,7 @@ private[sql] class RiakCatalog(rsc: RiakSQLContext,
     getTablesFromRiakTS(databaseName)
   }
 
-  override def tableExists(tableIdentifier: Seq[String]): Boolean = {
+  override def tableExists(tableIdentifier: TableIdentifier): Boolean = {
     val tableIdent = bucketIdent(tableIdentifier)
     val fetchProps = new FetchBucketPropsOperation.Builder(new Namespace(tableIdent, tableIdent)).build()
 
