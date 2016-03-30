@@ -45,6 +45,24 @@ mvn clean install -DskipTests
 Once the connector is built there are several jars that are produced:
 `spark-riak-connector/target/` contains `spark-riak-connector-1.0.0.jar` - this is the main connector jar. 
 
+
+##Testing
+In Spark Riak connector unit tests are separated from integration tests. 
+In case if there is no Riak installation it is still possible to successfully run unit tests:
+```
+mvn clean test
+```
+If there is Riak installed it is possible to run both unit tests and integration test. Futhermore, KV-specific integration tests are separated from TS-specific ones. To choose which set of tests to run appropriete maven ptofile should be selected: riak_kv(default) or riak_ts.
+```
+mvn clean verify -P riak_ts
+mvn clean verify -P riak_kv
+```
+Riak host can be provided in com.basho.riak.pbchost variable
+```
+mvn clean verify -P riak_ts -Dcom.basho.riak.pbchost=myhost:8087
+```
+
+
 ## Developing 
 
 If you're planning to develop Spark applications in Java there is an additional jar
