@@ -17,13 +17,19 @@
  */
 package com.basho.riak.spark.query
 
-import scala.collection.mutable.ArrayBuffer
-import com.basho.riak.client.core.query.Location
-import com.basho.riak.spark.rdd.connector.RiakSession
-import com.basho.riak.spark.rdd.{ReadConf, BucketDef}
 import com.basho.riak.client.core.operations.CoveragePlanOperation.Response.CoverageEntry
+import com.basho.riak.client.core.query.Location
+import com.basho.riak.spark.rdd.connector.RiakConnector
+import com.basho.riak.spark.rdd.{BucketDef, ReadConf}
 
-private case class Query2iKeys[K](bucket: BucketDef, readConf:ReadConf, index: String, keys: Iterable[K]) extends QuerySubsetOfKeys[K] {
+import scala.collection.mutable.ArrayBuffer
+
+private case class Query2iKeys[K](bucket: BucketDef,
+                                  readConf:ReadConf,
+                                  riakConnector: RiakConnector,
+                                  index: String,
+                                  keys: Iterable[K]
+                                 ) extends QuerySubsetOfKeys[K] {
   private var query2iKey: Option[Query2iKeySingleOrRange[K]] = None
   private var tokenNext: Option[Either[String, CoverageEntry]] = None
 
@@ -33,7 +39,7 @@ private case class Query2iKeys[K](bucket: BucketDef, readConf:ReadConf, index: S
   private def chunkIsCollected(chunk: Iterable[Location]) = chunk.size >= readConf.fetchSize
 
   // scalastyle:off cyclomatic.complexity
-  override def locationsByKeys(keys: Iterator[K], session: RiakSession): (Boolean, Iterable[Location]) = {
+  override def locationsByKeys(keys: Iterator[K]): (Boolean, Iterable[Location]) = {
     val dataBuffer = new ArrayBuffer[Location](readConf.fetchSize)
 
     while ((keys.hasNext || _iterator.hasNext || tokenNext.isDefined) && !chunkIsCollected(dataBuffer)){
@@ -48,7 +54,7 @@ private case class Query2iKeys[K](bucket: BucketDef, readConf:ReadConf, index: S
           // Fetch the next results page from the previously executed 2i query, if any
           assert(query2iKey.isDefined)
 
-          val r = query2iKey.get.nextLocationChunk( tokenNext, session)
+          val r = query2iKey.get.nextLocationChunk(tokenNext)
           tokenNext = r._1
           _iterator = r._2.iterator
 
@@ -57,9 +63,9 @@ private case class Query2iKeys[K](bucket: BucketDef, readConf:ReadConf, index: S
           assert(_iterator.isEmpty && tokenNext.isEmpty)
 
           val key = keys.next()
-          query2iKey = Some(new Query2iKeySingleOrRange[K](bucket, readConf, index, key))
+          query2iKey = Some(new Query2iKeySingleOrRange[K](bucket, readConf, riakConnector, index, key))
 
-          val r = query2iKey.get.nextLocationChunk(tokenNext, session)
+          val r = query2iKey.get.nextLocationChunk(tokenNext)
           tokenNext = r._1
           _iterator = r._2.iterator
 

@@ -18,7 +18,6 @@
 package com.basho.riak.spark.rdd
 
 import com.basho.riak.client.core.query.{Location, RiakObject}
-import com.basho.riak.client.core.util.HostAndPort
 import com.basho.riak.spark.query.{DataQueryingIterator, Query, QueryData}
 import com.basho.riak.spark.rdd.connector.RiakConnector
 import com.basho.riak.spark.rdd.partitioner._
@@ -66,20 +65,12 @@ class RiakRDD[R] private[spark] (
     partitions
   }
 
-  private def doCompute[K](partitionIdx: Int, context: TaskContext, queryData: QueryData[K],
-                           primaryHost: Option[HostAndPort] = None): Iterator[R] = {
-
-    val session = primaryHost match {
-      case None =>
-        connector.openSession()
-      case Some(h: HostAndPort) =>
-        connector.openSession(Some(Seq(h)))
-    }
+  private def doCompute[K](partitionIdx: Int, context: TaskContext, queryData: QueryData[K]): Iterator[R] = {
     val startTime = System.currentTimeMillis()
 
-    val query = Query(BucketDef(bucketType, bucketName), readConf, queryData)
+    val query = Query(BucketDef(bucketType, bucketName), readConf, connector, queryData)
 
-    val iterator: Iterator[(Location, RiakObject)] = DataQueryingIterator(query, session)
+    val iterator: Iterator[(Location, RiakObject)] = DataQueryingIterator(query)
     val convertingIterator = DataConvertingIterator.createRiakObjectConverting[R](iterator, convert)
     val countingIterator = CountingIterator[R](convertingIterator)
     context.addTaskCompletionListener { (context) =>
@@ -87,23 +78,14 @@ class RiakRDD[R] private[spark] (
       val duration = (endTime - startTime) / 1000.0
       logDebug(s"Fetched ${countingIterator.count} rows from ${query.bucket}" +
         f" for partition $partitionIdx in $duration%.3f s.")
-      session.close()
     }
     countingIterator
   }
 
-  override def compute(split: Partition, context: TaskContext): Iterator[R] = {
-
-    split match {
-      case rp: RiakKeysPartition[_] =>
-        doCompute(split.index, context, rp.keys)
-
-      case rl: RiakLocalCoveragePartition[_] =>
-        doCompute(split.index, context, rl.queryData, Some(rl.primaryHost))
-
-      case _ =>
-        throw new IllegalStateException("Unsupported partition type")
-    }
+  override def compute(split: Partition, context: TaskContext): Iterator[R] = split match {
+    case rp: RiakKeysPartition[_] => doCompute(split.index, context, rp.keys)
+    case rl: RiakLocalCoveragePartition[_] => doCompute(split.index, context, rl.queryData)
+    case _ => throw new IllegalStateException("Unsupported partition type")
   }
 
   private def copy(
