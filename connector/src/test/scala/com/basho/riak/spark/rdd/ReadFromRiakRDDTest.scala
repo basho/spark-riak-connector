@@ -305,7 +305,7 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
   }
 
   @Test
-  @Category(Array(classOf[RiakTSTests], classOf[RiakBDPTests]))
+  @Category(Array(classOf[RiakTSTests]))
   def local2iRangeRead() ={
 
     val data = sc.riakBucket[UserTS](DEFAULT_NAMESPACE)

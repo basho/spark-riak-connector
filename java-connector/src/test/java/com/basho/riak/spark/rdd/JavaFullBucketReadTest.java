@@ -30,7 +30,7 @@ public class JavaFullBucketReadTest extends AbstractJavaSparkTest {
         }}).collect(toList()), false);
     }
 
-    @Category({RiakBDPTests.class, RiakTSTests.class})
+    @Category(RiakTSTests.class)
     @Test
     public void readAll() {
         List<Tuple2<Integer, Iterable<String>>> data = SparkJavaUtil.javaFunctions(jsc)

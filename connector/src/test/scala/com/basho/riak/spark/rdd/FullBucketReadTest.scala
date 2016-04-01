@@ -41,7 +41,7 @@ object FullBucketReadTest {
 }
 
 @RunWith(value = classOf[Parameterized])
-@Category(Array(classOf[RiakTSTests], classOf[RiakBDPTests]))
+@Category(Array(classOf[RiakTSTests]))
 class FullBucketReadTest(splitSize: Int) extends AbstractRDDTest {
   private val NUMBER_OF_TEST_VALUES = 1000
 
