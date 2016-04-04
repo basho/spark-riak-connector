@@ -24,7 +24,7 @@ import scala.collection.JavaConverters._
 import org.junit.experimental.categories.Category
 
 @RunWith(value = classOf[Parameterized])
-@Category(Array(classOf[RiakKVTests], classOf[RiakBDPTests]))
+@Category(Array(classOf[RiakKVTests]))
 class FinePartitioningTest(splitSize: Int) extends AbstractRDDTest {
 
   final val COVERAGE_ENTRIES_COUNT = 64

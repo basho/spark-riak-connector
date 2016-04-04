@@ -5,7 +5,8 @@
 Spark Riak connector allows you to expose data stored in Riak buckets as Spark RDDs, as well as output data from Spark RDDs into Riak buckets. 
 
 ## Compatibility
-* Compatible with Riak KV, bundled inside BDP 1.x
+* Compatible with Riak KV
+* Compatible with Riak TS
 * Compatible with Apache Spark 1.5.2 or later
 * Compatible with Scala 2.10 or later
 * Compatible with Java 8
@@ -34,10 +35,15 @@ Clone this repository, then build Spark Riak connector:
 ```
 mvn clean install
 ```
-
-Integration tests will be executed during the build, therefore the build may fail if there is no BDP Riak node running on `localhost:8087`. 
-The following command should be used to skip integration tests:
-
+To turn on streaming values support for PEx special maven profile "pex_streaming_vals" should be activated. It will make Full Bucket Reads more efficient: values will be streamed as a part of the FBR response instead of being fetched in a separate operations. This feature is supported only for Riak TS.
+```
+mvn clean install -P pex_streaming_vals
+```
+Or
+```
+mvn clean install -Dpex_streaming_vals
+```
+The following command should be used to skip tests:
 ```
 mvn clean install -DskipTests
 ```
@@ -52,16 +58,32 @@ In case if there is no Riak installation it is still possible to successfully ru
 ```
 mvn clean test
 ```
-If there is Riak installed it is possible to run both unit tests and integration test. Futhermore, KV-specific integration tests are separated from TS-specific ones. To choose which set of tests to run appropriete maven ptofile should be selected: riak_kv(default) or riak_ts.
+If there is Riak installed it is possible to run both unit tests and integration test. Futhermore, KV-specific integration tests are separated from TS-specific ones. To choose which set of tests to run appropriete maven ptofile should be selected: 
+
+Profile name |Tests                                      | Default |
+-------------|-------------------------------------------|---------|
+riak_ts      | TS-specific tests and majority of KV-tests| no      |
+riak_kv      | KV-only tests                             | yes     |
 ```
 mvn clean verify -P riak_ts
 mvn clean verify -P riak_kv
 ```
-Riak host can be provided in com.basho.riak.pbchost variable
+Riak host can be provided in "com.basho.riak.pbchost" variable
 ```
 mvn clean verify -P riak_ts -Dcom.basho.riak.pbchost=myhost:8087
 ```
-
+If Riak was installed with devrel and is running on localhost on 10017 port, it is possible to use special "devrel" maven profile instead of providing "com.basho.riak.pbchost" variable
+```
+mvn clean verify -P devrel,riak_ts
+```
+Or
+```
+mvn clean verify -P riak_ts -Denvironment=devrel
+```
+Will do the same as 
+```
+mvn clean verify -P riak_ts -Dcom.basho.riak.pbchost=localhost:10017
+```
 
 ## Developing 
 

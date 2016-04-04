@@ -220,7 +220,7 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) with AbstractRDD
       .filter(s"time >= CAST('$fromStr' AS TIMESTAMP) AND time <= CAST('$toStr' AS TIMESTAMP) AND surrogate_key = 2 AND family = 'f'")
 
     val data = df.toJSON.collect()
-
+    
     assertEqualsUsingJSONIgnoreOrder(
       """
         |[

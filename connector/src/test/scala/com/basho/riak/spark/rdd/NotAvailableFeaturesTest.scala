@@ -52,7 +52,7 @@ class NotAvailableFeaturesTest extends AbstractRDDTest {
     }
   }
 
-  @Category(Array(classOf[RiakKVTests], classOf[RiakBDPTests]))
+  @Category(Array(classOf[RiakKVTests]))
   @Test
   def timeSeriesOnKV(): Unit = {
     expectedException.expect(timeSeriesMatcher)

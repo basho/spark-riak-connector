@@ -27,7 +27,7 @@ import org.junit.experimental.categories.Category
 
 case class TestData(id: String, name: String, age: Int, category: String)
 
-@Category(Array(classOf[RiakTSTests], classOf[RiakBDPTests]))
+@Category(Array(classOf[RiakTSTests]))
 class SparkDataframesTest extends AbstractRDDTest {
 
   private val indexName = "creationNo"
