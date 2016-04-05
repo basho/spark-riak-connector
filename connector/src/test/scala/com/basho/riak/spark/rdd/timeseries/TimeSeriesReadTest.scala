@@ -17,16 +17,21 @@
  *******************************************************************************/
 package com.basho.riak.spark.rdd.timeseries
 
-import com.basho.riak.spark.rdd.{AbstractRDDTest, RiakTSTests}
-import com.basho.riak.spark.toSparkContextFunctions
+import scala.reflect.runtime.universe
+
 import org.apache.spark.SparkException
+import org.apache.spark.annotation.Experimental
+import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.functions.udf
 import org.apache.spark.sql.riak.RiakSQLContext
 import org.apache.spark.sql.types._
+import org.junit.{ Rule, Test }
 import org.junit.experimental.categories.Category
-import org.apache.spark.sql.SQLContext
-import org.junit.Assert.assertEquals
-import org.junit.Test
-import org.apache.spark.sql.functions.udf
+
+import com.basho.riak.spark.rdd.{ AbstractRDDTest, RiakTSTests }
+import com.basho.riak.spark.toSparkContextFunctions
+
+import junit.framework.Assert.assertEquals
 
 /**
   * @author Sergey Galkin <srggal at gmail dot com>
@@ -210,6 +215,7 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
     )
 
     val df = sqlContext.read
+      .option("spark.riak.partitioning.ts-range-field-name", "time")
       .format("org.apache.spark.sql.riak")
       .schema(newSchema)
       .load(bucketName)
@@ -252,6 +258,7 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
     import sqlContext.implicits._
 
     sqlContext.read
+      .option("spark.riak.partitioning.ts-range-field-name", "time")
       .format("org.apache.spark.sql.riak")
       .schema(structType)
       .load(bucketName)
@@ -265,6 +272,7 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
     val sqlContext = new SQLContext(sc)
 
     sqlContext.read
+      .option("spark.riak.partitioning.ts-range-field-name", "time")
       .format("org.apache.spark.sql.riak")
       .load(bucketName)
       .registerTempTable("test")
@@ -450,6 +458,7 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
     val df = sqlContext.read
       .format("org.apache.spark.sql.riak")
       .option("spark.riakts.bindings.timestamp", "useLong")
+      .option("spark.riak.partitioning.ts-range-field-name", "time")
       .load(bucketName)
 
     assertEquals(LongType, df.schema("time").dataType)
