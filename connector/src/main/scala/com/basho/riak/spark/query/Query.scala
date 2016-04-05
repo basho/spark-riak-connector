@@ -107,6 +107,16 @@ trait DirectLocationQuery[T] extends LocationQuery[Either[T, CoverageEntry]] {
       case _ => throw new IllegalArgumentException("Invalid nextToken")
     }
   }
+
+  /* We must override this method to ensure data locality and be 100% sure that
+     values and locations were queried from the same host. This behaviour achieves by
+     fetching locations and it's values from current coverage entry's host */
+  override protected def fetchValues(locations: Iterable[Location],
+                                     host: Option[HostAndPort]
+                                    ): ArrayBuffer[(Location, RiakObject)] = host match {
+    case Some(_) => super.fetchValues(locations, host)
+    case None => super.fetchValues(locations, primaryHost) // use coverage entry's host for querying values
+  }
 }
 
 object Query {
