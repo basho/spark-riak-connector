@@ -23,20 +23,21 @@ import com.basho.riak.client.api.commands.indexes.{BigIntIndexQuery, BinIndexQue
 import com.basho.riak.client.core.operations.CoveragePlanOperation.Response.CoverageEntry
 import com.basho.riak.client.core.query.{Location, Namespace}
 import com.basho.riak.client.core.util.BinaryValue
-import com.basho.riak.spark.rdd.connector.RiakSession
+import com.basho.riak.spark.rdd.connector.RiakConnector
 import com.basho.riak.spark.rdd.{BucketDef, ReadConf}
 
 import scala.collection.JavaConversions._
 
-private case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadConf, index: String, from: K,
-                                              to: Option[K] = None, coverageEntries: Option[Seq[CoverageEntry]] = None)
-    extends LocationQuery[Either[String, CoverageEntry]] {
+private case class Query2iKeySingleOrRange[K](bucket: BucketDef,
+                                              readConf: ReadConf,
+                                              riakConnector: RiakConnector,
+                                              index: String,
+                                              from: K,
+                                              to: Option[K] = None,
+                                              coverageEntries: Option[Seq[CoverageEntry]] = None
+                                             ) extends DirectLocationQuery[String] {
 
-  private val iter = coverageEntries match {
-    case None      => None
-    case Some(seq) => Some(seq.iterator)
-  }
-  private var ce: Option[CoverageEntry] = None
+  override protected val coverageEntriesIt:Option[Iterator[CoverageEntry]] = coverageEntries.map(_.iterator)
 
   private def isSuitableForIntIndex(v: K): Boolean = v match {
     case _: Long => true
@@ -62,32 +63,12 @@ private case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadC
 
   // This method is looks ugly, but to fix that we need to introduce changes in Riak Java Client
   // scalastyle:off cyclomatic.complexity method.length
-  override def nextLocationChunk(nextToken: Option[_], session: RiakSession): (Option[Either[String, CoverageEntry]], Iterable[Location]) = {
+  override def nextLocationChunk(nextToken: Option[Either[String, CoverageEntry]]): (Option[Either[String, CoverageEntry]], Iterable[Location]) = {
     val ns = new Namespace(bucket.bucketType, bucket.bucketName)
 
-    ce = nextToken match {
-      case None => iter match {
-        case None           => None
-        case Some(iterator) => Some(iterator.next)
-      }
-
-      case Some(Left(_: String))                     => ce
-
-      case Some(Right(coverageEntry: CoverageEntry)) => Some(coverageEntry)
-
-      case _ =>
-        throw new IllegalArgumentException("Invalid nextToken")
-    }
+    coverageEntry = nextCoverageEntry(nextToken)
 
     val builder = from match {
-
-      case coverageEntry: CoverageEntry =>
-        // Full Bucket Read (Query all data)
-
-        require(to.isEmpty, "Coverage Entry can't be used in a range manner, therefore 'to' parameter must be None")
-        require(coverageEntries.isEmpty, "The Coverage Entry parameter mustn't be used for this type of query")
-
-        new BinIndexQuery.Builder(ns, index, coverageEntry.getCoverageContext)
 
       case _ if isSuitableForIntIndex(from) => to match {
         case None    => new IntIndexQuery.Builder(ns, index, convertToLong(from))
@@ -115,7 +96,7 @@ private case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadC
       .withMaxResults(readConf.fetchSize)
       .withPaginationSort(true)
 
-    ce match {
+    coverageEntry match {
       case None                               =>
       case Some(coverageEntry: CoverageEntry) => builder.withCoverageContext(coverageEntry.getCoverageContext) // local 2i query (coverage entry is provided) either Equal or Range
     }
@@ -131,7 +112,7 @@ private case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadC
       case bQueryBuilder: BinIndexQuery.Builder       => bQueryBuilder.build()
     }
 
-    val response = session.execute(request)
+    val response = riakConnector.withSessionDo(primaryHost.map(Seq(_)))(session => session.execute(request))
 
     // gathering locations, if any
     var locations: Iterable[Location] = Nil
@@ -142,12 +123,12 @@ private case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadC
       case bQueryResponse: BinIndexQuery.Response       => bQueryResponse.getEntries
     }
     resposeEntries.toSeq match {
-      case Nil if iter.isDefined && iter.get.hasNext => nextLocationChunk(None, session)
+      case Nil if coverageEntriesIt.isDefined && coverageEntriesIt.get.hasNext => nextLocationChunk(None)
       case _ =>
         locations = resposeEntries.map(_.getRiakObjectLocation)
 
         if (!response.hasContinuation) {
-          iter match {
+          coverageEntriesIt match {
             case Some(iterator) if iterator.hasNext => Some(Right(iterator.next)) -> locations
             case _ => None -> locations
           }
