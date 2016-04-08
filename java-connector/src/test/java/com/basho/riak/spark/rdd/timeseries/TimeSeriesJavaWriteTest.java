@@ -57,7 +57,7 @@ public class TimeSeriesJavaWriteTest extends AbstractJavaTimeSeriesTest {
         javaFunctions(sqlRowsRdd).saveToRiakTS(bucketName());
 
         RiakTSJavaRDD<Row> newRdd = javaFunctions(jsc)
-                .riakTSBucket(bucketName(), Row.class)
+                .riakTSTable(bucketName(), Row.class)
                 .sql(String.format("SELECT user_id, temperature_k FROM %s %s", bucketName(), sqlWhereClause()));
 
         List<Seq<Object>> data = newRdd.collect().stream().map(Row::toSeq).collect(Collectors.toList());
@@ -95,7 +95,7 @@ public class TimeSeriesJavaWriteTest extends AbstractJavaTimeSeriesTest {
         javaFunctions(df.javaRDD()).saveToRiakTS(bucketName());
 
         RiakTSJavaRDD<Row> newRdd = javaFunctions(jsc)
-                .riakTSBucket(bucketName(), Row.class)
+                .riakTSTable(bucketName(), Row.class)
                 .sql(String.format("SELECT user_id, temperature_k FROM %s %s", bucketName(), sqlWhereClause()));
 
         List<Seq<Object>> data = newRdd.collect().stream().map(Row::toSeq).collect(Collectors.toList());

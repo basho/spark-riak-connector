@@ -52,7 +52,7 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) with AbstractRDD
     sqlRowsRdd.saveToRiakTS(bucketName)
 
     // -- verification
-    val newRdd = sc.riakTSBucket[org.apache.spark.sql.Row](bucketName)
+    val newRdd = sc.riakTSTable[org.apache.spark.sql.Row](bucketName)
       .sql(s"SELECT user_id, temperature_k FROM $bucketName $sqlWhereClause")
 
     val data = newRdd.collect().map(_.toSeq)
@@ -85,7 +85,7 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) with AbstractRDD
     sourceDF.rdd.saveToRiakTS(DEFAULT_TS_NAMESPACE.getBucketTypeAsString)
 
     // -- verification
-    val newRdd = sc.riakTSBucket[org.apache.spark.sql.Row](bucketName)
+    val newRdd = sc.riakTSTable[org.apache.spark.sql.Row](bucketName)
       .sql(s"SELECT user_id, temperature_k FROM $bucketName $sqlWhereClause")
 
     val data = newRdd.collect().map(_.toSeq)

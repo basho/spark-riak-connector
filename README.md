@@ -236,7 +236,7 @@ rdd.saveToRiak(MY_OUTPUT_BUCKET)
 Riak TS buckets can be queried using sql() function:
 
 ```scala
-val rdd = sc.riakTSBucket(tableName).sql(s"SELECT * FROM $tableName WHERE time >= $from AND time <= $to")
+val rdd = sc.riakTSTable(tableName).sql(s"SELECT * FROM $tableName WHERE time >= $from AND time <= $to")
 ```
 
 ### Saving rdd to Riak TS bucket

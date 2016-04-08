@@ -84,7 +84,7 @@ object SimpleScalaRiakTSExample {
     val to = endOfQuantumMillis(testData.last.time)
     
     // TS range scan
-    val rddTS = sc.riakTSBucket(tableName)
+    val rddTS = sc.riakTSTable(tableName)
       .sql(s"SELECT * FROM $tableName WHERE time >= $from AND time <= $to  AND  weather = 'sunny' AND family = 'f'")
     println(s"Execution result for TS: ${rddTS.count}")
     
