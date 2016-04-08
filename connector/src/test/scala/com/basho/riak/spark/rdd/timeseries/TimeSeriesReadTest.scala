@@ -41,7 +41,7 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
 
   @Test
   def readDataAsSqlRow(): Unit = {
-    val rdd = sc.riakTSBucket[org.apache.spark.sql.Row](bucketName)
+    val rdd = sc.riakTSTable[org.apache.spark.sql.Row](bucketName)
       .sql(s"SELECT user_id, temperature_k FROM $bucketName $sqlWhereClause")
 
     // -- verification
@@ -65,7 +65,7 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
     val sqlContext = new org.apache.spark.sql.SQLContext(sc)
     import sqlContext.implicits._
 
-    val df = sc.riakTSBucket[org.apache.spark.sql.Row](bucketName)
+    val df = sc.riakTSTable[org.apache.spark.sql.Row](bucketName)
       .sql(s"SELECT time, user_id, temperature_k FROM $bucketName $sqlWhereClause")
       .map(r => TimeSeriesData(r.getTimestamp(0).getTime, r.getString(1), r.getDouble(2)))
       .toDF()
@@ -98,7 +98,7 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
       StructField(name = "temperature_k", dataType = DoubleType))
     )
 
-    val df = sc.riakTSBucket[org.apache.spark.sql.Row](bucketName, schema = Some(structType))
+    val df = sc.riakTSTable[org.apache.spark.sql.Row](bucketName, schema = Some(structType))
       .sql(s"SELECT time, user_id, temperature_k FROM $bucketName $sqlWhereClause")
       .map(r => TimeSeriesData(r.getLong(0), r.getString(1), r.getDouble(2)))
       .toDF()
@@ -129,7 +129,7 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
       StructField(name = "unknown_field", dataType = StringType))
     )
 
-    sc.riakTSBucket[org.apache.spark.sql.Row](bucketName, schema = Some(structType))
+    sc.riakTSTable[org.apache.spark.sql.Row](bucketName, schema = Some(structType))
       .sql(s"SELECT * FROM $bucketName $sqlWhereClause")
       .map(r => TimeSeriesData(r.getLong(0), r.getString(1), r.getDouble(2)))
       .collect()
@@ -303,7 +303,7 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
     val sqlContext = new SQLContext(sc)
     import sqlContext.implicits._
 
-    val rdd = sc.riakTSBucket[org.apache.spark.sql.Row](bucketName)
+    val rdd = sc.riakTSTable[org.apache.spark.sql.Row](bucketName)
       .select("time", "user_id", "temperature_k")
       .where(s"time >= $queryFromMillis AND time <= $queryToMillis AND surrogate_key = 1 AND family = 'f'")
 
@@ -332,7 +332,7 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
       StructField(name = "temperature_k", dataType = DoubleType))
     )
 
-    val rdd = sc.riakTSBucket[org.apache.spark.sql.Row](bucketName, schema = Some(structType))
+    val rdd = sc.riakTSTable[org.apache.spark.sql.Row](bucketName, schema = Some(structType))
       .select("time", "user_id", "temperature_k")
       .where(s"time > $queryFromMillis AND time < $queryToMillis AND surrogate_key = 1 AND family = 'f'")
 
@@ -362,7 +362,7 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
       StructField(name = "temperature_k", dataType = DoubleType))
     )
 
-    val rdd = sc.riakTSBucket[org.apache.spark.sql.Row](bucketName, schema = Some(structType))
+    val rdd = sc.riakTSTable[org.apache.spark.sql.Row](bucketName, schema = Some(structType))
       .select("time", "user_id", "temperature_k")
       .where(s"time > $queryFromMillis AND time < $queryToMillis AND surrogate_key = 1 AND family = 'f'")
       .collect()
@@ -380,7 +380,7 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
       StructField(name = "temperature_k", dataType = DoubleType))
     )
 
-    val rdd = sc.riakTSBucket[org.apache.spark.sql.Row](bucketName, schema = Some(structType))
+    val rdd = sc.riakTSTable[org.apache.spark.sql.Row](bucketName, schema = Some(structType))
       .select("time", "user_id", "temperature_k")
       .where(s"time > $queryFromMillis AND time < $queryToMillis AND surrogate_key = 1 AND family = 'f'")
       .collect()
@@ -396,7 +396,7 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
       StructField(name = "temperature_k", dataType = DoubleType))
     )
 
-    val rdd = sc.riakTSBucket[org.apache.spark.sql.Row](bucketName, schema = Some(structType))
+    val rdd = sc.riakTSTable[org.apache.spark.sql.Row](bucketName, schema = Some(structType))
       .select("time", "user_id", "temperature_k")
       .where(s"time > $queryFromMillis AND time < $queryToMillis AND surrogate_key = 1 AND family = 'f'")
       .collect()
@@ -413,7 +413,7 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
       StructField(name = "temperature_k", dataType = DoubleType))
     )
 
-    val rdd = sc.riakTSBucket[org.apache.spark.sql.Row](bucketName)
+    val rdd = sc.riakTSTable[org.apache.spark.sql.Row](bucketName)
       .schema(structType)
       .where(s"time > $queryFromMillis AND time < $queryToMillis AND surrogate_key = 1 AND family = 'f'")
 
@@ -443,7 +443,7 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
       StructField(name = "temperature_k", dataType = DoubleType))
     )
 
-    val rdd = sc.riakTSBucket[org.apache.spark.sql.Row](bucketName)
+    val rdd = sc.riakTSTable[org.apache.spark.sql.Row](bucketName)
       .schema(structType)
       .where(s"time > $queryFromMillis AND time < $queryToMillis AND surrogate_key = 1 AND family = 'f'")
       .collect()
@@ -491,7 +491,7 @@ class TimeSeriesReadWithoutSchemaTest extends AbstractTimeSeriesTest with Abstra
 
     import sqlContext.implicits._
 
-    val df = sc.riakTSBucket[org.apache.spark.sql.Row](bucketName)
+    val df = sc.riakTSTable[org.apache.spark.sql.Row](bucketName)
       .sql(s"SELECT time, user_id, temperature_k FROM $bucketName $sqlWhereClause")
       .map(r => TimeSeriesData(r.getTimestamp(0).getTime, r.getString(1), r.getDouble(2)))
       .toDF()

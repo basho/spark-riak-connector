@@ -56,7 +56,7 @@ class NotAvailableFeaturesTest extends AbstractRDDTest {
   @Test
   def timeSeriesOnKV(): Unit = {
     expectedException.expect(timeSeriesMatcher)
-    val rdd = sc.riakTSBucket[Row]("bucket")
+    val rdd = sc.riakTSTable[Row]("bucket")
       .sql("select * from bucket")
       .collect()
   }

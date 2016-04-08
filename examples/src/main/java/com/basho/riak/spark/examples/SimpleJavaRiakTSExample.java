@@ -17,9 +17,14 @@
  */
 package com.basho.riak.spark.examples;
 
-import static com.basho.riak.spark.japi.SparkJavaUtil.javaFunctions;
-import static java.util.Arrays.asList;
-import static scala.collection.JavaConversions.asScalaBuffer;
+import com.basho.riak.client.core.query.timeseries.Row;
+import com.basho.riak.spark.japi.rdd.RiakTSJavaRDD;
+import com.google.common.base.Joiner;
+import com.google.common.collect.Iterables;
+import org.apache.spark.SparkConf;
+import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.sql.Row$;
 
 import java.io.Serializable;
 import java.util.Calendar;
@@ -27,15 +32,9 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
-import org.apache.spark.SparkConf;
-import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.sql.Row$;
-
-import com.basho.riak.client.core.query.timeseries.Row;
-import com.basho.riak.spark.japi.rdd.RiakTSJavaRDD;
-import com.google.common.base.Joiner;
-import com.google.common.collect.Iterables;
+import static com.basho.riak.spark.japi.SparkJavaUtil.javaFunctions;
+import static java.util.Arrays.asList;
+import static scala.collection.JavaConversions.asScalaBuffer;
 
 /**
  * Really simple demo of timeseries-related features
@@ -80,7 +79,7 @@ public class SimpleJavaRiakTSExample implements Serializable {
     
     loadDemoData(jsc);
     
-    RiakTSJavaRDD<Row> rdd = javaFunctions(jsc).riakTSBucket(TABLE_NAME, Row.class)
+    RiakTSJavaRDD<Row> rdd = javaFunctions(jsc).riakTSTable(TABLE_NAME, Row.class)
       .sql(String.format("SELECT * FROM %s WHERE time >= %d AND time <= %d  AND  weather = 'sunny' AND family = 'f'", TABLE_NAME, from, to));
     
     rdd.foreach(x -> System.out.println(Joiner.on(",").join(x.getCellsCopy())));
