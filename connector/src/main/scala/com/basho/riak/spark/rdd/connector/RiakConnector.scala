@@ -39,6 +39,7 @@ class RiakConnector(conf: RiakConnectorConf)
 
   /** Known cluster hosts. This is going to return all cluster hosts after at least one successful connection has been made */
   def hosts: Set[HostAndPort] = _config.hosts
+  def minConnections = _config.minConnections
 
   def openSession(hosts: Option[Seq[HostAndPort]] = None): RiakSession = {
     val cfg = hosts match {
