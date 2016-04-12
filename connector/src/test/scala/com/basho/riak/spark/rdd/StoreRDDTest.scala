@@ -25,11 +25,13 @@ import com.basho.riak.client.core.query.indexes.LongIntIndex
 import com.basho.riak.client.core.query.{Location, Namespace, RiakObject}
 import com.basho.riak.spark._
 import com.basho.riak.spark.util.RiakObjectConversionUtil
-import com.basho.riak.spark.writer.{WriteDataMapper, WriteDataMapperFactory}
+import com.basho.riak.spark.writer.{WriteConf, WriteDataMapper, WriteDataMapperFactory}
+import org.apache.spark.SparkException
 import org.apache.spark.rdd.RDD
 import org.junit.Assert._
-import org.junit.Test
+import org.junit.{Rule, Test}
 import org.junit.experimental.categories.Category
+import org.junit.rules.ExpectedException
 
 import scala.annotation.meta.field
 
@@ -47,6 +49,12 @@ case class ORMDomainObject(
 
 @Category(Array(classOf[RiakCommonTests]))
 class RDDStoreTest  extends AbstractRDDTest {
+
+  val _expectedException: ExpectedException = ExpectedException.none()
+
+  @Rule
+  def expectedException: ExpectedException = _expectedException
+
 
   @Test
   def storePairRDDUsingCustomMapper(): Unit = {
@@ -162,6 +170,41 @@ class RDDStoreTest  extends AbstractRDDTest {
         | ]""".stripMargin, t1Data)
 
     verifyContentTypeEntireTheBucket("text/plain", DEFAULT_NAMESPACE_4STORE)
+  }
+
+  @Test
+  def storeWithCustomWriteConfigReplicasStringProperty(): Unit = {
+    sc.parallelize(List(Tuple1("key1"), Tuple1("key2"), Tuple1("key3")), 1)
+      .saveToRiak(
+        DEFAULT_NAMESPACE_4STORE.getBucketNameAsString,
+        DEFAULT_NAMESPACE_4STORE.getBucketTypeAsString,
+        WriteConf(sc.getConf, Map(WriteConf.WriteReplicasProperty -> "one")))
+
+    val t1Data = fetchAllFromBucket(DEFAULT_NAMESPACE_4STORE)
+
+    // Keys should be generated on the Riak side, therefore they will be ignored
+    assertEqualsUsingJSONIgnoreOrder(
+      """[
+        | ['${json-unit.ignore}', 'key1'],
+        | ['${json-unit.ignore}', 'key2'],
+        | ['${json-unit.ignore}', 'key3']
+        | ]""".stripMargin, t1Data)
+
+    verifyContentTypeEntireTheBucket("text/plain", DEFAULT_NAMESPACE_4STORE)
+  }
+
+  @Test
+  def storeWithCustomWriteConfigReplicasIncorrectStringProperty(): Unit = {
+    val newQuorum = "incorrect"
+
+    expectedException.expect(classOf[SparkException])
+    expectedException.expectMessage(s"Unexpected quorum value: $newQuorum")
+
+    sc.parallelize(List(Tuple1("key1"), Tuple1("key2"), Tuple1("key3")), 1)
+      .saveToRiak(
+        DEFAULT_NAMESPACE_4STORE.getBucketNameAsString,
+        DEFAULT_NAMESPACE_4STORE.getBucketTypeAsString,
+        WriteConf(sc.getConf, Map(WriteConf.WriteReplicasProperty -> newQuorum)))
   }
 
   @Test

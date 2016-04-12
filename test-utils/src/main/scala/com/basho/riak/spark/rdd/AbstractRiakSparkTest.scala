@@ -33,7 +33,7 @@ abstract class AbstractRiakSparkTest extends AbstractRiakTest {
     .setMaster("local")
     .setAppName(getClass.getSimpleName)
     .set("spark.riak.connection.host", DEFAULT_RIAK_HOST)
-    .set("spark.riak.output.wquorum", "1")
+    .set("spark.riak.write.replicas", "1")
     .set("spark.riak.input.fetch-size", "2")
 
   override def initialize(): Unit = {

@@ -143,7 +143,7 @@ spark.riak.connections.min                     | Minimum number of parallel conn
 spark.riak.connections.max                     | Maximum number of parallel connections to Riak    | 30                 | KV/TS
 spark.riak.input.fetch-size                    | Number of keys to fetch in a single round-trip to Riak | 1000          | KV
 spark.riak.input.split.count                   | Desired minimum number of Spark partitions to divide the data into | 10| KV
-spark.riak.output.wquorum                      | Quorum value on write                                              | 1 | KV
+spark.riak.write.replicas                      | Quorum value on write. Integer value or symbolic constant can be used. Possible symbolic constants are: <ul><li>all - All replicas must reply.</li><li>one - This is the same as integer value 1.</li><li>quorum - A majority of the replicas must respond, that is, “half plus one”.</li><li>default - Uses whatever the per-bucket consistency property, which may be any of the above values, or an integer.</li></ul>                                              | default | KV
 spark.riak.connections.inactivity.timeout      | Time to keep connection to Riak alive in milliseconds | 1000 | KV/TS
 spark.riakts.bindings.timestamp                | To treat/convert Riak TS timestamp columns either as a Long (UNIX milliseconds) or as a Timestamps during the automatic schema discovery. Valid values are: <ul><li>useLong</li><li>useTimestamp</li><ul> | useTimestamp | TS
 spark.riakts.write.bulk-size                   | Number of rows to be written at once | 100 | TS

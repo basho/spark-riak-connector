@@ -17,31 +17,44 @@
   */
 package com.basho.riak.spark.writer
 
+import java.util.concurrent.Semaphore
+
 import com.basho.riak.client.api.cap.Quorum
 import com.basho.riak.client.api.commands.kv.StoreValue
 import com.basho.riak.client.api.convert.JSONConverter
-import com.basho.riak.client.core.RiakFuture
+import com.basho.riak.client.core.{RiakFuture, RiakFutureListener}
 import com.basho.riak.client.core.operations.ts.StoreOperation
-import com.basho.riak.client.core.query.{ Location, Namespace }
+import com.basho.riak.client.core.query.{Location, Namespace}
 import com.basho.riak.spark._
-import com.basho.riak.spark.rdd.connector.{ RiakSession, RiakConnector }
 import com.basho.riak.spark.rdd.BucketDef
+import com.basho.riak.spark.rdd.connector.{RiakConnector, RiakSession}
 import com.basho.riak.spark.util.CountingIterator
 import com.basho.riak.spark.writer.ts.RowDef
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import org.apache.spark.riak.RiakWriterTaskCompletionListener
-import org.apache.spark.{ Logging, TaskContext }
+import org.apache.spark.{Logging, TaskContext}
+
 import scala.collection.JavaConversions._
 import scala.collection._
-import scala.concurrent._
-import java.util.concurrent.Semaphore
-import com.basho.riak.client.core.RiakFutureListener
+import scala.util.control.Exception._
 
 abstract class RiakWriter[T, U](
                                    connector: RiakConnector,
                                    bucketDef: BucketDef,
                                    dataMapper: WriteDataMapper[T, U],
                                    writeConf: WriteConf) extends Serializable with Logging {
+
+  // This method should be ported to Riak Java Client
+  protected def stringToQuorum(qString: String): Quorum = allCatch opt qString.toInt match {
+    case Some(x) => new Quorum(x)
+    case None => qString match {
+      case Quorum.ALL => Quorum.allQuorum()
+      case Quorum.ONE => Quorum.oneQuorum()
+      case Quorum.QUORUM => Quorum.quorumQuorum()
+      case Quorum.DEFAULT => Quorum.defaultQuorum()
+      case _ => throw new IllegalArgumentException(s"Unexpected quorum value: $qString")
+    }
+  }
 
   /** Main entry point */
   def write(taskContext: TaskContext, data: Iterator[T]): Unit = {
@@ -77,7 +90,7 @@ class RiakKVWriter[T](connector: RiakConnector,
       * Since Riak does not provide any Bulk API for storing data (02/01/2015) we will do sequential writes
       */
     values.foreach { case (key, value) =>
-      val builder = new StoreValue.Builder(value).withOption(StoreValue.Option.W, new Quorum(writeConf.writeQuorum))
+      val builder = new StoreValue.Builder(value).withOption[Quorum](StoreValue.Option.W, stringToQuorum(writeConf.writeReplicas))
 
       Option(key) match {
         case None => builder.withNamespace(ns)
@@ -130,7 +143,7 @@ class RiakTSWriter[T](connector: RiakConnector,
       }
     }
 
-    // waiting for all threads to finish writing and release the semaphore by trying to acquire all of its permits 
+    // waiting for all threads to finish writing and release the semaphore by trying to acquire all of its permits
     writeSemaphore.acquire(concurrentWritesNumber)
     writeSemaphore.release(concurrentWritesNumber)
     // if any exception has occurred in latest threads, throw it from main thread
@@ -182,4 +195,5 @@ object RiakWriter {
     val dataMapper = factory.dataMapper(bucketDef)
     new RiakTSWriter[T](connector, bucketDef, dataMapper, writeConf)
   }
+
 }
