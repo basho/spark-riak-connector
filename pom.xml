@@ -4,7 +4,7 @@
 
     <groupId>com.basho.riak</groupId>
     <artifactId>spark-riak-connector-parent</artifactId>
-    <version>1.3.0-beta1</version>
+    <version>1.3.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <description>Spark Connector for Riak 2.3</description>
     <url>https://github.com/basho/spark-riak-connector</url>
@@ -42,7 +42,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <spark.version>1.5.2</spark.version>
+        <spark.version>1.6.1</spark.version>
         <scala.version>2.10.5</scala.version>
         <scala.major.version>2.10</scala.major.version>
         <java.target.version>1.8</java.target.version>
@@ -133,22 +133,11 @@
                 <riak.test.category>com.basho.riak.spark.rdd.RiakTSTests</riak.test.category>
             </properties>
 		</profile>
-		<profile>
-			<id>riak_bdp</id>
-            <activation>
-                <property>
-                    <name>bdp</name>
-                </property>
-            </activation>
-            <properties>
-                <riak.test.category>com.basho.riak.spark.rdd.RiakBDPTests</riak.test.category>
-            </properties>
-		</profile>
         <profile>
-            <id>riak_bdp_ee</id>
+            <id>pex_streaming_vals</id>
             <activation>
                 <property>
-                    <name>bdp_ee</name>
+                    <name>pex_streaming_vals</name>
                 </property>
             </activation>
             <properties>

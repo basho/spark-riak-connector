@@ -21,70 +21,72 @@ import java.math.BigInteger
 
 import com.basho.riak.client.api.commands.indexes.{BigIntIndexQuery, BinIndexQuery, IntIndexQuery}
 import com.basho.riak.client.core.operations.CoveragePlanOperation.Response.CoverageEntry
-import com.basho.riak.client.core.query.{Namespace, Location}
+import com.basho.riak.client.core.query.{Location, Namespace}
 import com.basho.riak.client.core.util.BinaryValue
-import com.basho.riak.spark.rdd.connector.RiakSession
-import com.basho.riak.spark.rdd.{ReadConf, BucketDef}
+import com.basho.riak.spark.rdd.connector.RiakConnector
+import com.basho.riak.spark.rdd.{BucketDef, ReadConf}
 
 import scala.collection.JavaConversions._
 
-private case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadConf, index: String, from: K,
-        to: Option[K] = None, coverageEntry: Option[CoverageEntry] = None )
-    extends LocationQuery[String] {
+private case class Query2iKeySingleOrRange[K](bucket: BucketDef,
+                                              readConf: ReadConf,
+                                              riakConnector: RiakConnector,
+                                              index: String,
+                                              from: K,
+                                              to: Option[K] = None,
+                                              coverageEntries: Option[Seq[CoverageEntry]] = None
+                                             ) extends DirectLocationQuery[String] {
 
-  private def isSuitableForIntIndex(v:K): Boolean = v match {
+  override protected val coverageEntriesIt:Option[Iterator[CoverageEntry]] = coverageEntries.map(_.iterator)
+
+  private def isSuitableForIntIndex(v: K): Boolean = v match {
     case _: Long => true
-    case _: Int => true
-    case _ => false
+    case _: Int  => true
+    case _       => false
   }
 
   private def isSuitableForBigIntIndex(v: K): Boolean = v match {
-    case _: BigInt => true
+    case _: BigInt     => true
     case _: BigInteger => true
-    case _ => false
+    case _             => false
   }
 
   private def convertToLong(value: K): Long = value match {
-    case i: Int => i.toLong
+    case i: Int  => i.toLong
     case l: Long => l
   }
 
   private def convertToBigInteger(value: K): BigInteger = value match {
-    case i: BigInt => i.underlying()
-    case bi:BigInteger => bi
+    case i: BigInt      => i.underlying()
+    case bi: BigInteger => bi
   }
 
   // This method is looks ugly, but to fix that we need to introduce changes in Riak Java Client
-    // scalastyle:off cyclomatic.complexity method.length
-  override def nextLocationChunk(nextToken: Option[_], session: RiakSession): (Option[String], Iterable[Location]) = {
+  // scalastyle:off cyclomatic.complexity method.length
+  override def nextLocationChunk(nextToken: Option[Either[String, CoverageEntry]]): (Option[Either[String, CoverageEntry]], Iterable[Location]) = {
     val ns = new Namespace(bucket.bucketType, bucket.bucketName)
+
+    coverageEntry = nextCoverageEntry(nextToken)
+
     val builder = from match {
 
-      case ce: CoverageEntry =>
-        // Full Bucket Read (Query all data)
-
-        require(to.isEmpty, "Coverage Entry can't be used in a range manner, therefore 'to' parameter must be None")
-        require(coverageEntry.isEmpty, "The Coverage Entry parameter mustn't be used for this type of query")
-
-        new BinIndexQuery.Builder(ns, index, ce.getCoverageContext)
-
       case _ if isSuitableForIntIndex(from) => to match {
-          case None => new IntIndexQuery.Builder(ns, index, convertToLong(from))
-          case Some(v) =>  new IntIndexQuery.Builder(ns, index, convertToLong(from), convertToLong(v))
-        }
+        case None    => new IntIndexQuery.Builder(ns, index, convertToLong(from))
+        case Some(v) => new IntIndexQuery.Builder(ns, index, convertToLong(from), convertToLong(v))
+      }
 
       case _ if isSuitableForBigIntIndex(from) => to match {
-        case None => new BigIntIndexQuery.Builder(ns, index, convertToBigInteger(from))
-        case Some(v) =>  new BigIntIndexQuery.Builder(ns, index, convertToBigInteger(from), convertToBigInteger(v))
+        case None    => new BigIntIndexQuery.Builder(ns, index, convertToBigInteger(from))
+        case Some(v) => new BigIntIndexQuery.Builder(ns, index, convertToBigInteger(from), convertToBigInteger(v))
       }
 
       case str: String => to match {
-          case None => new BinIndexQuery.Builder(ns, index, str)
-          case Some(v: String) => new BinIndexQuery.Builder(ns, index, str)
+        case None            => new BinIndexQuery.Builder(ns, index, str)
+        case Some(v: String) => new BinIndexQuery.Builder(ns, index, str)
 
-          case _ =>
-            throw new IllegalArgumentException("Illegal 2i end range value")
-        }
+        case _ =>
+          throw new IllegalArgumentException("Illegal 2i end range value")
+      }
 
       case _ =>
         throw new IllegalArgumentException("Unsupported 2i key type")
@@ -94,48 +96,45 @@ private case class Query2iKeySingleOrRange[K](bucket: BucketDef, readConf: ReadC
       .withMaxResults(readConf.fetchSize)
       .withPaginationSort(true)
 
-    if(coverageEntry.isDefined){
-      // local 2i query (coverage entry is provided) either Equal or Range
-      builder.withCoverageContext(coverageEntry.get.getCoverageContext)
+    coverageEntry match {
+      case None                               =>
+      case Some(coverageEntry: CoverageEntry) => builder.withCoverageContext(coverageEntry.getCoverageContext) // local 2i query (coverage entry is provided) either Equal or Range
     }
 
     nextToken match {
-      case None =>
-        /* It is a first request */
-
-      case Some(continuation: String) =>
-        /* Subsequent request */
-        builder.withContinuation(BinaryValue.create(continuation))
-
-      case _ =>
-        throw new IllegalArgumentException("Wrong nextToken")
+      case Some(Left(continuation: String)) => builder.withContinuation(BinaryValue.create(continuation))
+      case _                                =>
     }
 
     val request = builder match {
-      case iQueryBuilder: IntIndexQuery.Builder => iQueryBuilder.build()
+      case iQueryBuilder: IntIndexQuery.Builder       => iQueryBuilder.build()
       case bigIQueryBuilder: BigIntIndexQuery.Builder => bigIQueryBuilder.build()
-      case bQueryBuilder: BinIndexQuery.Builder => bQueryBuilder.build()
+      case bQueryBuilder: BinIndexQuery.Builder       => bQueryBuilder.build()
     }
 
-    val response = session.execute(request)
+    val response = riakConnector.withSessionDo(primaryHost.map(Seq(_)))(session => session.execute(request))
 
     // gathering locations, if any
     var locations: Iterable[Location] = Nil
 
-    if( response.hasEntries){
-      val entries = response match {
-        case iQueryResponse: IntIndexQuery.Response => iQueryResponse.getEntries
-        case bigIQueryResponse: BigIntIndexQuery.Response => bigIQueryResponse.getEntries
-        case bQueryResponse: BinIndexQuery.Response => bQueryResponse.getEntries
-      }
-      locations = entries.map(_.getRiakObjectLocation)
+    val resposeEntries = response match {
+      case iQueryResponse: IntIndexQuery.Response       => iQueryResponse.getEntries
+      case bigIQueryResponse: BigIntIndexQuery.Response => bigIQueryResponse.getEntries
+      case bQueryResponse: BinIndexQuery.Response       => bQueryResponse.getEntries
     }
+    resposeEntries.toSeq match {
+      case Nil if coverageEntriesIt.isDefined && coverageEntriesIt.get.hasNext => nextLocationChunk(None)
+      case _ =>
+        locations = resposeEntries.map(_.getRiakObjectLocation)
 
-    // scalastyle:off null
-    if(response.getContinuation == null){
-      None -> locations
-    }else{
-      Some(response.getContinuation.toStringUtf8) -> locations
+        if (!response.hasContinuation) {
+          coverageEntriesIt match {
+            case Some(iterator) if iterator.hasNext => Some(Right(iterator.next)) -> locations
+            case _ => None -> locations
+          }
+        } else {
+          Some(Left(response.getContinuation.toStringUtf8)) -> locations
+        }
     }
     // scalastyle:on null
   }

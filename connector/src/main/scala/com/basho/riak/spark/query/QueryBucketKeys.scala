@@ -18,13 +18,19 @@
 package com.basho.riak.spark.query
 
 import com.basho.riak.client.core.query.Location
-import com.basho.riak.spark.rdd.connector.RiakSession
-import com.basho.riak.spark.rdd.{ReadConf, BucketDef}
+import com.basho.riak.spark.rdd.connector.RiakConnector
+import com.basho.riak.spark.rdd.{BucketDef, ReadConf}
 
 import scala.collection.mutable.ArrayBuffer
 
-private case class QueryBucketKeys(bucket: BucketDef, readConf:ReadConf, keys: Iterable[String]) extends QuerySubsetOfKeys[String] {
-  override def locationsByKeys(keys: Iterator[String], session: RiakSession): (Boolean, Iterable[Location]) = {
+private case class QueryBucketKeys(bucket: BucketDef,
+                                   readConf:ReadConf,
+                                   riakConnector: RiakConnector,
+                                   keys: Iterable[String]
+                                  ) extends QuerySubsetOfKeys[String] {
+
+  override def locationsByKeys(keys: Iterator[String]): (Boolean, Iterable[Location]) = {
+
     val dataBuffer = new ArrayBuffer[Location](readConf.fetchSize)
 
     val ns = bucket.asNamespace()

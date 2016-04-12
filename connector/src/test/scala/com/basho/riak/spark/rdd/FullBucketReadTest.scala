@@ -17,16 +17,34 @@
  */
 package com.basho.riak.spark.rdd
 
+import org.apache.spark.SparkConf
 import com.basho.riak.spark._
 import org.junit.Assert._
+import org.junit.runner.RunWith
+import org.junit.runners.Parameterized
+import org.junit.runners.Parameterized.Parameters
+import java.{util => ju, lang => jl}
 import org.junit.Test
 import org.junit.experimental.categories.Category
 
-@Category(Array(classOf[RiakTSTests], classOf[RiakBDPTests]))
-class FullBucketReadTest extends AbstractRDDTest {
+object FullBucketReadTest {
+
+  @Parameters(name = "Split To {0} partitions" ) def parameters: ju.Collection[Array[jl.Integer]] = {
+    val list = new ju.ArrayList[Array[jl.Integer]]()
+    list.add(Array(12))
+    list.add(Array(9))
+    list.add(Array(6))
+    list.add(Array(5))
+    list.add(Array(3))
+    list
+  }
+}
+
+@RunWith(value = classOf[Parameterized])
+@Category(Array(classOf[RiakTSTests]))
+class FullBucketReadTest(splitSize: Int) extends AbstractRDDTest {
   private val NUMBER_OF_TEST_VALUES = 1000
 
-  @Override
   protected override def jsonData(): String = {
     val data = for {
         i <- 1 to NUMBER_OF_TEST_VALUES
@@ -36,9 +54,14 @@ class FullBucketReadTest extends AbstractRDDTest {
     asStrictJSON(data)
   }
 
+  override protected def initSparkConf(): SparkConf = {
+    val conf = super.initSparkConf()
+    conf.set("spark.riak.input.split.count", splitSize.toString)
+  }
+
   /*
-   * map RDD[K] to RDD[(partitionIdx,K)]
-   */
+     * map RDD[K] to RDD[(partitionIdx,K)]
+     */
   val funcReMapWithPartitionIdx = new Function2[Int,Iterator[String], Iterator[(Int,String)]] with Serializable{
     override def apply(partitionIdx: Int, iter: Iterator[String]): Iterator[(Int, String)] = {
       iter.toList.map(x => partitionIdx -> x).iterator
@@ -49,25 +72,26 @@ class FullBucketReadTest extends AbstractRDDTest {
    * Utilize CoveragePlan support to perform local reads
    */
   @Test
-  def fullBucketRead() ={
-    val data = sc.riakBucket[String](DEFAULT_NAMESPACE)
-      .queryAll()
-      .mapPartitionsWithIndex(funcReMapWithPartitionIdx, preservesPartitioning=true)
-      .groupByKey()
-      .collect()
+  def fullBucketRead(): Unit ={
+      val data = sc.riakBucket[String](DEFAULT_NAMESPACE)
+        .queryAll()
+        .mapPartitionsWithIndex(funcReMapWithPartitionIdx, preservesPartitioning=true)
+        .groupByKey()
+        .collect()
 
-    // TODO: needs to verify number of created partitions
-    val numberOfPartitions = data.size
+      // verify split by partitions
+      val numberOfPartitions = data.length
+      assertEquals(splitSize, numberOfPartitions)
 
-    val allValues = data.map{case (k,v)=> v}
-      .flatten
-      .sortBy(x=>x.substring(1).toLong )
+      // verify total number of values
+      val allValues = data.flatMap{case (k,v)=> v}
+        .sortBy(x=>x.substring(1).toLong )
 
-    assertEquals(NUMBER_OF_TEST_VALUES, allValues.size)
+      assertEquals(NUMBER_OF_TEST_VALUES, allValues.length)
 
-    // verify returned values
-    for(i <- 1 to NUMBER_OF_TEST_VALUES){
-      assertEquals( "v"+i, allValues(i-1))
-    }
+      // verify returned values
+      for{i <- 1 to NUMBER_OF_TEST_VALUES}{
+        assertEquals( "v" + i, allValues(i - 1))
+      }
   }
 }

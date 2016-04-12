@@ -178,8 +178,23 @@ class TSConversionTest extends Logging {
     assertSeqEquals(expected, sparkRow.toSeq)
   }
 
+  @Test
+  def nullableConversionTest(): Unit = {
+    val millis = System.currentTimeMillis
+    val date = new Date(millis)
+
+    val cells = List(new Cell(1), new Cell(date), null)
+    val row = new Row(cells)
+    val columnDescriptions = Some(mkColumnDescriptions(SINT64, SINT64, VARCHAR))
+    val sparkRow = TimeSeriesToSparkSqlConversion.asSparkRow(
+      mkStructType(LongType, TimestampType, StringType), row, columnDescriptions)
+    val expected = List(1L, new Timestamp(millis), null)
+    assertSeqEquals(expected, sparkRow.toSeq)
+  }
+
   private def compareElementwise(a: Seq[Any], b: Seq[Any]): Boolean = a match {
     case Nil => true
+    case null :: xs => b.head == null && compareElementwise(xs, b.tail)
     case x :: xs => x.equals(b.head) && compareElementwise(xs, b.tail)
   }
 

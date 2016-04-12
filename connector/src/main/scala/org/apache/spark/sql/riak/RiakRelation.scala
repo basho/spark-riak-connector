@@ -80,51 +80,24 @@ private[riak] class RiakRelation(
   }
 
   private[this] val baseRdd: RiakTSRDD[Row] = sqlContext.sparkContext
-    .riakTSBucket[Row](bucket, readConf, userSpecifiedSchema)(implicitly[ClassTag[Row]], connector)
+    .riakTSTable[Row](bucket, readConf, userSpecifiedSchema)(implicitly[ClassTag[Row]], connector)
 
    def buildScan(): RDD[Row] = baseRdd.asInstanceOf[RDD[Row]]
 
   override def buildScan(requiredColumns: Array[String], filters: Array[Filter]): RDD[Row] = {
 
-    val prunedRdd = requiredColumns.isEmpty match {
-      case false => baseRdd.select(requiredColumns: _*)
-      case _ => baseRdd
+    val prunedRdd = {
+      if (requiredColumns.isEmpty)
+        baseRdd
+      else
+        baseRdd.select(requiredColumns: _*)
     }
-
-    filters.isEmpty match {
-      case false =>
-        logInfo(s"filters: ${filters.mkString(", ")}")
-
-        whereClause(filters) match {
-          case (sql, values) /* if values.nonEmpty */ => prunedRdd.where(sql, values: _*)
-          case _ => prunedRdd
-        }
-      case _ => prunedRdd
-    }
-  }
-
-  /** Construct Sql clause */
-  private def filterToSqlAndValue(filter: Any): (String, Any) = {
-    val (attribute, sqlOperator, value) = filter match {
-      case sources.EqualTo(a, v) => (a, "=", v)
-      case sources.LessThan(a, v) => (a, "<", v)
-      case sources.LessThanOrEqual(a, v) => (a, "<=", v)
-      case sources.GreaterThan(a, v) => (a, ">", v)
-      case sources.GreaterThanOrEqual(a, v) => (a, ">=", v)
-      case _ =>
-        throw new UnsupportedOperationException(
-          s"It's not a valid filter $filter to be pushed down, only >, <, >=, <=  are allowed.")
-    }
-
-    // TODO: need to add pattern matching for values, to be sure that they are used correctly
-    (s"$attribute $sqlOperator ?", value)
-  }
-
-  private def whereClause(pushdownFilters: Seq[Any]): (String, Seq[Any]) = {
-    val sqlValue = pushdownFilters.map(filterToSqlAndValue)
-    val sql = sqlValue.map(_._1).mkString(" AND ")
-    val args = sqlValue.map(_._2)
-    (sql, sqlValue.seq)
+    
+    val tsRangeFieldName = readConf.tsRangeFieldName
+    if(tsRangeFieldName != null && readConf.splitCount > 1) 
+      prunedRdd.partitionByTimeRanges(tsRangeFieldName, filters)
+    else 
+      prunedRdd.filter(filters)
   }
 
   override def insert(data: DataFrame, overwrite: Boolean): Unit = {

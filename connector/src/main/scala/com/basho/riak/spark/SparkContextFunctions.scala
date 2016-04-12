@@ -40,7 +40,7 @@ class SparkContextFunctions(@transient val sc: SparkContext) extends Serializabl
     }
   }
 
-  def riakTSBucket[T](bucketName: String, readConf: ReadConf = ReadConf(sc.getConf), schema: Option[StructType] = None)
+  def riakTSTable[T](bucketName: String, readConf: ReadConf = ReadConf(sc.getConf), schema: Option[StructType] = None)
                    (implicit ct: ClassTag[T], connector: RiakConnector = RiakConnector(sc.getConf)): RiakTSRDD[T] =
     RiakTSRDD[T](sc, bucketName, readConf = readConf, schema = schema)
 

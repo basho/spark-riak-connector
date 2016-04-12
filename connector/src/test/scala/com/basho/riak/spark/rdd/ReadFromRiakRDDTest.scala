@@ -305,7 +305,7 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
   }
 
   @Test
-  @Category(Array(classOf[RiakTSTests], classOf[RiakBDPTests]))
+  @Category(Array(classOf[RiakTSTests]))
   def local2iRangeRead() ={
 
     val data = sc.riakBucket[UserTS](DEFAULT_NAMESPACE)
@@ -320,6 +320,15 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
     val allValues = data.map{case (k,v)=> v}.flatten
 
     assertEquals(7, allValues.size)
+  }
+
+  @Test
+  def testPartitionsCount() = {
+    val readConf = ReadConf(sc.getConf)
+    val partitions = sc.riakBucket[UserTS](DEFAULT_NAMESPACE)
+      .query2iRangeLocal("creationNo", 1, 1000).getPartitions
+
+    assertEquals(readConf.splitCount, partitions.size)
   }
 
   @Test

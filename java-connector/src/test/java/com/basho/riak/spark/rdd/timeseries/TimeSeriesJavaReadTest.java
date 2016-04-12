@@ -18,7 +18,6 @@
 package com.basho.riak.spark.rdd.timeseries;
 
 import com.basho.riak.spark.rdd.RiakTSTests;
-import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.sql.DataFrame;
 import org.apache.spark.sql.Row;
@@ -48,7 +47,7 @@ public class TimeSeriesJavaReadTest extends AbstractJavaTimeSeriesTest {
     @Test
     public void readDataAsSqlRow() {
         List<Row> rows = javaFunctions(jsc)
-                .riakTSBucket(bucketName(), Row.class)
+                .riakTSTable(bucketName(), Row.class)
                 .sql(String.format("SELECT user_id, temperature_k FROM %s %s", bucketName(), sqlWhereClause()))
                 .collect();
         List<Seq<Object>> data = rows.stream().map(Row::toSeq).collect(Collectors.toList());
@@ -67,7 +66,7 @@ public class TimeSeriesJavaReadTest extends AbstractJavaTimeSeriesTest {
     public void riakTSRDDToDataFrame() {
         SQLContext sqlContext = new SQLContext(jsc);
         JavaRDD<TimeSeriesDataBean> rows = javaFunctions(jsc)
-                .riakTSBucket(bucketName(), Row.class)
+                .riakTSTable(bucketName(), Row.class)
                 .sql(String.format("SELECT time, user_id, temperature_k FROM %s %s", bucketName(), sqlWhereClause()))
                 .map(r -> new TimeSeriesDataBean(r.getTimestamp(0).getTime(), r.getString(1), r.getDouble(2)));
 
@@ -95,7 +94,7 @@ public class TimeSeriesJavaReadTest extends AbstractJavaTimeSeriesTest {
 
         SQLContext sqlContext = new SQLContext(jsc);
         JavaRDD<TimeSeriesDataBean> rows = javaFunctions(jsc)
-                .riakTSBucket(bucketName(), structType, Row.class)
+                .riakTSTable(bucketName(), structType, Row.class)
                 .sql(String.format("SELECT time, user_id, temperature_k FROM %s %s", bucketName(), sqlWhereClause()))
                 .map(r -> new TimeSeriesDataBean(r.getLong(0), r.getString(1), r.getDouble(2)));
 
@@ -150,6 +149,7 @@ public class TimeSeriesJavaReadTest extends AbstractJavaTimeSeriesTest {
         });
 
         DataFrame df = sqlContext.read()
+                .option("spark.riak.partitioning.ts-range-field-name", "time")
                 .format("org.apache.spark.sql.riak")
                 .schema(structType)
                 .load(bucketName())
@@ -174,6 +174,7 @@ public class TimeSeriesJavaReadTest extends AbstractJavaTimeSeriesTest {
         DataFrame df = sqlContext.read()
                 .format("org.apache.spark.sql.riak")
                 .option("spark.riakts.bindings.timestamp", "useLong")
+                .option("spark.riak.partitioning.ts-range-field-name", "time")
                 .load(bucketName())
                 .filter(String.format("time > %s AND time < %s AND surrogate_key = 1 AND family = 'f'", queryFromMillis(), queryToMillis()));
         df = df.select(df.col("time"), df.col("family"), df.col("surrogate_key"), df.col("user_id"), df.col("temperature_k"));

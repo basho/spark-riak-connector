@@ -5,7 +5,8 @@
 Spark Riak connector allows you to expose data stored in Riak buckets as Spark RDDs, as well as output data from Spark RDDs into Riak buckets. 
 
 ## Compatibility
-* Compatible with Riak KV, bundled inside BDP 1.x
+* Compatible with Riak KV
+* Compatible with Riak TS
 * Compatible with Apache Spark 1.5.2 or later
 * Compatible with Scala 2.10 or later
 * Compatible with Java 8
@@ -34,16 +35,55 @@ Clone this repository, then build Spark Riak connector:
 ```
 mvn clean install
 ```
-
-Integration tests will be executed during the build, therefore the build may fail if there is no BDP Riak node running on `localhost:8087`. 
-The following command should be used to skip integration tests:
-
+To turn on streaming values support for PEx special maven profile "pex_streaming_vals" should be activated. It will make Full Bucket Reads more efficient: values will be streamed as a part of the FBR response instead of being fetched in a separate operations. This feature is supported only for Riak TS.
+```
+mvn clean install -P pex_streaming_vals
+```
+Or
+```
+mvn clean install -Dpex_streaming_vals
+```
+The following command should be used to skip tests:
 ```
 mvn clean install -DskipTests
 ```
  
 Once the connector is built there are several jars that are produced:
 `spark-riak-connector/target/` contains `spark-riak-connector-1.0.0.jar` - this is the main connector jar. 
+
+
+##Testing
+In Spark Riak connector unit tests are separated from integration tests. 
+In case if there is no Riak installation it is still possible to successfully run unit tests:
+```
+mvn clean test
+```
+If there is Riak installed it is possible to run both unit tests and integration test. Futhermore, KV-specific integration tests are separated from TS-specific ones. To choose which set of tests to run appropriete maven ptofile should be selected: 
+
+Profile name |Tests                                      | Default |
+-------------|-------------------------------------------|---------|
+riak_ts      | TS-specific tests and majority of KV-tests| no      |
+riak_kv      | KV-only tests                             | yes     |
+```
+mvn clean verify -P riak_ts
+mvn clean verify -P riak_kv
+```
+Riak host can be provided in "com.basho.riak.pbchost" variable
+```
+mvn clean verify -P riak_ts -Dcom.basho.riak.pbchost=myhost:8087
+```
+If Riak was installed with devrel and is running on localhost on 10017 port, it is possible to use special "devrel" maven profile instead of providing "com.basho.riak.pbchost" variable
+```
+mvn clean verify -P devrel,riak_ts
+```
+Or
+```
+mvn clean verify -P riak_ts -Denvironment=devrel
+```
+Will do the same as 
+```
+mvn clean verify -P riak_ts -Dcom.basho.riak.pbchost=localhost:10017
+```
 
 ## Developing 
 
@@ -99,13 +139,14 @@ The following options are available on `SparkConf` object:
 Property name                                  | Description                                       | Default value      | Riak Type
 -----------------------------------------------|---------------------------------------------------|--------------------|-------------
 spark.riak.connection.host                     | IP:port of a Riak node protobuf interface         | 127.0.0.1:8087     | KV/TS
-spark.riak.connections.min                     | Minimum number of parallel connections to Riak    | 10                 | KV/TS
+spark.riak.connections.min                     | Minimum number of parallel connections to Riak    | 20                 | KV/TS
 spark.riak.connections.max                     | Maximum number of parallel connections to Riak    | 30                 | KV/TS
 spark.riak.input.fetch-size                    | Number of keys to fetch in a single round-trip to Riak | 1000          | KV
 spark.riak.input.split.count                   | Desired minimum number of Spark partitions to divide the data into | 10| KV
 spark.riak.output.wquorum                      | Quorum value on write                                              | 1 | KV
 spark.riak.connections.inactivity.timeout      | Time to keep connection to Riak alive in milliseconds | 1000 | KV/TS
 spark.riakts.bindings.timestamp                | To treat/convert Riak TS timestamp columns either as a Long (UNIX milliseconds) or as a Timestamps during the automatic schema discovery. Valid values are: <ul><li>useLong</li><li>useTimestamp</li><ul> | useTimestamp | TS
+spark.riakts.write.bulk-size                   | Number of rows to be written at once | 100 | TS
 
 Example:
 
@@ -195,7 +236,7 @@ rdd.saveToRiak(MY_OUTPUT_BUCKET)
 Riak TS buckets can be queried using sql() function:
 
 ```scala
-val rdd = sc.riakTSBucket(tableName).sql(s"SELECT * FROM $tableName WHERE time >= $from AND time <= $to")
+val rdd = sc.riakTSTable(tableName).sql(s"SELECT * FROM $tableName WHERE time >= $from AND time <= $to")
 ```
 
 ### Saving rdd to Riak TS bucket
@@ -205,6 +246,68 @@ Existing rdd of org.apache.spark.sql.Row> can be saved to Riak TS as follows
 ```scala
 rdd.saveToRiakTS(TABLE_NAME);
 ```
+
+### Reading data from Riak TS into Dataframe
+To read data from existing TS table *tableName* standard SQLContext means can be utilized with special **org.apache.spark.sql.riak** data format and using range query expression.
+For example, 
+```scala
+val schema = StructType(List(
+    StructField(name = "col1", dataType = StringType),
+    StructField(name = "col2", dataType = StringType),
+    StructField(name = "time", dataType = TimestampType),
+    ...
+)
+...
+val df = sqlContext.read   
+      .format("org.apache.spark.sql.riak")
+      .schema(schema)
+      .load(tableName)
+      .filter(s"time >= CAST($from AS TIMESTAMP) AND time <= CAST($to AS TIMESTAMP)")
+```
+Providing schema is optional. If it's not provided it will be inferred using schema discovery to return bucket structure from RiakTS.
+Any of the Spark Connector options can be provided in .option() or .options():
+```scala
+val df = sqlContext.read
+      .option("spark.riakts.bindings.timestamp", "useLong")    
+      .format("org.apache.spark.sql.riak")
+      ...
+```
+
+### Range query partitioning for RiakTS
+RiakTS is known to have limitation on range query: *time range must not exceed 5 quanta*. In order to get around this limitation or simply achieve higher read performance large ranges can be split into smaller subranges at partitioning time.
+To use this functionality it's required to provide the following options:
+* **spark.riak.partitioning.ts-range-field-name** to identify quantized field
+* **spark.riak.input.split.count** to identify number of partitions/subranges (default value is **10**)
+
+For example,
+```scala
+   val df = sqlContext.read
+      .option("spark.riak.input.split.count", "5")
+      .option("spark.riak.partitioning.ts-range-field-name", "time")
+      .format("org.apache.spark.sql.riak")
+      .schema(schema)
+      .load(tableName)
+      .filter(s"time >= CAST(111111 AS TIMESTAMP) AND time <= CAST(555555 AS TIMESTAMP) AND col1 = 'val1'")
+```
+Initial range query will be split into 5 subqueries (one per each partition) as follows:
+* ```time >= CAST(111111 AS TIMESTAMP) AND time < CAST(222222 AS TIMESTAMP) AND col1 = 'val1'```
+* ```time >= CAST(222222 AS TIMESTAMP) AND time < CAST(333333 AS TIMESTAMP) AND col1 = 'val1'```
+* ```time >= CAST(333333 AS TIMESTAMP) AND time < CAST(444444 AS TIMESTAMP) AND col1 = 'val1'```
+* ```time >= CAST(444444 AS TIMESTAMP) AND time < CAST(555555 AS TIMESTAMP) AND col1 = 'val1'```
+* ```time >= CAST(555555 AS TIMESTAMP) AND time < CAST(555556 AS TIMESTAMP) AND col1 = 'val1'```
+
+Not providing **spark.riak.partitioning.ts-range-field-name** property results into having single partition with initial query.
+
+### Save Dataframe to Riak TS
+Existing inputDF that has the same schema as TS bucket (column order and types) can be saved to Riak TS as follows: 
+```scala
+inputDF.write
+   .option("spark.riak.connection.hosts","myhost:10017")
+   .format("org.apache.spark.sql.riak")
+   .mode(SaveMode.Append)
+   .save(tableName)
+```
+So far *SaveMode.Append* is the only mode available.
 
 ## Examples
 

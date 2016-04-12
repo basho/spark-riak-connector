@@ -22,19 +22,20 @@ import com.basho.riak.client.api.commands.kv.StoreValue
 import com.basho.riak.client.api.convert.JSONConverter
 import com.basho.riak.client.core.RiakFuture
 import com.basho.riak.client.core.operations.ts.StoreOperation
-import com.basho.riak.client.core.query.{Location, Namespace}
+import com.basho.riak.client.core.query.{ Location, Namespace }
 import com.basho.riak.spark._
-import com.basho.riak.spark.rdd.connector.{RiakSession, RiakConnector}
+import com.basho.riak.spark.rdd.connector.{ RiakSession, RiakConnector }
 import com.basho.riak.spark.rdd.BucketDef
 import com.basho.riak.spark.util.CountingIterator
 import com.basho.riak.spark.writer.ts.RowDef
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import org.apache.spark.riak.RiakWriterTaskCompletionListener
-import org.apache.spark.{Logging, TaskContext}
-
+import org.apache.spark.{ Logging, TaskContext }
 import scala.collection.JavaConversions._
 import scala.collection._
-
+import scala.concurrent._
+import java.util.concurrent.Semaphore
+import com.basho.riak.client.core.RiakFutureListener
 
 abstract class RiakWriter[T, U](
                                    connector: RiakConnector,
@@ -54,7 +55,7 @@ abstract class RiakWriter[T, U](
 
       val endTime = System.currentTimeMillis()
       val duration = (endTime - startTime) / 1000.0
-
+      logDebug(s"Writing FINISHED in $duration seconds")
       taskContext.addTaskCompletionListener(RiakWriterTaskCompletionListener(rowIterator.count))
     }
   }
@@ -97,15 +98,46 @@ class RiakTSWriter[T](connector: RiakConnector,
                       writeConf: WriteConf) extends RiakWriter[T, RowDef](connector, bucketDef, dataMapper, writeConf) {
   override def store(session: RiakSession, ns: Namespace, objects: Iterator[T],
                      dataMapper: WriteDataMapper[T, RowDef], writeConf: WriteConf): Unit = {
-    val rowDefs = objects.map(dataMapper.mapValue).toList
+    @volatile var riakException: Option[Throwable] = None
+    val bulkSize = writeConf.bulkSize
+    val bulkIterator = new BulkIterator(objects, bulkSize, dataMapper)
 
-    val builder = new StoreOperation.Builder(ns.getBucketNameAsString).withRows(rowDefs.map(_.row))
-    rowDefs.map(_.columnDescription).filter(_.isDefined).map(_.get).headOption.foreach(descr => builder.withColumns(descr.toList))
+    val concurrentWritesNumber = connector.minConnections
+    val writeSemaphore = new Semaphore(concurrentWritesNumber);
 
-    val future: RiakFuture[Void, String] = session.execute(builder.build())
-    future.await()
+    for ((rowDefs, idx) <- bulkIterator.zipWithIndex) {
+      writeSemaphore.acquire()
+      logDebug(s"Writing bulk-${idx + 1} started")
+      val rows = rowDefs.map(_.row)
+      val builder = new StoreOperation.Builder(ns.getBucketNameAsString).withRows(rows)
+      rowDefs.headOption.map(_.columnDescription).flatten.foreach(descr => builder.withColumns(descr.toList))
+      val future = session.execute(builder.build())
+      future.addListener(new RiakFutureListener[Void, String]() {
+        @Override
+        def handle(f: RiakFuture[Void, String]): Unit =
+          {
+            logDebug(s"Writing bulk-${idx + 1} finished")
+            if (!f.isSuccess) {
+              riakException = Some(f.cause)
+            }
+            writeSemaphore.release()
+          }
+      })
+      // constantly check if any exception has occurred, throw it from main thread
+      riakException.foreach { ex =>
+        logDebug(s"Stopped writing because of exception", ex)
+        throw ex
+      }
+    }
 
-    if (!future.isSuccess) throw future.cause()
+    // waiting for all threads to finish writing and release the semaphore by trying to acquire all of its permits 
+    writeSemaphore.acquire(concurrentWritesNumber)
+    writeSemaphore.release(concurrentWritesNumber)
+    // if any exception has occurred in latest threads, throw it from main thread
+    riakException.foreach { ex =>
+      logDebug(s"Stopped writing because of exception", ex)
+      throw ex
+    }
   }
 }
 

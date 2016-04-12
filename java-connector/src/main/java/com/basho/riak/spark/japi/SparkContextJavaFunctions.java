@@ -93,14 +93,14 @@ public class SparkContextJavaFunctions {
         return new RiakJavaPairRDD<>(rdd, kClassTag, vClassTag);
     }
 
-    public <T> RiakTSJavaRDD<T> riakTSBucket(String bucketName, Class<T> targetClass) {
+    public <T> RiakTSJavaRDD<T> riakTSTable(String bucketName, Class<T> targetClass) {
         final ClassTag<T> classTag = getClassTag(targetClass);
         final RiakTSRDD<T> rdd = RiakTSRDD$.MODULE$.apply(sparkContext, bucketName, ReadConf$.MODULE$.apply(sparkContext.getConf()),
             classTag, RiakConnector$.MODULE$.apply(sparkContext.getConf()));
         return new RiakTSJavaRDD<>(rdd, classTag);
     }
 
-    public <T> RiakTSJavaRDD<T> riakTSBucket(String bucketName, StructType schema, Class<T> targetClass) {
+    public <T> RiakTSJavaRDD<T> riakTSTable(String bucketName, StructType schema, Class<T> targetClass) {
         final ClassTag<T> classTag = getClassTag(targetClass);
         final RiakTSRDD<T> rdd = RiakTSRDD$.MODULE$.apply(sparkContext, bucketName,
                 ReadConf$.MODULE$.apply(sparkContext.getConf()), Option.apply(schema),

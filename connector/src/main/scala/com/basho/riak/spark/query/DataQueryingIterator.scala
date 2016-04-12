@@ -17,24 +17,22 @@
  */
 package com.basho.riak.spark.query
 
-import com.basho.riak.spark.rdd.connector.RiakSession
+import com.basho.riak.client.core.query.{Location, RiakObject}
 import org.apache.spark.Logging
 
-import com.basho.riak.client.core.query.{RiakObject, Location}
-
-class DataQueryingIterator(query: Query[_], riakSession: RiakSession) extends Iterator[(Location, RiakObject)] with Logging {
+class DataQueryingIterator[T](query: Query[T]) extends Iterator[(Location, RiakObject)] with Logging {
 
   type ResultT = (Location, RiakObject)
 
   private var isThereNextValue: Option[Boolean] = None
-  private var nextToken: Option[_] = None
+  private var nextToken: Option[T] = None
 
   private var _iterator: Option[Iterator[ResultT]] = None
 
   protected[this] def prefetch(): Boolean = {
     logTrace(s"Prefetching chunk of data: query(token=$nextToken)")
 
-    val r = query.nextChunk(nextToken, riakSession )
+    val r = query.nextChunk(nextToken)
 
     if( isTraceEnabled() ) {
       logTrace(s"query(token=$nextToken) returns:\n  token: ${r._1}\n  data:\n\t ${r._2}")
@@ -102,7 +100,5 @@ object  DataQueryingIterator {
   private val OPTION_TRUE = Some(true)
   private val OPTION_FALSE = Some(false)
 
-  def apply(query: Query[_], riakSession: RiakSession): DataQueryingIterator = {
-    new DataQueryingIterator(query, riakSession)
-  }
+  def apply[T](query: Query[T]): DataQueryingIterator[T] = new DataQueryingIterator[T](query)
 }

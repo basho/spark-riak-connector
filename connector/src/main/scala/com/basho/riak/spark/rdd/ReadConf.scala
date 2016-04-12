@@ -31,6 +31,14 @@ case class ReadConf (
   val fetchSize: Int = ReadConf.DefaultFetchSize,
   val splitCount: Int = ReadConf.DefaultSplitCount,
   val tsTimestampBinding: TsTimestampBindingType = ReadConf.DefaultTsTimestampBinding,
+  /**
+   * Used only in ranged partitioner to identify quantized field.
+   * Usage example:
+   *    sqlContext.read
+   *      .option("spark.riak.partitioning.ts-range-field-name", "time")
+   * Providing this property automatically turns on RangedRiakTSPartitioner
+   */
+  val tsRangeFieldName: String = null,
 
   /**
     * Turns on streaming values support for PEx.
@@ -51,7 +59,8 @@ case class ReadConf (
     val newSplitCount = options.getOrElse(ReadConf.splitCountPropName, splitCount.toString).toInt
     val newUseStreamingValuesForFBRead = options.getOrElse(ReadConf.useStreamingValuesPropName, useStreamingValuesForFBRead.toString).toBoolean
     val newTsTimestampBinding = TsTimestampBindingType(options.getOrElse(ReadConf.tsBindingsTimestamp, tsTimestampBinding.value))
-    ReadConf(newFetchSize, newSplitCount, newTsTimestampBinding, newUseStreamingValuesForFBRead)
+    val newTsRangeFieldName = options.getOrElse(ReadConf.tsRangeFieldPropName, tsRangeFieldName)
+    ReadConf(newFetchSize, newSplitCount, newTsTimestampBinding, newTsRangeFieldName, newUseStreamingValuesForFBRead)
   }
 }
 
@@ -61,6 +70,7 @@ object ReadConf {
   final val useStreamingValuesPropName = "spark.riak.fullbucket.use-streaming-values"
   final val fetchSizePropName = "spark.riak.input.fetch-size"
   final val tsBindingsTimestamp = "spark.riakts.bindings.timestamp"
+  final val tsRangeFieldPropName = "spark.riak.partitioning.ts-range-field-name"
 
   private val defaultProperties: Properties =
      getClass.getResourceAsStream("/ee-default.properties") match {
@@ -93,6 +103,7 @@ object ReadConf {
       fetchSize = conf.getInt(fetchSizePropName, DefaultFetchSize),
       splitCount = conf.getInt(splitCountPropName, DefaultSplitCount),
       tsTimestampBinding = TsTimestampBindingType(conf.get(tsBindingsTimestamp, DefaultTsTimestampBinding.value)),
+      tsRangeFieldName = conf.get(tsRangeFieldPropName, null),
       useStreamingValuesForFBRead = conf.getBoolean(useStreamingValuesPropName, DefaultUseStreamingValues4FBRead)
     )
   }

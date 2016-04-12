@@ -39,6 +39,7 @@ class RiakConnector(conf: RiakConnectorConf)
 
   /** Known cluster hosts. This is going to return all cluster hosts after at least one successful connection has been made */
   def hosts: Set[HostAndPort] = _config.hosts
+  def minConnections = _config.minConnections
 
   def openSession(hosts: Option[Seq[HostAndPort]] = None): RiakSession = {
     val cfg = hosts match {
@@ -53,11 +54,10 @@ class RiakConnector(conf: RiakConnectorConf)
     RiakConnector.openSession(cfg)
   }
 
-  def withSessionDo[T](code: RiakSession => T): T = {
-    closeSessionAfterUse(openSession()) { session =>
-      code(session)
-    }
-  }
+  def withSessionDo[T](hosts: Option[Seq[HostAndPort]] = None)(code: RiakSession => T): T =
+    closeSessionAfterUse(openSession(hosts)) { session => code(session) }
+
+  def withSessionDo[T](code: RiakSession => T): T = withSessionDo(None)(code)
 
   def closeSessionAfterUse[T](closeable: RiakSession)(code: RiakSession => T): T =
     try code(closeable) finally {
@@ -95,7 +95,7 @@ object RiakConnector extends Logging {
 
   /** Returns a RiakConnector created from explicitly given connection configuration. */
   def apply(hosts: Set[HostAndPort], minConnections: Int = RiakConnectorConf.DEFAULT_MIN_CONNECTIONS,
-            maxConnections: Int = RiakConnectorConf.DEFAULT_MAX_CONNECTIONS, 
+            maxConnections: Int = RiakConnectorConf.DEFAULT_MAX_CONNECTIONS,
             inactivityTimeout: Long = RiakConnectorConf.defaultInactivityTimeout): RiakConnector = {
 
     val config = RiakConnectorConf(hosts, minConnections, maxConnections, inactivityTimeout)

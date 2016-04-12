@@ -19,18 +19,21 @@ package com.basho.riak.spark.writer
 
 import org.apache.spark.SparkConf
 
-case class WriteConf( writeQuorum: Int = WriteConf.DefaultWriteQuorum) {
+case class WriteConf( writeQuorum: Int = WriteConf.DefaultWriteQuorum, bulkSize: Int = WriteConf.DefaultBulkSize) {
   
   def overrideProperties(options: Map[String, String]): WriteConf = {
     val newWriteQuorum = options.getOrElse(WriteConf.WriteQuorumProperty, writeQuorum.toString).toInt
-    WriteConf(newWriteQuorum)
+    val newBulkSize = options.getOrElse(WriteConf.BulkSizeProperty, bulkSize.toString).toInt
+    WriteConf(newWriteQuorum, newBulkSize)
   }
 }
 
 object WriteConf {
   val WriteQuorumProperty = "spark.riak.output.wquorum"
+  val BulkSizeProperty = "spark.riakts.write.bulk-size"
 
   val DefaultWriteQuorum = 1
+  val DefaultBulkSize = 100
 
   /** Creates WriteConf based on properties provided to Spark Conf
   *
@@ -38,7 +41,8 @@ object WriteConf {
   */
   def apply(conf: SparkConf): WriteConf = {
     WriteConf(
-      writeQuorum = conf.getInt(WriteQuorumProperty, DefaultWriteQuorum)
+      writeQuorum = conf.getInt(WriteQuorumProperty, DefaultWriteQuorum),
+      bulkSize = conf.getInt(BulkSizeProperty, DefaultBulkSize)
     )
   }
   

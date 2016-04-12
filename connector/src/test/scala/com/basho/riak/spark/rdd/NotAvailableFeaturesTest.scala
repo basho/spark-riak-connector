@@ -52,11 +52,11 @@ class NotAvailableFeaturesTest extends AbstractRDDTest {
     }
   }
 
-  @Category(Array(classOf[RiakKVTests], classOf[RiakBDPTests]))
+  @Category(Array(classOf[RiakKVTests]))
   @Test
   def timeSeriesOnKV(): Unit = {
     expectedException.expect(timeSeriesMatcher)
-    val rdd = sc.riakTSBucket[Row]("bucket")
+    val rdd = sc.riakTSTable[Row]("bucket")
       .sql("select * from bucket")
       .collect()
   }

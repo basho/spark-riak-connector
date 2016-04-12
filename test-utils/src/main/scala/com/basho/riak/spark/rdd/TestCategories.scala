@@ -12,6 +12,4 @@ trait RiakKVTests extends IntegrationTests
 
 trait RiakTSTests extends IntegrationTests
 
-trait RiakBDPTests extends IntegrationTests
-
-trait RiakCommonTests extends RiakKVTests with RiakTSTests with RiakBDPTests
+trait RiakCommonTests extends RiakKVTests with RiakTSTests

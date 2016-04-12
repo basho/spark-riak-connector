@@ -36,27 +36,31 @@ import scala.reflect.ClassTag
 object TimeSeriesToSparkSqlConversion {
   private val STRING_TYPE_REFERENCE = new TypeReference[String] {}
 
-  private def cellValue(sf: StructField, cell: Cell) = sf.dataType match {
-    case BooleanType =>
-      cell.getBoolean
+  private def cellValue(sf: StructField, cell: Cell) = {
+    if (cell != null) {
+      sf.dataType match {
+        case BooleanType =>
+          cell.getBoolean
 
-    case StringType =>
-      cell.getVarcharAsUTF8String
+        case StringType =>
+          cell.getVarcharAsUTF8String
 
-    case LongType =>
-      if (cell.hasTimestamp) cell.getTimestamp else cell.getLong
+        case LongType =>
+          if (cell.hasTimestamp) cell.getTimestamp else cell.getLong
 
-    case IntegerType =>
-      cell.getLong.toInt
+        case IntegerType =>
+          cell.getLong.toInt
 
-    case DoubleType =>
-      cell.getDouble
+        case DoubleType =>
+          cell.getDouble
 
-    case TimestampType =>
-      if (cell.hasLong) new Timestamp(cell.getLong) else new Timestamp(cell.getTimestamp)
+        case TimestampType =>
+          if (cell.hasLong) new Timestamp(cell.getLong) else new Timestamp(cell.getTimestamp)
 
-    case _ =>
-      throw new IllegalStateException(s"Unhandled cell type ${sf.dataType.typeName} for field ${sf.name}")
+        case _ =>
+          throw new IllegalStateException(s"Unhandled cell type ${sf.dataType.typeName} for field ${sf.name}")
+      }
+    } else null
   }
 
   def asDataType(columnType: String, tsTimestampBinding:TsTimestampBindingType): DataType = {

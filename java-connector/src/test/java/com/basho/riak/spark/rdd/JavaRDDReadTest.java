@@ -56,7 +56,7 @@ public class JavaRDDReadTest extends AbstractJavaSparkTest {
                 "}", results.get(0));
     }
 
-    @Category({RiakBDPTests.class, RiakTSTests.class})
+    @Category(RiakTSTests.class)
     @Test
     public void readAll() {
         RiakJavaRDD<String> rdd = SparkJavaUtil.javaFunctions(jsc).riakBucket(DEFAULT_NAMESPACE(), String.class).
