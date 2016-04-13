@@ -50,7 +50,7 @@ class OptionsTest {
     .set("spark.riak.connection.host", initialHost)
     .set("spark.riak.connections.min", initialConnectionsMin.toString)
     .set("spark.riak.connections.max", initialConnectionsMax.toString)
-    .set("spark.riak.output.wquorum", initialWquorum.toString)
+    .set("spark.riak.write.replicas", initialWquorum.toString)
     .set("spark.riak.input.fetch-size", initialFetchSize.toString)
     .set("spark.riak.input.split.count", initialSplitCount.toString)
 
@@ -94,7 +94,7 @@ class OptionsTest {
     val riakConnector = getConnector(rel)
     val writeConf = rel.writeConf
     val riakConf = getRiakConnectorConf(riakConnector)
-    assertEquals(initialWquorum, writeConf.writeQuorum)
+    assertEquals(initialWquorum.toString, writeConf.writeReplicas)
 
     assertEquals(hostAndPorts, riakConf.hosts)
     assertEquals(initialConnectionsMin, riakConf.minConnections)
@@ -105,7 +105,7 @@ class OptionsTest {
   def writeOptionsOnReadShouldNotAffectProperties(): Unit = {
     val newQuorum = 1
     val rel = source.createRelation(sqlContext,
-      Map("path" -> "path", "spark.riak.output.wquorum" -> newQuorum.toString), dummySchema).asInstanceOf[RiakRelation]
+      Map("path" -> "path", "spark.riak.write.replicas" -> newQuorum.toString), dummySchema).asInstanceOf[RiakRelation]
     val writeConf = rel.writeConf
   }
 
@@ -120,12 +120,12 @@ class OptionsTest {
   }
 
   @Test
-  def writeOptionsOnWriteShouldAfffectProperties(): Unit = {
+  def writeOptionsOnWriteShouldAffectProperties(): Unit = {
     val newQuorum = 1
     val rel = source.createRelation(sqlContext, SaveMode.Append,
-      Map("path" -> "path", "spark.riak.output.wquorum" -> newQuorum.toString), df).asInstanceOf[RiakRelation]
+      Map("path" -> "path", "spark.riak.write.replicas" -> newQuorum.toString), df).asInstanceOf[RiakRelation]
     val writeConf = rel.writeConf
-    assertEquals(newQuorum, writeConf.writeQuorum)
+    assertEquals(newQuorum, writeConf.writeReplicas.toInt)
   }
 
   @Test

@@ -19,20 +19,20 @@ package com.basho.riak.spark.writer
 
 import org.apache.spark.SparkConf
 
-case class WriteConf( writeQuorum: Int = WriteConf.DefaultWriteQuorum, bulkSize: Int = WriteConf.DefaultBulkSize) {
-  
+case class WriteConf(writeReplicas: String = WriteConf.DefaultWriteQuorum, bulkSize: Int = WriteConf.DefaultBulkSize) {
+
   def overrideProperties(options: Map[String, String]): WriteConf = {
-    val newWriteQuorum = options.getOrElse(WriteConf.WriteQuorumProperty, writeQuorum.toString).toInt
+    val newWriteReplicas = options.getOrElse(WriteConf.WriteReplicasProperty, writeReplicas)
     val newBulkSize = options.getOrElse(WriteConf.BulkSizeProperty, bulkSize.toString).toInt
-    WriteConf(newWriteQuorum, newBulkSize)
+    WriteConf(newWriteReplicas, newBulkSize)
   }
 }
 
 object WriteConf {
-  val WriteQuorumProperty = "spark.riak.output.wquorum"
+  val WriteReplicasProperty = "spark.riak.write.replicas"
   val BulkSizeProperty = "spark.riakts.write.bulk-size"
 
-  val DefaultWriteQuorum = 1
+  val DefaultWriteQuorum = "default"
   val DefaultBulkSize = 100
 
   /** Creates WriteConf based on properties provided to Spark Conf
@@ -41,16 +41,16 @@ object WriteConf {
   */
   def apply(conf: SparkConf): WriteConf = {
     WriteConf(
-      writeQuorum = conf.getInt(WriteQuorumProperty, DefaultWriteQuorum),
+      writeReplicas = conf.get(WriteReplicasProperty, DefaultWriteQuorum),
       bulkSize = conf.getInt(BulkSizeProperty, DefaultBulkSize)
     )
   }
   
-  /** Creates WriteConf based on an externally provided map of properties 
-  *   to override those of SparkCon 
+  /** Creates WriteConf based on an externally provided map of properties
+  *   to override those of SparkCon
   *
   * @param conf SparkConf of Spark context to be taken as defaults
-  * @param options externally provided map of properties 
+  * @param options externally provided map of properties
   */
   def apply(conf: SparkConf, options: Map[String, String]): WriteConf = {
     val writeConf = WriteConf(conf)
