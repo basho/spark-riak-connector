@@ -41,6 +41,22 @@
         </dependency>
 
         <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-streaming_${scala.major.version}</artifactId>
+            <version>1.6.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-streaming-kafka_${scala.major.version}</artifactId>
+            <version>1.6.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka_${scala.major.version}</artifactId>
+            <version>0.8.2.2</version>
+        </dependency>
+
+        <dependency>
             <groupId>com.basho.riak</groupId>
             <artifactId>spark-riak-connector</artifactId>
             <version>${project.version}</version>
