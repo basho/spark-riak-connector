@@ -45,7 +45,7 @@ abstract class RiakWriter[T, U](
                                    writeConf: WriteConf) extends Serializable with Logging {
 
   // This method should be ported to Riak Java Client
-  protected def stringToQuorum(qString: String): Quorum = allCatch opt qString.toInt match {
+  protected def stringToNumReplicas(qString: String): Quorum = allCatch opt qString.toInt match {
     case Some(x) => new Quorum(x)
     case None => qString match {
       case Quorum.ALL => Quorum.allQuorum()
@@ -90,7 +90,7 @@ class RiakKVWriter[T](connector: RiakConnector,
       * Since Riak does not provide any Bulk API for storing data (02/01/2015) we will do sequential writes
       */
     values.foreach { case (key, value) =>
-      val builder = new StoreValue.Builder(value).withOption[Quorum](StoreValue.Option.W, stringToQuorum(writeConf.writeReplicas))
+      val builder = new StoreValue.Builder(value).withOption[Quorum](StoreValue.Option.W, stringToNumReplicas(writeConf.writeReplicas))
 
       Option(key) match {
         case None => builder.withNamespace(ns)
