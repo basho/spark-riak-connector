@@ -1,6 +1,6 @@
 # Change Log
 
-## [1.5.0](https://github.com/basho/spark-riak-connector/tree/1.5.0) (2016-04-15)
+## [1.5.0](https://github.com/basho/spark-riak-connector/releases/tag/v1.5.0) (2016-04-15)
 
 * Reorganize and expand documentation 
 * Add bulk size parameter for writes to Riak TS table (spark.riakts.write.bulk-size) [#129](https://github.com/basho/spark-riak-connector/pull/129)
