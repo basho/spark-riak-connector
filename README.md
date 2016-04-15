@@ -1,316 +1,95 @@
-[![Build Status](https://travis-ci.org/basho/spark-riak-connector.svg?branch=develop)](https://travis-ci.org/basho/spark-riak-connector)
+# Spark-Riak Connector [![Build Status](https://travis-ci.org/basho/spark-riak-connector.svg?branch=develop)](https://travis-ci.org/basho/spark-riak-connector)
 
-# Spark Riak Connector
-
-Spark Riak connector allows you to expose data stored in Riak buckets as Spark RDDs, as well as output data from Spark RDDs into Riak buckets. 
-
-## Compatibility
-* Compatible with Riak KV
-* Compatible with Riak TS
-* Compatible with Apache Spark 1.5.2 or later
-* Compatible with Scala 2.10 or later
-* Compatible with Java 8
-
+The Spark-Riak connector enables you to connect Spark applications to Riak KV and Riak TS with the Spark RDD and Spark DataFrames APIs. You can write your app in Scala, Python, and Java. The connector makes it easy to partition the data you get from Riak so multiple Spark workers can process the data in parallel and it has support for failover if a Riak node goes down while your Spark job is running.
 
 ## Features
-* Exposes data in Riak KV bucket as Spark RDD
-* Provides ability to construct an RDD from a given set of keys
-* Provides ability to construct an RDD using an enhanced 2i query (a.k.a. full bucket read) 
-* Allows parallel full bucket reads into multiple partitions
-* Allows saving of an RDD into a specified Riak bucket and indexing results with 2i indexes
-* Provides mapping and data conversion for JSON formatted values
-* Provides ability to construct an RDD by using a 2i string index or a set of indexes
-* Provides ability to construct an RDD by using a 2i range query or a set of ranges 
-* Provides ability to perform range queries over Riak TS bucket
-* Provides ability to construct Dataframes from Riak TS bucket
-
-
-## Building
-Prerequisite: Java 8 JDK must be installed
-
-If you don't have Maven yet, go to [Maven download page](https://maven.apache.org/download.cgi) and follow installation instructions for your OS.
-
-Clone this repository, then build Spark Riak connector:
-
-```
-mvn clean install
-```
-To turn on streaming values support for PEx special maven profile "pex_streaming_vals" should be activated. It will make Full Bucket Reads more efficient: values will be streamed as a part of the FBR response instead of being fetched in a separate operations. This feature is supported only for Riak TS.
-```
-mvn clean install -P pex_streaming_vals
-```
-Or
-```
-mvn clean install -Dpex_streaming_vals
-```
-The following command should be used to skip tests:
-```
-mvn clean install -DskipTests
-```
- 
-Once the connector is built there are several jars that are produced:
-`spark-riak-connector/target/` contains `spark-riak-connector-1.0.0.jar` - this is the main connector jar. 
-
-
-##Testing
-In Spark Riak connector unit tests are separated from integration tests. 
-In case if there is no Riak installation it is still possible to successfully run unit tests:
-```
-mvn clean test
-```
-If there is Riak installed it is possible to run both unit tests and integration test. Futhermore, KV-specific integration tests are separated from TS-specific ones. To choose which set of tests to run appropriete maven ptofile should be selected: 
-
-Profile name |Tests                                      | Default |
--------------|-------------------------------------------|---------|
-riak_ts      | TS-specific tests and majority of KV-tests| no      |
-riak_kv      | KV-only tests                             | yes     |
-```
-mvn clean verify -P riak_ts
-mvn clean verify -P riak_kv
-```
-Riak host can be provided in "com.basho.riak.pbchost" variable
-```
-mvn clean verify -P riak_ts -Dcom.basho.riak.pbchost=myhost:8087
-```
-If Riak was installed with devrel and is running on localhost on 10017 port, it is possible to use special "devrel" maven profile instead of providing "com.basho.riak.pbchost" variable
-```
-mvn clean verify -P devrel,riak_ts
-```
-Or
-```
-mvn clean verify -P riak_ts -Denvironment=devrel
-```
-Will do the same as 
-```
-mvn clean verify -P riak_ts -Dcom.basho.riak.pbchost=localhost:10017
-```
-
-## Developing 
-
-If you're planning to develop Spark applications in Java there is an additional jar
-`spark-riak-connector-java-1.0.0.jar` in `spark-riak-connector-java/target/`.
-
-Connector depends on the following libraries:
-* guava-14.0.1.jar
-* jackson-datatype-joda-2.2.2.jar
-* joda-time-2.1.jar
-* jackson-module-scala_2.10-2.4.4.jar
-* jcommon-1.0.23.jar
-* scala-java8-compat_2.10-0.3.0.jar
-* dataplatform-riak-client-1.0.0.jar
-
-All of these need to be referenced by your Spark application and accessible through driver program classpath. 
-Please see below code snippets in Scala, or explore the source code of bundled examples in Java and Scala.
- 
-The following link can be used to manual download [dataplatform-riak-client-1.0.0.jar](https://bintray.com/basho/data-platform/com.basho.riak/view)
-from the Bintray repository.
-
-To download dataplatform-riak-client.jar automatically during the build, the following repository should be added to pom.xml:
-
-```xml
-<repository>
-    <id>bintray</id>
-    <url>https://dl.bintray.com/basho/data-platform</url>
-    <releases>
-        <enabled>true</enabled>
-    </releases>
-    <snapshots>
-        <enabled>false</enabled>
-    </snapshots>
-</repository>
-```
 
-### Necessary imports
+* Construct a Spark RDD from a Riak KV bucket with a set of keys
+* Construct a Spark RDD from a Riak KV bucket by using a 2i string index or a set of indexes
+* Construct a Spark RDD from a Riak KV bucket by using a 2i range query or a set of ranges 
+* Map JSON formatted data from Riak KV to user defined types
+* Save a Spark RDD into a Riak KV bucket and apply 2i indexes to the contents
+* Construct a Spark Dataframe from a Riak TS table using range queries and schema discovery
+* Save a Spark Dataframe into a Riak TS table
+* Construct a Spark RDD using Riak KV bucket's enhanced 2i query (a.k.a. full bucket read)
+* Perform parallel full bucket reads from a Riak KV bucket into multiple partitions
 
-```scala
-import com.basho.riak.client.core.query.Namespace
-import com.basho.riak.spark.rdd.RiakFunctions
-import org.apache.spark.{SparkContext, SparkConf}
-import com.basho.riak.spark._
-```
+## Compatibility
 
-### Configuration
+* Riak TS 1.2+
+* Apache Spark 1.6+
+* Scala 2.10
+* Java 8
 
-You can prepare `SparkContext` to connect to Riak by connecting your Spark application to Riak. You will need to set the below options for `SparkConf` object. These options are prefixed with `spark.` so that they can be recognized
-from the spark-shell and set within the $SPARK_HOME/conf/spark-default.conf.
+## Coming Soon
 
-The following options are available on `SparkConf` object:
+* Support for Riak KV 2.2 and later
 
-Property name                                  | Description                                       | Default value      | Riak Type
------------------------------------------------|---------------------------------------------------|--------------------|-------------
-spark.riak.connection.host                     | IP:port of a Riak node protobuf interface         | 127.0.0.1:8087     | KV/TS
-spark.riak.connections.min                     | Minimum number of parallel connections to Riak    | 20                 | KV/TS
-spark.riak.connections.max                     | Maximum number of parallel connections to Riak    | 30                 | KV/TS
-spark.riak.input.fetch-size                    | Number of keys to fetch in a single round-trip to Riak | 1000          | KV
-spark.riak.input.split.count                   | Desired minimum number of Spark partitions to divide the data into | 10| KV
-spark.riak.write.replicas                      | Number of vnodes which need to respond on write. Integer value or symbolic constant can be used. Possible symbolic constants are: <ul><li>all - All replicas must reply.</li><li>one - This is the same as integer value 1.</li><li>quorum - A majority of the replicas must respond, that is, “half plus one”.</li><li>default - Uses whatever the per-bucket consistency property, which may be any of the above values, or an integer.</li></ul>                                              | default | KV
-spark.riak.connections.inactivity.timeout      | Time to keep connection to Riak alive in milliseconds | 1000 | KV/TS
-spark.riakts.bindings.timestamp                | To treat/convert Riak TS timestamp columns either as a Long (UNIX milliseconds) or as a Timestamps during the automatic schema discovery. Valid values are: <ul><li>useLong</li><li>useTimestamp</li><ul> | useTimestamp | TS
-spark.riakts.write.bulk-size                   | Number of rows to be written at once | 100 | TS
+## Prerequisites
 
-Example:
+In order to use the Spark-Riak connector, you must have the following installed: 
 
-```scala
-val conf = new SparkConf()
-        .setAppName("My Spark Riak App")
-        .set("spark.riak.connection.host", "10.0.4.1:8087")
-        .set("spark.riak.connections.min", "20")
-        .set("spark.riak.connections.max", "50")
+* [Java OpenJDK 8](http://openjdk.java.net/install/) or [Oracle JDK 8](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html)
+* [Apache Spark](http://spark.apache.org/docs/latest/#downloading)
+* [Riak KV](http://docs.basho.com/riak/kv/latest) or [Riak TS](http://docs.basho.com/riak/ts/latest/)
 
-val sc = new SparkContext("spark://10.0.4.1:7077", "test", conf)
-```
+## Spark-Riak Connector
 
-### Reading data from Riak bucket
+- [Quick Start](./docs/quick-start.md#quick-start-guide)
 
-First we need to specify which Riak bucket (i.e. bucket named `test-data`):
+- [Getting the Spark-Riak Connector](./docs/getting-connector.md#getting-the-spark-riak-connector)
+  - [Scala](./docs/getting-connector.md#scala)
+  - [Python](./docs/getting-connector.md#python)
+  - [Java](./docs/getting-connector.md#java)
+  - [Alternative Methods](./docs/getting-connector.md#alternative-scala-java-python)
 
-```scala
+- [Building and Testing Spark-Riak Connector](./docs/building-and-testing-connector.md#building-and-testing-the-spark-riak-connector)
 
-val SOURCE_DATA = new Namespace("test-data")
-```
+- [Using the Spark-Riak Connector](./docs/using-connector.md#using-the-spark-riak-connector)
+  - [Configuration of Spark Context](./docs/using-connector.md#configuration-of-spark-context)
+  - [Reading Data From KV Bucket](./docs/using-connector.md#reading-data-from-kv-bucket)
+  - [Writing Data To KV Bucket](./docs/using-connector.md#writing-data-to-kv-bucket)
+  - [Writing Data To KV Bucket With 2i Indices](./docs/using-connector.md#writing-data-to-kv-bucket-with-2i-indices)
+  - [Reading Data From TS Table](./docs/using-connector.md#reading-data-from-ts-table)
+  - [Writing Data To TS Table](./docs/using-connector.md#writing-data-to-ts-table)
+  - [Spark Dataframes With KV Bucket](./docs/using-connector.md#spark-dataframes-with-kv-bucket)
+  - [Spark Dataframes With TS Table](./docs/using-connector.md#spark-dataframes-with-ts-table)
+  - [Partitioning For KV Buckets](./docs/using-connector.md#partitioning-for-kv-buckets)
+  - [Working With TS Dates](./docs/using-connector.md#working-with-ts-dates)
+  - [TS Table Range Query Partitioning](./docs/using-connector.md#ts-table-range-query-partitioning)
+  - [TS Bulk Write](./docs/using-connector.md#ts-bulk-write)
+  - [Using Java With The Connector](./docs/using-connector.md#using-java-with-the-connector)
 
-Then we have several options to construct an RDD:
+- [Spark-Riak Connector Example Apps](./examples/README.md#examples-and-interactive-scala-shell-repl)
+  
+## Mailing List
 
-1. Query by an explicit set of keys
+The [Riak Users Mailing List](http://lists.basho.com/mailman/listinfo/riak-users_lists.basho.com) is highly trafficked and a great resource for technical discussions, Riak issues and questions, and community events and announcements.
 
-```scala
+We pride ourselves on answering every email that comes over the Riak User mailing list. [Sign up](http://lists.basho.com/mailman/listinfo/riak-users_lists.basho.com) and send away. If you prefer points for your questions, you can always [tag Riak on StackOverflow](https://stackoverflow.com/questions/tagged/riak).
 
-val rdd = sc.riakBucket(SOURCE_DATA).queryBucketKeys("key-1", "key-2", "key-2")
-```
+## IRC
 
-2. Query by a given 2i numeric range
+The [#riak IRC room on irc.freenode.net](https://irc.lc/freenode/riak) is a great place for real-time help with your Riak issues and questions.
 
-```scala
-val idxName = "myIndex"
-val from = 0L
-val to = 1000L
+## Reporting Bugs
 
-val rdd = sc.riakBucket(SOURCE_DATA).query2iRange(idxName, from, to)
-```
+To report a bug or issue, please open a [new issue](https://github.com/basho/spark-riak-connector/issues) against this repository.
 
-   or a set of ranges
+You can read the full guidelines for bug reporting on the [Riak Docs](http://docs.basho.com/community/reporting-bugs/).
 
-```scala
-val idxName = "myIndex"
+## Contributing
 
-val rdd = sc.riakBucket(SOURCE_DATA).partitionBy2iRanges(idxName, 1->3, 4->6, 7->12)
-```
+Basho encourages contributions to the Spark-Riak Connector from the community. Here’s how to get started.
 
-3. Query by a given 2i string tag or set of tags
+* Fork the appropriate project that is affected by your change.
+* Make your changes and run the test suite.
+* Commit your changes and push them to your fork.
+* Open pull-requests for the appropriate projects.
+* Basho engineers will review your pull-request, suggest changes, and merge it when it’s ready and/or offer feedback.
 
-```scala
+## License
 
-val rdd = sc.riakBucket(SOURCE_DATA).query2iKeys("mon_data", "wed_data", "fri_data")
-```
+Copyright © 2016 Basho Technologies
 
-### Doing something useful with the data
-
-Once the RDD is constructed all standard Scala Spark transformations and actions can be applied.
-
-The simplest action counts all elements and prints out the count:
-
-```scala
-
-println(s"Element count: ${rdd.count()}")
-```
-
-### Saving results into Riak KV
-
-To be able to write data out from an RDD into a Riak bucket the following import for a writer is needed:
-
-```scala
-
-import com.basho.riak.spark.writer.{WriteDataMapper, WriteDataMapperFactory}
-```
-
-Define the output bucket and issue `saveToRiak` method on an RDD:
-
-```scala
-val MY_OUTPUT_BUCKET = new Namespace("output-data")
-
-rdd.saveToRiak(MY_OUTPUT_BUCKET)
-```
-
-### Reading data from Riak TS bucket
-
-Riak TS buckets can be queried using sql() function:
-
-```scala
-val rdd = sc.riakTSTable(tableName).sql(s"SELECT * FROM $tableName WHERE time >= $from AND time <= $to")
-```
-
-### Saving rdd to Riak TS bucket
-
-Existing rdd of org.apache.spark.sql.Row> can be saved to Riak TS as follows
-
-```scala
-rdd.saveToRiakTS(TABLE_NAME);
-```
-
-### Reading data from Riak TS into Dataframe
-To read data from existing TS table *tableName* standard SQLContext means can be utilized with special **org.apache.spark.sql.riak** data format and using range query expression.
-For example, 
-```scala
-val schema = StructType(List(
-    StructField(name = "col1", dataType = StringType),
-    StructField(name = "col2", dataType = StringType),
-    StructField(name = "time", dataType = TimestampType),
-    ...
-)
-...
-val df = sqlContext.read   
-      .format("org.apache.spark.sql.riak")
-      .schema(schema)
-      .load(tableName)
-      .filter(s"time >= CAST($from AS TIMESTAMP) AND time <= CAST($to AS TIMESTAMP)")
-```
-Providing schema is optional. If it's not provided it will be inferred using schema discovery to return bucket structure from RiakTS.
-Any of the Spark Connector options can be provided in .option() or .options():
-```scala
-val df = sqlContext.read
-      .option("spark.riakts.bindings.timestamp", "useLong")    
-      .format("org.apache.spark.sql.riak")
-      ...
-```
-
-### Range query partitioning for RiakTS
-RiakTS is known to have limitation on range query: *time range must not exceed 5 quanta*. In order to get around this limitation or simply achieve higher read performance large ranges can be split into smaller subranges at partitioning time.
-To use this functionality it's required to provide the following options:
-* **spark.riak.partitioning.ts-range-field-name** to identify quantized field
-* **spark.riak.input.split.count** to identify number of partitions/subranges (default value is **10**)
-
-For example,
-```scala
-   val df = sqlContext.read
-      .option("spark.riak.input.split.count", "5")
-      .option("spark.riak.partitioning.ts-range-field-name", "time")
-      .format("org.apache.spark.sql.riak")
-      .schema(schema)
-      .load(tableName)
-      .filter(s"time >= CAST(111111 AS TIMESTAMP) AND time <= CAST(555555 AS TIMESTAMP) AND col1 = 'val1'")
-```
-Initial range query will be split into 5 subqueries (one per each partition) as follows:
-* ```time >= CAST(111111 AS TIMESTAMP) AND time < CAST(222222 AS TIMESTAMP) AND col1 = 'val1'```
-* ```time >= CAST(222222 AS TIMESTAMP) AND time < CAST(333333 AS TIMESTAMP) AND col1 = 'val1'```
-* ```time >= CAST(333333 AS TIMESTAMP) AND time < CAST(444444 AS TIMESTAMP) AND col1 = 'val1'```
-* ```time >= CAST(444444 AS TIMESTAMP) AND time < CAST(555555 AS TIMESTAMP) AND col1 = 'val1'```
-* ```time >= CAST(555555 AS TIMESTAMP) AND time < CAST(555556 AS TIMESTAMP) AND col1 = 'val1'```
-
-Not providing **spark.riak.partitioning.ts-range-field-name** property results into having single partition with initial query.
-
-### Save Dataframe to Riak TS
-Existing inputDF that has the same schema as TS bucket (column order and types) can be saved to Riak TS as follows: 
-```scala
-inputDF.write
-   .option("spark.riak.connection.hosts","myhost:10017")
-   .format("org.apache.spark.sql.riak")
-   .mode(SaveMode.Append)
-   .save(tableName)
-```
-So far *SaveMode.Append* is the only mode available.
-
-## Examples
-
-Riak Spark connector comes with several sample programs and demos that can be found in the [**examples** folder](./examples)
-
-
+Licensed under the Apache License, Version 2.0

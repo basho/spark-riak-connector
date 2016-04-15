@@ -12,7 +12,7 @@ Riak Spark connector comes with several sample programs and demos:
 It also comes with a helper for running a ready-to-go [bootstrapped Spark shell](#interactive-scala-shell).
 
 ## Building and Running Examples/Demos
-1. All of the examples assume that you have a Basho Data Platform cluster installed and running on localhost:8087. If not, follow this guide to install Basho Data Platform and Riak KV: [Installing Basho Data Platform](http://docs.basho.com/dataplatform/1.0.0/installing/) and [Configuring Basho Data Platform](http://docs.basho.com/dataplatform/1.0.0/using-dataplatform/configuration/setup-a-cluster/). Note that currently only Riak KV bundled with BDP 1.0 is supported with Spark connector.
+1. All of the examples assume that you have a Riak KV or Riak TS cluster installed and running on localhost:8087. You can follow these guides to setup a Riak KV or Riak TS cluster: [Installing Riak KV](http://docs.basho.com/riak/kv/2.1.4/setup/installing/) and [Installing Riak TS](http://docs.basho.com/riak/ts/1.2.0/installing/).
 
 2. If you don't have Maven installed, go to the [Maven download page](https://maven.apache.org/download.cgi) and follow the installation instructions for your OS.
 
