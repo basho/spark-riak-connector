@@ -17,31 +17,33 @@
   */
 package com.basho.riak.spark.rdd.timeseries
 
-import java.util.concurrent.ExecutionException
-import java.util.{Calendar, GregorianCalendar, TimeZone}
-import com.basho.riak.client.api.commands.timeseries.Delete
+import java.sql.Timestamp
+import java.text.SimpleDateFormat
+import java.util._
+import java.util.concurrent.TimeUnit
+
+import com.basho.riak.client.api.commands.timeseries.{CreateTable, Delete}
 import com.basho.riak.client.core.netty.RiakResponseException
 import com.basho.riak.client.core.operations.FetchBucketPropsOperation
 import com.basho.riak.client.core.operations.ts.{QueryOperation, StoreOperation}
 import com.basho.riak.client.core.query.Namespace
-import com.basho.riak.client.core.query.timeseries.{Cell, Row}
+import com.basho.riak.client.core.query.timeseries._
 import com.basho.riak.spark.rdd.AbstractRiakSparkTest
 import org.apache.spark.Logging
 import org.apache.spark.sql.types._
 import org.junit.Assert._
-import org.junit.{Rule, Assume}
+import org.junit.Rule
 import org.junit.rules.ExpectedException
+
 import scala.collection.JavaConversions._
-import java.sql.Timestamp
-import java.text.SimpleDateFormat
-import java.util.Date
+import scala.util.control.Exception._
 
 case class TimeSeriesData(time: Long, user_id: String, temperature_k: Double)
 
 /**
   * @author Sergey Galkin <srggal at gmail dot com>
   */
-abstract class AbstractTimeSeriesTest(val createTestDate: Boolean = true) extends AbstractRiakSparkTest with Logging {
+abstract class AbstractTimeSeriesTest(val createTestData: Boolean = true) extends AbstractRiakSparkTest with Logging {
 
   val _expectedException: ExpectedException = ExpectedException.none()
 
@@ -50,18 +52,26 @@ abstract class AbstractTimeSeriesTest(val createTestDate: Boolean = true) extend
 
   protected def getMillis = (t: Timestamp) => t.getTime
 
-  protected val DEFAULT_TS_NAMESPACE = new Namespace("time_series_test","time_series_test")
+  protected val DEFAULT_TS_NAMESPACE = new Namespace("time_series_test", "time_series_test")
   protected val bucketName = DEFAULT_TS_NAMESPACE.getBucketTypeAsString
 
-  val schema = StructType(List(
-    StructField(name = "surrogate_key", dataType = LongType),
-    StructField(name = "family", dataType = StringType),
-    StructField(name = "time", dataType = TimestampType),
-    StructField(name = "user_id", dataType = StringType),
+  val schema = StructType(Seq(
+    StructField(name = "surrogate_key", dataType = LongType, nullable = false),
+    StructField(name = "family", dataType = StringType, nullable = false),
+    StructField(name = "time", dataType = TimestampType, nullable = false),
+    StructField(name = "user_id", dataType = StringType, nullable = false),
     StructField(name = "temperature_k", dataType = DoubleType))
   )
 
-  val testData = List(
+  val tableDefinition: TableDefinition = new TableDefinition(DEFAULT_TS_NAMESPACE.getBucketNameAsString, Seq(
+    new FullColumnDescription("surrogate_key", ColumnDescription.ColumnType.SINT64, false, 1),
+    new FullColumnDescription("family", ColumnDescription.ColumnType.VARCHAR, false, 2),
+    new FullColumnDescription("time", ColumnDescription.ColumnType.TIMESTAMP, false, 3),
+    new FullColumnDescription("user_id", ColumnDescription.ColumnType.VARCHAR, false),
+    new FullColumnDescription("temperature_k", ColumnDescription.ColumnType.DOUBLE, true)
+  ))
+
+  val testData = Seq(
     TimeSeriesData(111111, "bryce", 305.37),
     TimeSeriesData(111222, "bryce", 300.12),
     TimeSeriesData(111333, "bryce", 295.95),
@@ -72,25 +82,24 @@ abstract class AbstractTimeSeriesTest(val createTestDate: Boolean = true) extend
   val tsRangeStart: Calendar = mkTimestamp(testData.minBy(_.time).time)
   val tsRangeEnd: Calendar = mkTimestamp(testData.maxBy(_.time).time)
 
-  val queryFromMillis = tsRangeStart.getTimeInMillis - 5 
+  val queryFromMillis = tsRangeStart.getTimeInMillis - 5
   val queryToMillis = tsRangeEnd.getTimeInMillis + 10
-  
+
   val dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
   val fromStr = dateFormat.format(new Date(queryFromMillis)) // for spark 1.6
   val toStr = dateFormat.format(new Date(queryToMillis)) // for spark 1.6
-    
+
   val riakTSRows = testData.map(f => new Row(
-    new Cell(1) /*surrogate_key*/ ,
+    new Cell(1) /* surrogate_key */ ,
     new Cell("f") /* family */ ,
     Cell.newTimestamp(f.time),
     new Cell(f.user_id),
-    new Cell(f.temperature_k)))
+    new Cell(f.temperature_k))
+  )
 
-  val sqlWhereClause: String = s"WHERE time >= $queryFromMillis AND " +
-    s"time <= $queryToMillis AND surrogate_key = 1 AND family = 'f'"
+  final val sqlWhereClause = s"WHERE time >= $queryFromMillis AND time <= $queryToMillis AND surrogate_key = 1 AND family = 'f'"
 
-  val sqlQuery: String = s"SELECT surrogate_key, family, time, user_id, temperature_k " +
-    s"FROM $bucketName $sqlWhereClause"
+  final val sqlQuery = s"SELECT surrogate_key, family, time, user_id, temperature_k FROM $bucketName $sqlWhereClause"
 
   final val msg = "Bucket type for Time Series test data is not created, Time series tests will be skipped"
 
@@ -106,17 +115,14 @@ abstract class AbstractTimeSeriesTest(val createTestDate: Boolean = true) extend
 
     sc = createSparkContext(initSparkConf())
 
-    checkBucketExistence(DEFAULT_TS_NAMESPACE, msg + "\n\n" +
-      "To create and activate TS test bucket, please use the following commands:\n" +
-      "\t" + """./riak-admin bucket-type create time_series_test '{"props":{"n_val":3, "table_def": "create table time_series_test (surrogate_key sint64 not null, family varchar not null, time timestamp not null, user_id varchar not null, temperature_k double, primary key ((surrogate_key, family, quantum(time, 10, s)), surrogate_key, family, time))"}}' """  +"\n" +
-      "\t./riak-admin bucket-type activate time_series_test")
+    createTableIfNotExists(DEFAULT_TS_NAMESPACE)
 
     // ----------  Purging data: data might be not only created, but it may be also changed during the previous test case execution
     // Since there is no other options for truncation, data will be cleared for the time interval used for testing
     val operationBuilder = new QueryOperation.Builder(sqlQuery)
     withRiakDo(session => {
       session.getRiakCluster.execute(operationBuilder.build()).get().getRowsCopy
-        .map(row => List(row.getCellsCopy.get(0), row.getCellsCopy.get(1), row.getCellsCopy.get(2)))
+        .map(row => Seq(row.getCellsCopy.get(0), row.getCellsCopy.get(1), row.getCellsCopy.get(2)))
         .foreach { keys =>
           val builder = new Delete.Builder(DEFAULT_TS_NAMESPACE.getBucketNameAsString(), keys)
           withRiakDo(_.execute(builder.build()))
@@ -127,7 +133,7 @@ abstract class AbstractTimeSeriesTest(val createTestDate: Boolean = true) extend
     })
 
     // ----------  Storing test data into Riak TS
-    if (createTestDate) {
+    if (createTestData) {
       val tableName = DEFAULT_TS_NAMESPACE.getBucketTypeAsString
 
       val storeOp = new StoreOperation.Builder(tableName)
@@ -140,21 +146,21 @@ abstract class AbstractTimeSeriesTest(val createTestDate: Boolean = true) extend
     }
   }
 
-  protected def checkBucketExistence(ns: Namespace, warningMsg: String): Unit = {
+  protected def createTableIfNotExists(ns: Namespace): Unit = {
     val fetchProps = new FetchBucketPropsOperation.Builder(ns).build()
-
     withRiakDo(session => {
       session.getRiakCluster.execute(fetchProps)
+      allCatch either fetchProps.get.getBucketProperties match {
+        case Right(_) =>
+          logDebug(s"Table with name '${ns.getBucketTypeAsString}' already exists. Creation is not required.")
+        case Left(ex) if ex.getCause.isInstanceOf[RiakResponseException]
+          && ex.getCause.getMessage.startsWith("No bucket-type named") =>
+          logInfo(s"Table '${ns.getBucketTypeAsString}' is not found. New one will be created.")
+          session.execute(new CreateTable.Builder(tableDefinition)
+            .withQuantum(10, TimeUnit.SECONDS) // scalastyle:ignore
+            .build())
+      }
     })
-
-    try {
-      fetchProps.get().getBucketProperties
-    } catch {
-      case ex: ExecutionException if ex.getCause.isInstanceOf[RiakResponseException]
-        && ex.getCause.getMessage.startsWith("No bucket-type named") =>
-        logWarning(warningMsg)
-        Assume.assumeTrue(msg + " (See logs for the details)", false)
-    }
   }
 
   protected def stringify = (s: Array[String]) => s.mkString("[", ",", "]")

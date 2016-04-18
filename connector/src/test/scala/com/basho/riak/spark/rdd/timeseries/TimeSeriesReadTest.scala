@@ -17,21 +17,16 @@
  *******************************************************************************/
 package com.basho.riak.spark.rdd.timeseries
 
-import scala.reflect.runtime.universe
-
+import com.basho.riak.spark.rdd.{AbstractRDDTest, RiakTSTests}
+import com.basho.riak.spark.toSparkContextFunctions
 import org.apache.spark.SparkException
-import org.apache.spark.annotation.Experimental
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.functions.udf
 import org.apache.spark.sql.riak.RiakSQLContext
 import org.apache.spark.sql.types._
-import org.junit.{ Rule, Test }
+import org.junit.Assert.assertEquals
+import org.junit.Test
 import org.junit.experimental.categories.Category
-
-import com.basho.riak.spark.rdd.{ AbstractRDDTest, RiakTSTests }
-import com.basho.riak.spark.toSparkContextFunctions
-
-import junit.framework.Assert.assertEquals
 
 /**
   * @author Sergey Galkin <srggal at gmail dot com>
@@ -143,13 +138,14 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
      */
     val sqlContext = new RiakSQLContext(sc)
     sqlContext.udf.register("getMillis", getMillis) // transforms timestamp to not deal with timezones
-    val df = sqlContext.sql(s"""
-        | SELECT getMillis(time) as time, user_id, temperature_k
-        | FROM $bucketName
-        | WHERE time >= CAST('$fromStr' AS TIMESTAMP)
-        |   AND time <= CAST('$toStr' AS TIMESTAMP)
-        |   AND surrogate_key = 1
-        |   AND family = 'f'
+    val df = sqlContext.sql(
+        s"""
+           | SELECT getMillis(time) as time, user_id, temperature_k
+           | FROM $bucketName
+           | WHERE time >= CAST('$fromStr' AS TIMESTAMP)
+           |   AND time <= CAST('$toStr' AS TIMESTAMP)
+           |   AND surrogate_key = 1
+           |   AND family = 'f'
       """.stripMargin)
 
     // -- verification
@@ -278,14 +274,15 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
       .registerTempTable("test")
 
     val data = sqlContext
-      .sql(s"""
-         | SELECT user_id
-         | FROM test
-         | WHERE time >= CAST('$fromStr' AS TIMESTAMP)
-         |   AND time <= CAST('$toStr' AS TIMESTAMP)
-         |   AND surrogate_key = 1
-         |   AND family = 'f'
-         |""".stripMargin)
+      .sql(
+        s"""
+           | SELECT user_id
+           | FROM test
+           | WHERE time >= CAST('$fromStr' AS TIMESTAMP)
+           |   AND time <= CAST('$toStr' AS TIMESTAMP)
+           |   AND surrogate_key = 1
+           |   AND family = 'f'
+           |""".stripMargin)
       .toJSON.collect()
 
     assertEqualsUsingJSONIgnoreOrder(

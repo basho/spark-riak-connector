@@ -20,17 +20,13 @@
 package com.basho.riak.spark.rdd.timeseries
 
 import java.sql.Timestamp
-import scala.collection.JavaConversions.asScalaBuffer
-import org.apache.spark.SparkConf
-import org.apache.spark.SparkContext
-import org.apache.spark.sql.types._
-import org.junit.After
-import org.junit.Test
+
 import com.basho.riak.spark.rdd.partitioner.RiakTSPartition
-import junit.framework.Assert._
+import org.junit.Assert._
+import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.sql.types._
+import org.junit.{After, Rule, Test}
 import org.junit.rules.ExpectedException
-import org.junit.Rule
-import scala.annotation.meta.getter
 
 class TimeSeriesPartitioningTest {
 
@@ -57,7 +53,6 @@ class TimeSeriesPartitioningTest {
   val sc = new SparkContext(sparkConf)
 
   val sqlContext = new org.apache.spark.sql.SQLContext(sc)
-  import sqlContext.implicits._
 
   @After
   def destroySparkContext(): Unit = {
