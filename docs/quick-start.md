@@ -196,6 +196,10 @@ val df2 = sqlContext.read.format("org.apache.spark.sql.riak").load(tableName).fi
 df2.show()
 ```
 
+Before exiting the Spark Shell, you should stop the spark context:
+```scala
+sc.stop()
+```
 
 ### Python
 
@@ -399,6 +403,11 @@ You should see something similar to this:
 +-----------------+
 |65.03571639260672|
 +-----------------+
+```
+
+Before exiting the PySpark Shell, you should stop the spark context:
+```python
+sc.stop()
 ```
 
 ### Java
