@@ -17,6 +17,7 @@ Scroll down or click below for the desired information:
 - [Working With TS Dates](./using-connector.md#working-with-ts-dates)
 - [TS Table Range Query Partitioning](./using-connector.md#ts-table-range-query-partitioning)
 - [TS Bulk Write](./using-connector.md#ts-bulk-write)
+- [Spark Streaming Example](./using-connector.md#spark-streaming-example)
 - [Using Java With The Connector](./using-connector.md#using-java-with-the-connector)
 
 
@@ -532,6 +533,9 @@ conf = pyspark.SparkConf()
 conf.set("spark.riakts.write.bulk-size", "500")
 conf.set("spark.riak.connections.min", "50")
 ```
+
+## Spark Streaming Example
+
 
 ## Using Java With The Connector
 
