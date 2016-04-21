@@ -19,61 +19,43 @@ package com.basho.riak.spark.query
 
 import java.sql.Timestamp
 import java.util.concurrent.ExecutionException
-
 import com.basho.riak.client.core.netty.RiakResponseException
 import com.basho.riak.client.core.operations.ts.QueryOperation
-
-import com.basho.riak.client.core.query.timeseries.{Row, ColumnDescription}
+import com.basho.riak.client.core.query.timeseries.{ Row, ColumnDescription }
 import com.basho.riak.client.core.util.BinaryValue
 import com.basho.riak.spark.rdd.connector.RiakSession
-import com.basho.riak.spark.rdd.{BucketDef, ReadConf}
-
+import com.basho.riak.spark.rdd.{ BucketDef, ReadConf }
 import scala.collection.convert.decorateAsScala._
+import com.basho.riak.client.core.query.timeseries.CoverageEntry
+import com.basho.riak.spark.rdd.connector.RiakConnector
+import com.basho.riak.client.core.util.HostAndPort
 
 /**
   * @author Sergey Galkin <srggal at gmail dot com>
   * @since 1.1.0
   */
-case class TSQueryData(sql: String, values: Seq[Any])
+case class TSQueryData(sql: String, coverageEntry: Option[CoverageEntry] = None) {
+    val primaryHost = coverageEntry.map(e => HostAndPort.fromParts(e.getHost, e.getPort))
+}
 
 /**
-  * @author Sergey Galkin <srggal at gmail dot com>
-  * @since 1.1.0
-  */
-case class QueryTS(bucket: BucketDef, queryData: TSQueryData, readConf: ReadConf) {
+ * @author Sergey Galkin <srggal at gmail dot com>
+ * @since 1.1.0
+ */
+case class QueryTS(connector: RiakConnector, queryData: Seq[TSQueryData]) {
 
-  // TODO: Remove as interpolation was implemented as part of the Riak TS query
-  def interpolateValues(sql: String, values: Seq[Any]): String = {
-    val regex = "\\?".r
 
-    def recursiveInterpolateFirst(input: String, iterator: Iterator[Any]): String = iterator.isEmpty match {
-      case true =>
-        input
-
-      case _ =>
-        val rv = iterator.next()
-
-        val v = rv match {
-          case ts: Timestamp =>
-            ts.getTime.toString
-
-          case s: String =>
-            "'" + s + "'"
-
-          case x: Any =>
-            x.toString
-        }
-        recursiveInterpolateFirst(regex.replaceFirstIn(input, v), iterator)
+  def nextChunk(tsQueryData: TSQueryData): (Seq[ColumnDescription], Seq[Row]) = {
+    val op = tsQueryData.coverageEntry match {
+      case None     => new QueryOperation.Builder(tsQueryData.sql).build()
+      case Some(ce) => new QueryOperation.Builder(tsQueryData.sql).withCoverageContext(ce.getCoverageContext()).build()
     }
-    recursiveInterpolateFirst(sql, values.iterator)
-  }
 
-  def nextChunk(session: RiakSession): (Seq[ColumnDescription], Seq[Row]) = {
-    val sql = interpolateValues(queryData.sql, queryData.values)
-    val op = new QueryOperation.Builder(sql.toString).build()
     try {
-      val qr = session.execute(op).get()
-      qr.getColumnDescriptionsCopy.asScala -> qr.getRowsCopy.asScala
+      connector.withSessionDo(tsQueryData.primaryHost.map(Seq(_)))({ session =>
+        val qr = session.execute(op).get()
+        qr.getColumnDescriptionsCopy.asScala -> qr.getRowsCopy.asScala
+      })
     } catch {
       case e: ExecutionException =>
         if (e.getCause.isInstanceOf[RiakResponseException]

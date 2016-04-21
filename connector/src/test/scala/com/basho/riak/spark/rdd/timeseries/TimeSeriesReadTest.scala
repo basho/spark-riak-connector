@@ -174,7 +174,7 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
 
     val df = sqlContext.read
       .format("org.apache.spark.sql.riak")
-      // For real usage no needs to provide schema manually
+      // For real usage no need to provide schema manually
       .schema(schema)
       .load(bucketName)
       .filter(s"time >= CAST('$fromStr' AS TIMESTAMP) AND time <= CAST('$toStr' AS TIMESTAMP) " +

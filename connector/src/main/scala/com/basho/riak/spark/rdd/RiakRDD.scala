@@ -18,7 +18,7 @@
 package com.basho.riak.spark.rdd
 
 import com.basho.riak.client.core.query.{Location, RiakObject}
-import com.basho.riak.spark.query.{DataQueryingIterator, Query, QueryData}
+import com.basho.riak.spark.query.{KVDataQueryingIterator, Query, QueryData}
 import com.basho.riak.spark.rdd.connector.RiakConnector
 import com.basho.riak.spark.rdd.partitioner._
 import com.basho.riak.spark.util.{CountingIterator, DataConvertingIterator}
@@ -70,7 +70,7 @@ class RiakRDD[R] private[spark] (
 
     val query = Query(BucketDef(bucketType, bucketName), readConf, connector, queryData)
 
-    val iterator: Iterator[(Location, RiakObject)] = DataQueryingIterator(query)
+    val iterator: Iterator[(Location, RiakObject)] = KVDataQueryingIterator(query)
     val convertingIterator = DataConvertingIterator.createRiakObjectConverting[R](iterator, convert)
     val countingIterator = CountingIterator[R](convertingIterator)
     context.addTaskCompletionListener { (context) =>

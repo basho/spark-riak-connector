@@ -20,7 +20,7 @@ package com.basho.riak.spark.query
 import com.basho.riak.client.core.query.{Location, RiakObject}
 import org.apache.spark.Logging
 
-class DataQueryingIterator[T](query: Query[T]) extends Iterator[(Location, RiakObject)] with Logging {
+class KVDataQueryingIterator[T](query: Query[T]) extends Iterator[(Location, RiakObject)] with Logging {
 
   type ResultT = (Location, RiakObject)
 
@@ -52,7 +52,7 @@ class DataQueryingIterator[T](query: Query[T]) extends Iterator[(Location, RiakO
          *     As a result of such call the empty chunk and Null continuation token will be returned
          */
         logDebug("prefetch returned Nothing, all data was already processed (empty chunk was returned)")
-        _iterator = DataQueryingIterator.OPTION_EMPTY_ITERATOR
+        _iterator = KVDataQueryingIterator.OPTION_EMPTY_ITERATOR
 
       case (_, data: Iterable[(Location,RiakObject)]) =>
         if(nextToken.isEmpty){
@@ -72,11 +72,11 @@ class DataQueryingIterator[T](query: Query[T]) extends Iterator[(Location, RiakO
 
       case None if _iterator.isDefined && _iterator.get.hasNext =>
         logTrace(s"prefetch is not required, at least one pre-fetched value available")
-        isThereNextValue = DataQueryingIterator.OPTION_TRUE
+        isThereNextValue = KVDataQueryingIterator.OPTION_TRUE
 
       case None if _iterator.isDefined && _iterator.get.isEmpty && nextToken.isEmpty =>
         logTrace("prefetch is not required, all data was already processed")
-        isThereNextValue = DataQueryingIterator.OPTION_FALSE
+        isThereNextValue = KVDataQueryingIterator.OPTION_FALSE
 
       case None =>
         isThereNextValue = Some(prefetch())
@@ -95,10 +95,10 @@ class DataQueryingIterator[T](query: Query[T]) extends Iterator[(Location, RiakO
   }
 }
 
-object  DataQueryingIterator {
+object  KVDataQueryingIterator {
   private val OPTION_EMPTY_ITERATOR = Some(Iterator.empty)
   private val OPTION_TRUE = Some(true)
   private val OPTION_FALSE = Some(false)
 
-  def apply[T](query: Query[T]): DataQueryingIterator[T] = new DataQueryingIterator[T](query)
+  def apply[T](query: Query[T]): KVDataQueryingIterator[T] = new KVDataQueryingIterator[T](query)
 }

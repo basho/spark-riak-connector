@@ -36,7 +36,7 @@ class DataConvertingIterator[R, S](kvDataIterator: Iterator[S], convert: S => R)
 
 object DataConvertingIterator {
   type KV_SOURCE_DATA = (Location, RiakObject)
-  type TS_SOURCE_DATA = (Seq[ColumnDescription], Seq[Row])
+  type TS_SOURCE_DATA = (Seq[ColumnDescription], Iterator[Row])
 
   def createRiakObjectConverting[R](kvIterator: Iterator[KV_SOURCE_DATA], convert: (Location, RiakObject) => R)
                                    (implicit ct: ClassTag[R]): DataConvertingIterator[R, KV_SOURCE_DATA] =
@@ -48,7 +48,7 @@ object DataConvertingIterator {
 
   def createTSConverting[R](tsdata: TS_SOURCE_DATA, convert: (Seq[ColumnDescription], Row) => R)
                            (implicit ct: ClassTag[R]): DataConvertingIterator[R, Row] =
-    new DataConvertingIterator[R, Row](tsdata._2.iterator, new Function[Row, R] {
+    new DataConvertingIterator[R, Row](tsdata._2, new Function[Row, R] {
       override def apply(v1: Row): R = tsdata match {
         case (cds, _) => convert(cds, v1)
       }
