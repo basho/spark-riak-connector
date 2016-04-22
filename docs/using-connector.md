@@ -536,6 +536,10 @@ conf.set("spark.riak.connections.min", "50")
 
 ## Spark Streaming Example
 
+The Spark-Riak Connector can be used with Spark Streaming. To demonstrate this usage, we will work through a small Scala example. This example is located in the [examples folder](../examples/src/main/scala/com/basho/riak/spark/examples) of the Spark-Riak Connector repo and the source code for the example can be seen [here](../examples/src/main/scala/com/basho/riak/spark/examples/streaming/StreamingKVExample.scala).
+
+This example requires the use of Kafka. Please install Kafka and setup a Kafka broker prior to running this example. We will assume that there is a Kafka broker running at `127.0.0.1:9092` with a topic called `streaming`. We also assume there is a Riak node running at `127.0.0.1:8087`.
+
 
 ## Using Java With The Connector
 
