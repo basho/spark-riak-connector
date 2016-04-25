@@ -544,7 +544,7 @@ These examples require the use of Kafka. Please install Kafka and setup a Kafka 
 
 Now that we are set up, lets look at the KV bucket example [here](../examples/src/main/scala/com/basho/riak/spark/examples/streaming/StreamingKVExample.scala). 
 
-In the first chunck of code in the main method, we are just setting up our local spark streaming context and setting the name for the KV bucket to `test-data`:
+In the first chunk of code in the main method, we are just setting up our local spark streaming context and setting the name for the KV bucket to `test-data`:
 
 ```scala
 val sparkConf = new SparkConf(true)
@@ -594,7 +594,7 @@ Then, we are using `KafkaUtils` to create a stream from the kafka topic `streami
  /path/to/spark-riak-connector-examples/bin/run-example streaming.StreamingKVExample
  ```
  
- This wil start a stream from the Kafka topic `streaming` into the KV bucket `test-data` that we just created. This stream will run until terminated. Whenever a message is produced for Kafka topic `streaming`, the spark streaming context that the example creates will automatically stream the message from the topic into the TS table. To see this in action, we need to send a message to the kafka topic `streaming` with:
+ This wil start a stream from the Kafka topic `streaming` into the KV bucket `test-data` that we just created. This stream will run until terminated. Whenever a message is produced for Kafka topic `streaming`, the spark streaming context that the example creates will automatically stream the message from the topic into the KV bukcet. To see this in action, we need to send a message to the kafka topic `streaming` with the kafka console producer script:
  
  ```
  /path/to/bin/kafka-console-producer.sh --broker-list localhost:9092 --topic streaming
@@ -668,13 +668,13 @@ The next section of the code is:
 ```
 In this section of code, we are setting up a stream from Kafak topic `streaming` into TS table `ts_weather_demo`. Here we are using our spark sql context to read each rdd streamed from the kafka topic and then write into the TS table.
 
-Now that we have seen the code lets run the example (see [here](./building-and-testing-connector.md#build) if you need to build the spark-riak-connector first). You can run the example, after building, with:
+Now that we have seen the code lets run the example (see [here](./building-and-testing-connector.md#build) if you need to build the spark-riak-connector first). You can run the `StreamingTSExample.scala` example, after building, with:
 
  ```
- /path/to/spark-riak-connector-examples/bin/run-example streaming.StreamingKVExample
+ /path/to/spark-riak-connector-examples/bin/run-example streaming.StreamingTSExample
  ```
 
-Now that the stream is up and running, we need to actually send data to the Kafka topic. Lets start `kafka-console-producer.sh` and send a chunk of data to it with:
+Now that the stream is up and running, we need to actually send data to the Kafka topic. Lets start `the kafka console producer and send a chunk of data to it with:
 
  ```
  /path/to/bin/kafka-console-producer.sh --broker-list localhost:9092 --topic streaming
