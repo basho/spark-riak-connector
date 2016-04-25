@@ -67,15 +67,21 @@ As an alternative, you can add the Spark-Riak Connector library in the packages 
 
 **Scala, Python, Java**
 ```
-$SPARK_HOME/bin/spark-submit --packages basho:spark-riak-connector:{{version}}
+$SPARK_HOME/bin/spark-submit \
+--repositories https://dl.bintray.com/basho/data-platform \
+--packages com.basho.riak:spark-riak-connector:{{version}}
 ```
 
 **Scala**
 ```
-$SPARK_HOME/bin/spark-shell --packages basho:spark-riak-connector:{{version}}
+$SPARK_HOME/bin/spark-shell \
+--repositories https://dl.bintray.com/basho/data-platform \
+--packages com.basho.riak:spark-riak-connector:{{version}}
 ```
 
 **Python**
 ```
-$SPARK_HOME/bin/pyspark --packages basho:spark-riak-connector:{{version}}
+$SPARK_HOME/bin/pyspark \
+--repositories https://dl.bintray.com/basho/data-platform \
+--packages com.basho.riak:spark-riak-connector:{{version}}
 ```
