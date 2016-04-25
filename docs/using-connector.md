@@ -668,7 +668,13 @@ The next section of the code is:
 ```
 In this section of code, we are setting up a stream from Kafak topic `streaming` into TS table `ts_weather_demo`. Here we are using our spark sql context to read each rdd streamed from the kafka topic and then write into the TS table.
 
-Now we need to actually send data to the Kafka topic. Lets start `kafka-console-producer.sh` and send a chunk of data to it with:
+Now that we have seen the code lets run the example (see [here](./building-and-testing-connector.md#build) if you need to build the spark-riak-connector first). You can run the example, after building, with:
+
+ ```
+ /path/to/spark-riak-connector-examples/bin/run-example streaming.StreamingKVExample
+ ```
+
+Now that the stream is up and running, we need to actually send data to the Kafka topic. Lets start `kafka-console-producer.sh` and send a chunk of data to it with:
 
  ```
  /path/to/bin/kafka-console-producer.sh --broker-list localhost:9092 --topic streaming
