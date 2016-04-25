@@ -538,8 +538,77 @@ conf.set("spark.riak.connections.min", "50")
 
 The Spark-Riak Connector can be used with Spark Streaming. To demonstrate this usage, we will work through a small Scala example. This example is located in the [examples folder](../examples/src/main/scala/com/basho/riak/spark/examples) of the Spark-Riak Connector repo and the source code for the example can be seen [here](../examples/src/main/scala/com/basho/riak/spark/examples/streaming/StreamingKVExample.scala).
 
-This example requires the use of Kafka. Please install Kafka and setup a Kafka broker prior to running this example. We will assume that there is a Kafka broker running at `127.0.0.1:9092` with a topic called `streaming`. We also assume there is a Riak node running at `127.0.0.1:8087`.
+This example requires the use of Kafka. Please install Kafka and setup a Kafka broker prior to running this example. We will assume that there is a Kafka broker running at `127.0.0.1:9092` with a topic called `streaming`. We also assume Riak TS is installed and there is a Riak TS node running at `127.0.0.1:8087`. You will need to build the connector as well. Please follow the instruction on [building the connector](./building-and-testing-connector.md#build). 
 
+Once you have a running Riak TS node, please create a TS table with:
+
+```
+curl -v -XPUT -H 'Content-Type: application/json' "http://$RIAK_HTTP/admin/explore/clusters/default/bucket_types/ts_weather_demo" -d '{"props":{"n_val":3, "table_def":"CREATE TABLE ts_weather_demo (weather      varchar not null,family       varchar not null,time         timestamp not null,temperature  double,humidity     double,pressure     double,PRIMARY KEY ((weather, family, quantum(time, 1, 'h')), weather, family, time))"}}'
+```
+
+Now that we are set up to run the example, lets look at what the code is doing. In the first chunck of code in the main method, we are just setting up our local spark streaming context:
+
+```
+val sparkConf = new SparkConf(true)
+      .setAppName("Simple Spark Streaming to Riak KV Demo")
+setSparkOpt(sparkConf, "spark.master", "local")
+setSparkOpt(sparkConf, "spark.riak.connection.host", "127.0.0.1:8087")
+
+val sc = new SparkContext(sparkConf)
+val streamCtx = new StreamingContext(sc, Durations.seconds(15))
+val sqlContext = new org.apache.spark.sql.SQLContext(sc)
+import sqlContext.implicits._
+val namespace = new Namespace("test-data")
+```
+
+Next we are setting up the kafka broker properties:
+
+```
+val kafkaProps = Map[String, String](
+      "metadata.broker.list" -> "127.0.0.1:9092",
+      "client.id" -> UUID.randomUUID().toString
+    )
+```
+
+Then, we are using `KafkaUtils` to create a stream from the kafka topic `streaming` into our KV bucket `test-data`:
+
+```
+    KafkaUtils
+      .createDirectStream[String, String, StringDecoder, StringDecoder](streamCtx, kafkaProps, Set[String]("streaming"))
+      .foreachRDD { rdd =>
+        val rows = sqlContext.read.json(rdd.values).map {
+          line => val obj = RiakObjectConversionUtil.to(line)
+            obj.setContentType("application/json")
+            obj
+        }.saveToRiak(namespace)
+      }
+```
+ And finally, we are starting the stream:
+ 
+ ```
+ streamCtx.start()
+ streamCtx.awaitTermination()
+ ```
+
+ Now that we understand the code, we can run the `StreamingKVExample.scala` example with:
+ 
+ ```
+ /path/to/spark-riak-connector-examples/bin/run-example streaming.StreamingKVExample
+ ```
+ 
+ This wil start a stream from the Kafka topic `streaming` into the Riak TS table `ts_weather_demo` that we just created. This stream will run until terminated. Whenever a message is produced for Kafka topic `streaming`, the spark streaming context that the example creates will automatically stream the message from the topic into the TS table. To see this in action, we need to send a message to the kafka topic `streaming` with:
+ 
+ ```
+ /path/to/bin/kafka-console-producer.sh --broker-list localhost:9092 --topic streaming
+ ```
+ 
+ This will read a message from standard in and pass it to the topic. As an example put the following into standard in:
+ 
+ ```
+ {"time": "2016-01-01 08:30:00.000", "weather": "sunny", "temperature": 25.0, "humidity": 67.0, "pressure": 30.20, "family": "f"}
+ ```
+ 
+You should now be able to see this data entry in the KV bucket `test-data`.
 
 ## Using Java With The Connector
 
