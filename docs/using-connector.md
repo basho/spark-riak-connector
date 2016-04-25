@@ -548,7 +548,7 @@ curl -v -XPUT -H 'Content-Type: application/json' "http://$RIAK_HTTP/admin/explo
 
 Now that we are set up to run the example, lets look at what the code is doing. In the first chunck of code in the main method, we are just setting up our local spark streaming context:
 
-```
+```scala
 val sparkConf = new SparkConf(true)
       .setAppName("Simple Spark Streaming to Riak KV Demo")
 setSparkOpt(sparkConf, "spark.master", "local")
@@ -563,7 +563,7 @@ val namespace = new Namespace("test-data")
 
 Next we are setting up the kafka broker properties:
 
-```
+```scala
 val kafkaProps = Map[String, String](
       "metadata.broker.list" -> "127.0.0.1:9092",
       "client.id" -> UUID.randomUUID().toString
@@ -572,7 +572,7 @@ val kafkaProps = Map[String, String](
 
 Then, we are using `KafkaUtils` to create a stream from the kafka topic `streaming` into our KV bucket `test-data`:
 
-```
+```scala
     KafkaUtils
       .createDirectStream[String, String, StringDecoder, StringDecoder](streamCtx, kafkaProps, Set[String]("streaming"))
       .foreachRDD { rdd =>
@@ -585,7 +585,7 @@ Then, we are using `KafkaUtils` to create a stream from the kafka topic `streami
 ```
  And finally, we are starting the stream:
  
- ```
+ ```scala
  streamCtx.start()
  streamCtx.awaitTermination()
  ```
