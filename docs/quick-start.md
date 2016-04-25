@@ -199,7 +199,7 @@ df2.show()
 
 ### Python
 
-In this quick start guide we will run  through some examples usages of the Spark-Riak Connector using the Spark Python REPL, pyspark.
+In this quick start guide we will run  through some examples usages of the Spark-Riak Connector using the Spark Python REPL, pyspark. Please note that Python currently only works with TS tables in Riak TS. We currently do not support Python with KV buckets in Riak KV or Riak TS.
 
 Start pyspark with: 
 
