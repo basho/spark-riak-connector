@@ -106,4 +106,55 @@ class RDDTest extends AbstractRDDTest{
       "]",
       results)
   }
+  
+  @Test
+  def test2iPartitioning() = {
+    val size = 3
+    val points = (1 to size + 1).map(_ * 100)
+    val ranges = points zip points.tail
+    val rdd = sc.riakBucket[TSData](DEFAULT_NAMESPACE)
+    .partitionBy2iRanges(CREATION_INDEX, ranges: _*)
+    
+    Assert.assertEquals(size, rdd.partitions.size)
+  }
+  
+  @Test
+  def test2iParallelizationIntMultiple() = {
+    val rdd = sc.riakBucket[TSData](DEFAULT_NAMESPACE)
+    .query2iRange(CREATION_INDEX, 101, 2000)
+    
+    Assert.assertEquals(10, rdd.partitions.size)
+  }
+  
+  @Test
+  def test2iParallelizationBigIntMultiple() = {
+    val rdd = sc.riakBucket[TSData](DEFAULT_NAMESPACE)
+    .query2iRange(CREATION_INDEX, BigInt(101L), BigInt(2000L))
+    
+    Assert.assertEquals(10, rdd.partitions.size)
+  }
+  
+  @Test
+  def test2iParallelizationLongMultiple() = {
+    val rdd = sc.riakBucket[TSData](DEFAULT_NAMESPACE)
+    .query2iRange(CREATION_INDEX, 101L, 2000L)
+    
+    Assert.assertEquals(10, rdd.partitions.size)
+  }
+  
+  @Test
+  def test2iParallelizationIntSingle() = {
+    val rdd = sc.riakBucket[TSData](DEFAULT_NAMESPACE)
+    .query2iRange(CREATION_INDEX, 101, 109)
+    
+    Assert.assertEquals(1, rdd.partitions.size)
+  }
+  
+  @Test
+  def test2iParallelizationStringShouldBeSingle() = {
+    val rdd = sc.riakBucket[TSData](DEFAULT_NAMESPACE)
+    .query2iRange(CREATION_INDEX, "a", "z")
+    
+    Assert.assertEquals(1, rdd.partitions.size)
+  }
 }

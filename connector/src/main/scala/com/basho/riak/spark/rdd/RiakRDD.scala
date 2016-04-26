@@ -53,7 +53,7 @@ class RiakRDD[R] private[spark] (
             RiakCoveragePlanBasedPartitioner.partitions(connector, BucketDef(bucketType, bucketName), readConf, queryData.get)
 
           case _ =>
-            RiakKeysPartitioner.partitions(connector.hosts, queryData.get)
+            RiakKeysPartitioner.partitions(connector.hosts, readConf, queryData.get)
         }
     }
 
