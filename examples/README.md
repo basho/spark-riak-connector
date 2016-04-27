@@ -3,7 +3,7 @@ Riak Spark connector comes with several sample programs and demos:
 
 - [Simple Scala example](#simple-scala-example)
 - [Simple Scala RiakTS example](#simple-scala-ts-example)
-- [Simple Scala DatFrame example](#simple-scala-dataframe-example)
+- [Simple Scala DataFrame example](#simple-scala-dataframe-example)
 - [Simple Scala RiakTS DatFrame example](#simple-scala-ts-dataframe-example)
 - [Simple Java example](#simple-java-example)
 - [Simple Java RiakTS example](#simple-java-riakts-example)
