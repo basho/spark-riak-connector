@@ -75,7 +75,7 @@ object StreamingTSExample {
 
     streamCtx.start()
     streamCtx.awaitTermination()
-    println("Spark streaming context started. Spark UeI could be found at http://SPARK_MASTER_HOST:4040")
+    println("Spark streaming context started. Spark UI could be found at http://SPARK_MASTER_HOST:4040")
     println("NOTE: if you're running job on the 'local' master open http://localhost:4040")
   }
 
