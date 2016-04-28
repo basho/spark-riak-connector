@@ -57,7 +57,7 @@ object SimpleScalaRiakDataframesExample {
     import sqlContext.implicits._
 
     // Save test data from json file to riak bucket
-    val inputRDD = sqlContext.read.json("src/main/resources/test_data.json").toJSON.map {
+    val inputRDD = sqlContext.read.json("examples/src/main/resources/test_data.json").toJSON.map {
       line =>
         val obj = RiakObjectConversionUtil.to(line)
         // RiakObjectConversionUtil.to() sets content type to text/plain if String is passed
