@@ -608,7 +608,7 @@ Then, we are using `KafkaUtils` to create a stream from the Kafka topic `streami
  /path/to/kafka/bin/kafka-console-producer.sh --broker-list localhost:9092 --topic streaming
  ```
  
- This will script read messages from the terminal and pass it to the topic. From the topic, the Spark Streaming context will write the message to Riak KV bucket `test-data`.  As an example put the following into standard in:
+ This will script read messages from the terminal and pass it to the topic. From the topic, the Spark Streaming context will write the message to Riak KV bucket `test-data`.  As an example put the following into the terminal:
  
  ```
  {"time": "2016-01-01 08:30:00.000", "weather": "sunny", "temperature": 25.0, "humidity": 67.0, "pressure": 30.20, "family": "f"}
