@@ -114,7 +114,7 @@ object FootballDemo {
     println(s"Football stats calculated for $index from $from to $to")
 
     // Let's skip all events that don't have 'off' value at all, if any
-    val rdd = sc.riakBucket[List[Map[String, _]]](bucket, "default")
+    val rdd = sc.riakBucket[(String, List[Map[String, _]])](bucket, "default")
       .query2iRange(index, from, to)
       .mapValues( x => x.filterNot( _.getOrElse("off", "").toString.isEmpty ))
       .filter(f=> !f._2.isEmpty)

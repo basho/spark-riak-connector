@@ -17,94 +17,79 @@
  */
 package com.basho.riak.spark.rdd
 
-import com.basho.riak.spark.util.RiakObjectConversionUtil
-import org.apache.spark.TaskContext
-import com.basho.riak.client.core.query.{Location, RiakObject}
-import org.junit.{Ignore, Test, Assert}
 import com.basho.riak.spark._
-import org.mockito.Mockito
 import org.junit.experimental.categories.Category
+import org.junit.{Assert, Test}
 
 case class TSData(latitude: Float, longitude: Float, timestamp: String, user_id: String, gauge1: Int, gauge2: String)
 
 @Category(Array(classOf[RiakCommonTests]))
-class RDDTest extends AbstractRDDTest{
-  private val CREATION_INDEX = "creationNo"
+class RDDTest extends AbstractRDDTest {
+  private final val CREATION_INDEX = "creationNo"
 
   protected override def jsonData(): String =
-    "[" +
-        "  { key: 'my_key_1', indexes: {creationNo: 1}, value: {latitude: 28.946907, longitude: -82.00319, timestamp: '2014-11-24T13:14:04.823Z', user_id: '2c1421c4-161d-456b-a1c1-63ceededc3d5'," +
-              "gauge1: 142}}" +
-        ", {key: 'my_key_2', indexes: {creationNo: 2}, value: {latitude: 28.946907, longitude: -82.00319, timestamp: '2014-11-24T13:14:05.823Z', user_id: '2c1421c4-161d-456b-a1c1-63ceededc3d5'," +
-              "gauge1: 145, gauge2: 'min'}}" +
-        ", {indexes: {creationNo: 3}, value: {latitude: 28.946907, longitude: -82.00319, timestamp: '2014-11-24T13:14:05.823Z', user_id: '2c1421c4-161d-456b-a1c1-63ceededc3d5'," +
-              "gauge1: 0}}" +
-        ", {indexes: {creationNo: 4}, value: {latitude: 28.946907, longitude: -82.00319, timestamp: '2014-11-24T13:14:05.823Z', user_id: '2c1421c4-161d-456b-a1c1-63ceededc3d5'," +
-              "gauge1: 400, gauge2: '128'}}" +
-        ", {indexes: {creationNo: 5}, value: {latitude: 28.946907, longitude: -82.00319, timestamp: '2014-11-24T13:14:04.823Z', user_id: 'e36fb24a-5f61-4107-a5a2-405647a3a6bd'}}" +
-        ", {indexes: {creationNo: 6}, value: {latitude: 28.946907, longitude: -82.00319, timestamp: '2014-11-24T13:14:05.823Z', user_id: 'e36fb24a-5f61-4107-a5a2-405647a3a6bd'}}" +
-        ", {indexes: {creationNo: 7}, value: {latitude: 28.946907, longitude: -82.00319, timestamp: '2014-11-24T13:14:06.823Z', user_id: 'e36fb24a-5f61-4107-a5a2-405647a3a6bd'}}" +
-        ", {indexes: {creationNo: 8}, value: {latitude: 28.946907, longitude: -82.00319, timestamp: '2014-11-24T13:14:07.823Z', user_id: 'e36fb24a-5f61-4107-a5a2-405647a3a6bd'}}" +
-        ", {indexes: {creationNo: 9}, value: {latitude: 28.946907, longitude: -82.00319, timestamp: '2014-11-24T13:14:06.823Z', user_id: '36e3616f-59f2-4096-b5cb-3ab94db5da41'}}" +
-        ", {indexes: {creationNo: 10}, value: {latitude: 28.946907, longitude: -82.00319, timestamp: '2014-11-24T13:14:07.823Z', user_id: '36e3616f-59f2-4096-b5cb-3ab94db5da41'}}" +
-    "]"
+    """[
+      | {key: 'my_key_1', indexes: {creationNo: 1}, value: {latitude: 28.946907, longitude: -82.00319, timestamp: '2014-11-24T13:14:04.823Z', user_id: '2c1421c4-161d-456b-a1c1-63ceededc3d5',gauge1: 142}},
+      | {key: 'my_key_2', indexes: {creationNo: 2}, value: {latitude: 28.946907, longitude: -82.00319, timestamp: '2014-11-24T13:14:05.823Z', user_id: '2c1421c4-161d-456b-a1c1-63ceededc3d5',gauge1: 145, gauge2: 'min'}},
+      |                  {indexes: {creationNo: 3}, value: {latitude: 28.946907, longitude: -82.00319, timestamp: '2014-11-24T13:14:05.823Z', user_id: '2c1421c4-161d-456b-a1c1-63ceededc3d5',gauge1: 0}},
+      |                  {indexes: {creationNo: 4}, value: {latitude: 28.946907, longitude: -82.00319, timestamp: '2014-11-24T13:14:05.823Z', user_id: '2c1421c4-161d-456b-a1c1-63ceededc3d5',gauge1: 400, gauge2: '128'}},
+      |                  {indexes: {creationNo: 5}, value: {latitude: 28.946907, longitude: -82.00319, timestamp: '2014-11-24T13:14:04.823Z', user_id: 'e36fb24a-5f61-4107-a5a2-405647a3a6bd'}},
+      |                  {indexes: {creationNo: 6}, value: {latitude: 28.946907, longitude: -82.00319, timestamp: '2014-11-24T13:14:05.823Z', user_id: 'e36fb24a-5f61-4107-a5a2-405647a3a6bd'}},
+      |                  {indexes: {creationNo: 7}, value: {latitude: 28.946907, longitude: -82.00319, timestamp: '2014-11-24T13:14:06.823Z', user_id: 'e36fb24a-5f61-4107-a5a2-405647a3a6bd'}},
+      |                  {indexes: {creationNo: 8}, value: {latitude: 28.946907, longitude: -82.00319, timestamp: '2014-11-24T13:14:07.823Z', user_id: 'e36fb24a-5f61-4107-a5a2-405647a3a6bd'}},
+      |                  {indexes: {creationNo: 9}, value: {latitude: 28.946907, longitude: -82.00319, timestamp: '2014-11-24T13:14:06.823Z', user_id: '36e3616f-59f2-4096-b5cb-3ab94db5da41'}},
+      |                  {indexes: {creationNo: 10}, value: {latitude: 28.946907, longitude: -82.00319, timestamp: '2014-11-24T13:14:07.823Z', user_id: '36e3616f-59f2-4096-b5cb-3ab94db5da41'}}
+      |]""".stripMargin
 
-  private def computeAndGatherAllResults[T](rdd: RiakRDD[T]): List[T] = {
-    val partitions = rdd.getPartitions
-    val tc = Mockito.mock(classOf[TaskContext])
-    rdd.compute(partitions.iterator.next(), tc).toList
-  }
-
-  @Ignore("Ignored until the fix for '2i inconsistency reads' will be released")
   @Test
-  def check2IPageableProcessing() = {
-    val rdd = sc.riakBucket[Map[String,_]](DEFAULT_NAMESPACE)
-      .query2iRange(CREATION_INDEX, 1, 10)
+  def check2IPageableProcessing(): Unit = {
+    val rdd = sc.riakBucket[Map[String, _]](DEFAULT_NAMESPACE).query2iRange(CREATION_INDEX, 1, 10) // scalastyle:ignore
 
-    val results = computeAndGatherAllResults(rdd.asInstanceOf[RiakRDD[String]])
-    Assert.assertEquals(10, results.size)
+    Assert.assertEquals(10, rdd.collect().length) // scalastyle:ignore
   }
 
   @Test
-  def check2IRangeQuery() = {
-    val rdd = sc.riakBucket[Map[String, _]](DEFAULT_NAMESPACE)
-                .query2iRange(CREATION_INDEX, 1, 2)
+  def check2IRangeQuery(): Unit = {
+    val rdd = sc.riakBucket[Map[String, _]](DEFAULT_NAMESPACE).query2iRange(CREATION_INDEX, 1, 2)
 
-    val results = computeAndGatherAllResults(rdd.asInstanceOf[RiakRDD[String]])
-    assertEqualsUsingJSONIgnoreOrder("[" +
-        "{latitude: 28.946907, longitude: -82.00319, timestamp: '2014-11-24T13:14:04.823Z', user_id: '2c1421c4-161d-456b-a1c1-63ceededc3d5'," +
-          "gauge1: 142" +
-          "}," +
-        "{latitude: 28.946907, longitude: -82.00319, timestamp: '2014-11-24T13:14:05.823Z', user_id: '2c1421c4-161d-456b-a1c1-63ceededc3d5'," +
-          "gauge1: 145, gauge2: 'min'" +
-          "}" +
-        "]",
-      results)
+    assertEqualsUsingJSONIgnoreOrder(
+      """[
+        | {latitude: 28.946907, longitude: -82.00319, timestamp: '2014-11-24T13:14:04.823Z', user_id: '2c1421c4-161d-456b-a1c1-63ceededc3d5',gauge1: 142},
+        | {latitude: 28.946907, longitude: -82.00319, timestamp: '2014-11-24T13:14:05.823Z', user_id: '2c1421c4-161d-456b-a1c1-63ceededc3d5',gauge1: 145, gauge2: 'min'}
+        |]""".stripMargin, rdd.collect())
   }
 
   @Test
-  def checkUDTMapping(): Unit ={
-    val rdd = sc.riakBucket[TSData](DEFAULT_NAMESPACE)
-      .query2iRange(CREATION_INDEX, 1, 2)
+  def checkUDTMapping(): Unit = {
+    val rdd = sc.riakBucket[TSData](DEFAULT_NAMESPACE).query2iRange(CREATION_INDEX, 1, 2)
 
-    val results = computeAndGatherAllResults(rdd)
-    logInfo(results.toString())
+    assertEqualsUsingJSONIgnoreOrder(
+      """[
+        | {"latitude":28.946907,"longitude":-82.00319,"timestamp":"2014-11-24T13:14:04.823Z","user_id":"2c1421c4-161d-456b-a1c1-63ceededc3d5","gauge1":142,"gauge2":null},
+        | {"latitude":28.946907,"longitude":-82.00319,"timestamp":"2014-11-24T13:14:05.823Z","user_id":"2c1421c4-161d-456b-a1c1-63ceededc3d5","gauge1":145,"gauge2":"min"}
+        |]""".stripMargin, rdd.collect())
   }
 
   @Test
-  def check2IRangeQueryPairRDD() = {
-    val rdd = sc.riakBucket[String, Map[String, _]](DEFAULT_NAMESPACE, (k: Location, r: RiakObject) => (k.getKeyAsString, RiakObjectConversionUtil.from[Map[String, _]](k,r)))
-      .query2iRange(CREATION_INDEX, 1, 2)
-    val results = computeAndGatherAllResults(rdd.asInstanceOf[RiakRDD[(String, Map[String, _])]])
-    assertEqualsUsingJSONIgnoreOrder("[" +
-      "['my_key_1',{latitude: 28.946907, longitude: -82.00319, timestamp: '2014-11-24T13:14:04.823Z', user_id: '2c1421c4-161d-456b-a1c1-63ceededc3d5'," +
-      "gauge1: 142" +
-      "}]," +
-      "['my_key_2',{latitude: 28.946907, longitude: -82.00319, timestamp: '2014-11-24T13:14:05.823Z', user_id: '2c1421c4-161d-456b-a1c1-63ceededc3d5'," +
-      "gauge1: 145, gauge2: 'min'" +
-      "}]" +
-      "]",
-      results)
+  def check2IRangeQueryPairRDD(): Unit = {
+    val rdd = sc.riakBucket[(String, Map[String, _])](DEFAULT_NAMESPACE).query2iRange(CREATION_INDEX, 1, 2)
+
+    assertEqualsUsingJSONIgnoreOrder(
+      """[
+        | ['my_key_1', {latitude: 28.946907,longitude: -82.00319,timestamp:'2014-11-24T13:14:04.823Z',user_id:'2c1421c4-161d-456b-a1c1-63ceededc3d5',gauge1:142}],
+        | ['my_key_2', {latitude: 28.946907, longitude: -82.00319,timestamp: '2014-11-24T13:14:05.823Z',user_id: '2c1421c4-161d-456b-a1c1-63ceededc3d5',gauge1: 145,gauge2: 'min'}]
+        |]""".stripMargin, rdd.collect())
+  }
+
+  @Test
+  def checkDefaultDataMapping(): Unit = {
+    val rdd = sc.riakBucket(DEFAULT_NAMESPACE).query2iRange(CREATION_INDEX, 1, 2)
+
+    assertEqualsUsingJSONIgnoreOrder(
+      """[
+        |   ["my_key_2",{"gauge1":145,"timestamp":"2014-11-24T13:14:05.823Z","latitude":28.946907,"longitude":-82.00319,"user_id":"2c1421c4-161d-456b-a1c1-63ceededc3d5","gauge2":"min"}],
+        |   ["my_key_1",{"gauge1":142,"timestamp":"2014-11-24T13:14:04.823Z","latitude":28.946907,"longitude":-82.00319,"user_id":"2c1421c4-161d-456b-a1c1-63ceededc3d5"}]
+        |]""".stripMargin, rdd.collect())
   }
   
   @Test

@@ -97,7 +97,7 @@ object OFACDemo {
 
     println(s"OFAC stats will be calculated for $index from $from to $to")
 
-    val rdd = sc.riakBucket[Map[String, _]](bucket, "default").query2iRange(index, from, to).map(x => {
+    val rdd = sc.riakBucket[(String, Map[String, _])](bucket, "default").query2iRange(index, from, to).map(x => {
       x._2("data").asInstanceOf[Map[String,String]]
     })
 

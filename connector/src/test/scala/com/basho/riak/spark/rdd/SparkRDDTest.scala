@@ -18,13 +18,14 @@
 package com.basho.riak.spark.rdd
 
 import com.basho.riak.client.core.query.Location
+import com.basho.riak.spark._
 import com.basho.riak.spark.rdd.connector.RiakConnector
 import org.apache.spark.rdd.RDD
-import org.junit.{Ignore, Before, Test}
-import com.basho.riak.spark._
 import org.junit.Assert._
-import scala.collection.mutable.ListBuffer
 import org.junit.experimental.categories.Category
+import org.junit.{Before, Test}
+
+import scala.collection.mutable.ListBuffer
 
 case class UserData(timestamp: String, user_id: String)
 
@@ -89,7 +90,6 @@ class SparkRDDTest extends AbstractRDDTest {
     assertEqualsUsingJSON("[['u1',3],['u2',1],['u3',2]]", data)
   }
 
-  @Ignore("Need to fix Tuple2 desiarilization")
   @Test
   def storePairRDDWithDefaultMapper(): Unit = {
     val perUserTotalRDD = calculateUserOrderedTotals()

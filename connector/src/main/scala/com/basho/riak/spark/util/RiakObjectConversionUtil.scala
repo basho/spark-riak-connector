@@ -24,7 +24,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 
 import scala.reflect.ClassTag
-import scala.runtime.Nothing$
 
 object RiakObjectConversionUtil {
 
@@ -41,10 +40,11 @@ object RiakObjectConversionUtil {
   }
 
   def from[T](location: Location, ro: RiakObject)(implicit ct: ClassTag[T]): T = (ct.runtimeClass match {
-    // It's necessary to identify cases when parameter type is not specified (when T is Nothing)
-    case x: Class[_] if x == classOf[Nothing$] => parseContentTypeAndCharset(ro.getContentType) match {
+    // It's necessary to identify cases when parameter type is not specified (when T is Any)
+    case x: Class[_] if x == classOf[Any] => parseContentTypeAndCharset(ro.getContentType) match {
       case ("text/plain", _) => ConverterFactory.getInstance.getConverter(classOf[String])
-      case _ => throw new IllegalStateException("Bucket type is not specified. Riak object cannot be parsed.")
+      case ("application/json", _) => ConverterFactory.getInstance.getConverter(classOf[Map[String, _]])
+      case _ => throw new IllegalStateException("Data type cannot be inferred by RiakObject content type.")
     }
     case x: Class[_] => ConverterFactory.getInstance.getConverter(x)
   }).toDomain(ro, location)

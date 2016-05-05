@@ -21,6 +21,7 @@ import com.basho.riak.spark.japi.SparkJavaUtil;
 import com.basho.riak.spark.japi.rdd.RiakJavaRDD;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import scala.Tuple2;
 
 import java.util.List;
 
@@ -56,13 +57,25 @@ public class JavaRDDReadTest extends AbstractJavaSparkTest {
                 "}", results.get(0));
     }
 
-    @Category(RiakTSTests.class)
+    @Category(RiakKVTests.class)
     @Test
     public void readAll() {
-        RiakJavaRDD<String> rdd = SparkJavaUtil.javaFunctions(jsc).riakBucket(DEFAULT_NAMESPACE(), String.class).
-                queryAll();
+        RiakJavaRDD<String> rdd = SparkJavaUtil.javaFunctions(jsc)
+                .riakBucket(DEFAULT_NAMESPACE(), String.class)
+                .queryAll();
 
         final List<String> results = rdd.takeOrdered(100);
+        assertEquals(6, results.size());
+    }
+
+    @Category(RiakKVTests.class)
+    @Test
+    public void readAllWithDefaultConversion() {
+        RiakJavaRDD<Tuple2<String, Object>> rdd = SparkJavaUtil.javaFunctions(jsc)
+                .riakBucket(DEFAULT_NAMESPACE())
+                .queryAll();
+
+        List<Tuple2<String, Object>> results = rdd.collect();
         assertEquals(6, results.size());
     }
 }

@@ -1,7 +1,7 @@
 package com.basho.riak.spark.rdd
 
 import java.util
-import com.basho.riak.client.api.RiakClient
+
 import com.basho.riak.client.api.commands.kv.CoveragePlan
 import com.basho.riak.client.core.operations.CoveragePlanOperation.Response.CoverageEntry
 import com.basho.riak.client.core.util.HostAndPort
@@ -12,6 +12,7 @@ import org.apache.commons.lang3.reflect.FieldUtils
 import org.apache.spark.SparkConf
 import org.junit.Assert._
 import org.junit.Test
+import org.junit.experimental.categories.Category
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 import org.junit.runners.Parameterized.Parameters
@@ -19,9 +20,9 @@ import org.mockito.Matchers._
 import org.mockito.Mockito._
 import org.mockito.invocation.InvocationOnMock
 import org.mockito.stubbing.Answer
+
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
-import org.junit.experimental.categories.Category
 
 @RunWith(value = classOf[Parameterized])
 @Category(Array(classOf[RiakKVTests]))
@@ -66,7 +67,7 @@ class FinePartitioningTest(splitSize: Int) extends AbstractRDDTest {
     })
 
     // copy result RDD and substitute connector mock
-    val wrapper = new RiakRDD[String](sc, connector, data.bucketType, data.bucketName, data.convert, data.queryData, data.readConf)
+    val wrapper = new RiakRDD[String](sc, connector, data.bucketType, data.bucketName, data.queryData, data.readConf)
     val partitions = wrapper.partitions
 
     // verify partitions number

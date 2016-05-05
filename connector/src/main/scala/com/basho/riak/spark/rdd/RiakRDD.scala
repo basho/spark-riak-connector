@@ -20,6 +20,7 @@ package com.basho.riak.spark.rdd
 import com.basho.riak.client.core.query.{Location, RiakObject}
 import com.basho.riak.spark.query.{KVDataQueryingIterator, Query, QueryData}
 import com.basho.riak.spark.rdd.connector.RiakConnector
+import com.basho.riak.spark.rdd.mapper.ReadDataMapperFactory
 import com.basho.riak.spark.rdd.partitioner._
 import com.basho.riak.spark.util.{CountingIterator, DataConvertingIterator}
 import org.apache.spark.annotation.DeveloperApi
@@ -29,17 +30,16 @@ import org.apache.spark.{Logging, Partition, SparkContext, TaskContext}
 import scala.language.existentials
 import scala.reflect.ClassTag
 
-class RiakRDD[R] private[spark] (
-    @transient sc: SparkContext,
-    val connector: RiakConnector,
-    val bucketType: String,
-    val bucketName: String,
-    val convert:(Location, RiakObject) => R,
-    val queryData: Option[QueryData[_]] = None,
-    val readConf: ReadConf = ReadConf()
-    )(
-      implicit val ct : ClassTag[R])
-  extends RDD[R](sc, Seq.empty) with Logging {
+class RiakRDD[R] private[spark](@transient sc: SparkContext,
+                                val connector: RiakConnector,
+                                val bucketType: String,
+                                val bucketName: String,
+                                val queryData: Option[QueryData[_]] = None,
+                                val readConf: ReadConf = ReadConf()
+                               )(implicit
+                                 val ct: ClassTag[R],
+                                 val rdmf: ReadDataMapperFactory[R]
+                               ) extends RDD[R](sc, Seq.empty) with Logging {
 
   override def getPartitions: Array[Partition] = {
 
@@ -68,10 +68,11 @@ class RiakRDD[R] private[spark] (
   private def doCompute[K](partitionIdx: Int, context: TaskContext, queryData: QueryData[K]): Iterator[R] = {
     val startTime = System.currentTimeMillis()
 
-    val query = Query(BucketDef(bucketType, bucketName), readConf, connector, queryData)
+    val bucketDef = BucketDef(bucketType, bucketName)
+    val query = Query(bucketDef, readConf, connector, queryData)
 
     val iterator: Iterator[(Location, RiakObject)] = KVDataQueryingIterator(query)
-    val convertingIterator = DataConvertingIterator.createRiakObjectConverting[R](iterator, convert)
+    val convertingIterator = DataConvertingIterator.createRiakObjectConverting[R](iterator, rdmf.dataMapper(bucketDef).mapValue)
     val countingIterator = CountingIterator[R](convertingIterator)
     context.addTaskCompletionListener { (context) =>
       val endTime = System.currentTimeMillis()
@@ -88,10 +89,10 @@ class RiakRDD[R] private[spark] (
     case _ => throw new IllegalStateException("Unsupported partition type")
   }
 
-  private def copy(
-                   queryData: Option[QueryData[_]] = queryData,
-                   readConf: ReadConf = readConf, connector: RiakConnector = connector): RiakRDD[R] =
-    new RiakRDD(sc, connector, bucketType, bucketName, convert, queryData, readConf)
+  private def copy(queryData: Option[QueryData[_]] = queryData,
+                   readConf: ReadConf = readConf,
+                   connector: RiakConnector = connector
+                  ): RiakRDD[R] = new RiakRDD(sc, connector, bucketType, bucketName, queryData, readConf)
 
   @DeveloperApi
   def query2iRange[K](index: String, from: K, to: K): RiakRDD[R] = {
@@ -143,13 +144,26 @@ class RiakRDD[R] private[spark] (
 }
 
 object RiakRDD {
-  def apply[T](sc: SparkContext, bucketType: String, bucketName: String, convert: (Location, RiakObject) => T,
-               queryData: Option[QueryData[_]], readConf: ReadConf)
-              (implicit ct: ClassTag[T]): RiakRDD[T] =
-    new RiakRDD[T](sc, RiakConnector(sc.getConf), bucketType, bucketName, convert, queryData, readConf)
+  def apply[T](sc: SparkContext,
+               bucketType: String,
+               bucketName: String,
+               queryData: Option[QueryData[_]],
+               readConf: ReadConf
+              )(implicit
+                ct: ClassTag[T],
+                rdmf: ReadDataMapperFactory[T]
+              ): RiakRDD[T] =
+    new RiakRDD[T](sc, RiakConnector(sc.getConf), bucketType, bucketName, queryData, readConf)
 
-  def apply[K, V](sc: SparkContext, bucketType: String, bucketName: String, convert: (Location, RiakObject) => (K, V),
-                  queryData: Option[QueryData[_]], readConf: ReadConf)
-                 (implicit keyCT: ClassTag[K], valueCT: ClassTag[V]): RiakRDD[(K, V)] =
-    new RiakRDD[(K, V)](sc, RiakConnector(sc.getConf), bucketType, bucketName, convert, queryData, readConf)
+  def apply[K, V](sc: SparkContext,
+                  bucketType: String,
+                  bucketName: String,
+                  queryData: Option[QueryData[_]],
+                  readConf: ReadConf
+                 )(implicit
+                   keyCT: ClassTag[K],
+                   valueCT: ClassTag[V],
+                   rdmf: ReadDataMapperFactory[(K, V)]
+                 ): RiakRDD[(K, V)] =
+    new RiakRDD[(K, V)](sc, RiakConnector(sc.getConf), bucketType, bucketName, queryData, readConf)
 }

@@ -41,8 +41,7 @@ public class RiakJavaRDDQueryKeysTest extends AbstractJavaSparkTest {
     @Category(RiakCommonTests.class)
     @Test
     public void check2iRangeQueryPairRDD() {
-        List<Tuple2<String, Map>> results = javaFunctions(jsc).riakBucket(DEFAULT_NAMESPACE(),
-                new FuncMapRiakObject(), String.class, Map.class)
+        List<Tuple2<String, Map>> results = javaFunctions(jsc).riakBucket(DEFAULT_NAMESPACE(), String.class, Map.class)
                 .queryBucketKeys("key-1", "key-4", "key-6")
                 .collect();
         assertEqualsUsingJSONIgnoreOrder("[" +

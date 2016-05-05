@@ -24,13 +24,17 @@ import java.time.Instant
 import java.util.UUID
 
 import com.basho.riak.client.api.convert.{Converter, ConverterFactory}
+import com.basho.riak.client.core.query.{Location, RiakObject}
 import com.basho.riak.client.core.util.BinaryValue
 import com.basho.riak.spark._
-import org.apache.spark.SparkException
+import com.basho.riak.spark.rdd.mapper.{ReadDataMapper, ReadDataMapperAsFactory}
+import com.basho.riak.spark.util.RiakObjectConversionUtil
 import org.junit.Assert._
-import org.junit.{Rule, Test}
 import org.junit.experimental.categories.Category
 import org.junit.rules.ExpectedException
+import org.junit.{Rule, Test}
+
+import scala.reflect.ClassTag
 
 case class UserTS(timestamp: String, user_id: String)
 
@@ -58,14 +62,6 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
   protected override def initSparkConf() =
     super.initSparkConf()
       .setAppName("Bunch of read RDD tests")
-
-  @Test
-  def readJsonDataFromBucketWithoutTypeShouldFail():Unit = {
-    expectedException.expect(classOf[SparkException])
-    expectedException.expectMessage("Bucket type is not specified. Riak object cannot be parsed.")
-
-    sc.riakBucket(DEFAULT_NAMESPACE).query2iRange(CREATION_INDEX, 1, 10).collect()
-  }
 
   @Test
   def readTextDataFromBucketWithoutTypeShouldReturnValues():Unit = {
@@ -306,29 +302,27 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
 
   @Test
   @Category(Array(classOf[RiakTSTests]))
-  def local2iRangeRead() ={
+  def local2iRangeRead(): Unit = {
 
     val data = sc.riakBucket[UserTS](DEFAULT_NAMESPACE)
-      .query2iRangeLocal("creationNo", 1, 1000)
-      .mapPartitionsWithIndex(funcReMapWithPartitionIdx, preservesPartitioning=true)
+      .query2iRangeLocal("creationNo", 1, 1000) // scalastyle:ignore
+      .mapPartitionsWithIndex(funcReMapWithPartitionIdx, preservesPartitioning = true)
       .groupByKey()
       .collect()
 
-    val count = data.size
-
     // TODO: needs to verify the number of the created partitions
-    val allValues = data.map{case (k,v)=> v}.flatten
+    val allValues = data.flatMap { case (k, v) => v }
 
-    assertEquals(7, allValues.size)
+    assertEquals(7, allValues.length) // scalastyle:ignore
   }
 
   @Test
-  def testPartitionsCount() = {
+  def testPartitionsCount(): Unit = {
     val readConf = ReadConf(sc.getConf)
     val partitions = sc.riakBucket[UserTS](DEFAULT_NAMESPACE)
-      .query2iRangeLocal("creationNo", 1, 1000).getPartitions
+      .query2iRangeLocal("creationNo", 1, 1000).getPartitions // scalastyle:ignore
 
-    assertEquals(readConf.splitCount, partitions.size)
+    assertEquals(readConf.splitCount, partitions.length)
   }
 
   @Test
@@ -344,12 +338,13 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
           (user.user_id, new Timestamp(instant.toEpochMilli))
         }
 
-        override def fromDomain(t: (String, Timestamp)): Converter[(String, Timestamp)]#ContentAndType =
-          throw new RuntimeException("Not implemented")
+        override def fromDomain(t: (String, Timestamp)): ContentAndType = throw new NotImplementedError()
       })
 
-    val rdd = sc.riakBucket[(String, Timestamp)](DEFAULT_NAMESPACE)
-      .query2iRange(CREATION_INDEX, 3, 6)
+    // Overrides default pair mapping implementation
+    implicit val converter = CustomMapper
+    val rdd = sc.riakBucket(DEFAULT_NAMESPACE)
+      .query2iRange(CREATION_INDEX, 3, 6) // scalastyle:ignore
 
     // calculating minimal timestamp per user
     val data = rdd
@@ -364,4 +359,14 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
         | ["u1","2014-11-24T13:18:04.000+0000"]
         |]""".stripMargin, data)
   }
+}
+
+object CustomMapper extends ReadDataMapper[(String, Timestamp)] with ReadDataMapperAsFactory[(String, Timestamp)] {
+  override def mapValue(location: Location,
+                        riakObject: RiakObject
+                       )(implicit
+                         ct: ClassTag[(String, Timestamp)]
+                       ): (String, Timestamp) = RiakObjectConversionUtil.from(location, riakObject)(ct)
+
+  override def targetClass: Class[(String, Timestamp)] = classOf[(String, Timestamp)]
 }

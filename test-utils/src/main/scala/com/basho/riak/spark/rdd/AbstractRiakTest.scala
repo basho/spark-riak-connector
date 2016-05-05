@@ -95,7 +95,7 @@ abstract class AbstractRiakTest extends RiakFunctions{
     assertEqualsUsingJSONImpl(jsonExpected, actual, JsonAssert.when(Option.IGNORING_ARRAY_ORDER))
   }
 
-  private def assertEqualsUsingJSONImpl(jsonExpected: AnyRef, actual: AnyRef, configuration: Configuration) {
+  private def assertEqualsUsingJSONImpl(jsonExpected: AnyRef, actual: AnyRef, configuration: Configuration): Unit = {
     var strExpected: String = null
     var strActual: String = null
     try{
