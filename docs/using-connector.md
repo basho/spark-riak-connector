@@ -446,9 +446,21 @@ val df = sqlContext.read
 In the previous example, the query times, `CAST('$from' AS TIMESTAMP)` and `CAST('$to' AS TIMESTAMP)`, are Timestamps which are cast from a Long integer since the datetime values in `df` are stored as Timestamps.
 
 
-## TS Table Range Query Partitioning
+## Partitioning for Riak TS Table Queries
 
-Riak TS range queries are limited to a maximum of 5 quanta (see http://docs.basho.com/riakts/latest/using/querying/). To work around this limitation or simply achieve higher read performance, large ranges can be split into smaller sub-ranges at partitioning time.
+For native Riak TS range queries (without Dataframes) single partition will be created. For Dataframe reads there are two options.
+
+### Coverage Plan Based Partitioning
+
+By default all Dataframe reads will use coverage plan based partitioner. 
+It will split initial range query into subranges each containing period of 1 quantum. All the data from the subrange is stored on the same Riak node. Subranges are then grouped by host and split into a number of partitons(spark.riak.input.split.count) such that each partition queries single Riak node.
+This guaranties that queries will not exceed the maximum quanta limit of 5.
+
+NOTE: All data from each subrange will be loaded at once. Paginated reads are not yet implemented.
+
+### Range Query Partitioning
+
+Large ranges can be automatically split into smaller sub-ranges at partitioning time without taking into account data location by simply dividing the initial range into a number of partitions.
 
 To use this functionality it's required to provide the following options:
 * `spark.riak.partitioning.ts-range-field-name` to identify quantized field
@@ -486,6 +498,8 @@ The initial range query will be split into 5 subqueries (one per each partition)
 * ```time >= CAST(555555 AS TIMESTAMP) AND time < CAST(555556 AS TIMESTAMP) AND col1 = 'val1'```
 
 Not providing the `spark.riak.partitioning.ts-range-field-name` property will default to having a single partition with initial query.
+
+NOTE: All data from each subrange will be loaded at once. Paginated reads are not yet implemented.
 
 ## TS Bulk Write
 
