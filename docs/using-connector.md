@@ -373,9 +373,26 @@ Any of the Spark Connector options can be provided in `.option()` or `.options()
 ### Key Based Partitioning
 Querying with the following methods with result in a RDD with single partition:
 
-* query2iRange(index, from, to)
 * query2iKeys(index, keys*)
 * queryBucketKeys(keys*)
+
+If 2i is an Int, Long or BigInt, range query will be automatically split into a number of subranges defined by the **spark.riak.input.split.count** option, creating a partition for each subrange.  
+* query2iRange(index, from, to)
+
+If 2i is of the other types, a single partition will be created.
+
+For example,
+```scala
+val conf = new SparkConf()
+        .setAppName("My Spark Riak App")
+        .set("spark.riak.input.split.count", "10")
+
+val sc = new SparkContext(conf)
+...
+sc.riakBucket[UserTS](DEFAULT_NAMESPACE)
+    .query2iRange(CREATION_INDEX, 100L, 200L)
+```
+Initial range of [100, 200] will be split into 10 subranges: [100,110], [111,121], [122,132], [133,143], [144,154], [155,165], [166,176], [177,187], [188,198], [199,200].
 
 The following methods will split the RDD into multiple partitions:
 * partitionBy2iRanges(index, ranges*) will create a partition for each of the  input ranges
