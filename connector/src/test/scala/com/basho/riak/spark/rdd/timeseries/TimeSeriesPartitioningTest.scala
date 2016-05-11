@@ -108,6 +108,53 @@ class TimeSeriesPartitioningTest {
     val partitions = df.rdd.partitions
     assertEquals(partitionsCount, partitions.size)
   }
+  
+
+  @Test
+  def smallRangeShouldBeSinglePartitionTest(): Unit = {
+    val (localFrom, localTo) = (new Timestamp(500L), new Timestamp(504L))
+    val df = sqlContext.read
+      .option("spark.riak.input.split.count", partitionsCount.toString)
+      .option("spark.riak.partitioning.ts-range-field-name", tsRangeFieldName)
+      .format("org.apache.spark.sql.riak")
+      .schema(schema)
+      .load(bucketName)
+      .filter(s"time >=  CAST('$localFrom' AS TIMESTAMP) AND time <= CAST('$localTo' AS TIMESTAMP)")
+
+    val partitions = df.rdd.partitions
+    assertEquals(1, partitions.size)
+  }
+  
+  @Test
+  def invalidRangeTest(): Unit = {
+    expectedException.expect(classOf[IllegalArgumentException])
+    expectedException.expectMessage("requirement failed: Invalid range query")
+    val df = sqlContext.read
+      .option("spark.riak.input.split.count", partitionsCount.toString)
+      .option("spark.riak.partitioning.ts-range-field-name", tsRangeFieldName)
+      .option("spark.riak.partitioning.ts-quantum", "10s")
+      .format("org.apache.spark.sql.riak")
+      .schema(schema)
+      .load(bucketName)
+      .filter(s"time >=  CAST('$from' AS TIMESTAMP) AND time < CAST('$from' AS TIMESTAMP)")
+
+    val partitions = df.rdd.partitions
+  }
+  
+  @Test
+  def withOptionTestFromToTo(): Unit = {
+    val df = sqlContext.read
+      .option("spark.riak.input.split.count", partitionsCount.toString)
+      .option("spark.riak.partitioning.ts-range-field-name", tsRangeFieldName)
+      .option("spark.riak.partitioning.ts-quantum", "10s")
+      .format("org.apache.spark.sql.riak")
+      .schema(schema)
+      .load(bucketName)
+      .filter(s"time >=  CAST('$from' AS TIMESTAMP) AND time <= CAST('$from' AS TIMESTAMP)")
+
+    val partitions = df.rdd.partitions
+    assertEquals(1, partitions.size)
+  }
 
   @Test
   def withoutDFTest(): Unit = {
@@ -180,6 +227,41 @@ class TimeSeriesPartitioningTest {
       .load(bucketName)
       .filter(s"time <=  CAST('$to' AS TIMESTAMP)")
     val partitions = df.rdd.partitions
+  }
+  
+  @Test
+  def withLessThanQuantaLimitTest(): Unit = {
+    val df = sqlContext.read
+      .option("spark.riak.input.split.count", partitionsCount.toString)
+      .option("spark.riak.partitioning.ts-range-field-name", tsRangeFieldName)
+      .option("spark.riak.partitioning.ts-quantum", "20d")
+      .format("org.apache.spark.sql.riak")
+      .schema(schema)
+      .load(bucketName)
+      .filter(s"time >=  CAST('$from' AS TIMESTAMP) AND time <= CAST('$to' AS TIMESTAMP)")
+
+    val partitions = df.rdd.partitions
+    assertEquals(partitionsCount, partitions.size)
+    val filteredPartitions = partitions.filter(x => x.asInstanceOf[RiakTSPartition].queryData.size != 1)
+    assertEquals(0, filteredPartitions.size)
+  }
+  
+  @Test
+  def withGreaterThanQuantaLimitTest(): Unit = {
+    val (localFrom, localTo) = (new Timestamp(1000000L), new Timestamp(3000000L))
+    val df = sqlContext.read
+      .option("spark.riak.input.split.count", partitionsCount.toString)
+      .option("spark.riak.partitioning.ts-range-field-name", tsRangeFieldName)
+      .option("spark.riak.partitioning.ts-quantum", "10s")
+      .format("org.apache.spark.sql.riak")
+      .schema(schema)
+      .load(bucketName)
+      .filter(s"time >=  CAST('$localFrom' AS TIMESTAMP) AND time < CAST('$localTo' AS TIMESTAMP)")
+
+    val partitions = df.rdd.partitions
+    assertEquals(partitionsCount, partitions.size)
+    val filteredPartitions = partitions.filter(x => x.asInstanceOf[RiakTSPartition].queryData.size <= 1)
+    assertEquals(0, filteredPartitions.size)
   }
 
   @Test

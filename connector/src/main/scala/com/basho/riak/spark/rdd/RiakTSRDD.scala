@@ -43,6 +43,7 @@ class RiakTSRDD[R] private[spark](
      whereConstraints: Option[(String, Seq[Any])] = None,
      filters: Array[Filter] = Array(),
      tsRangeFieldName: Option[String] = None,
+     quantum: Option[Long] = None,
      val query: Option[String] = None,
      val readConf: ReadConf = ReadConf())
     (implicit val ct: ClassTag[R])
@@ -54,7 +55,7 @@ class RiakTSRDD[R] private[spark](
       SinglePartitionRiakTSPartitioner.partitions(connector.hosts, bucketName, schema, columnNames, query, whereConstraints)
     else {
       val partitioner = tsRangeFieldName match {
-        case Some(name) => RangedRiakTSPartitioner(connector.hosts, bucketName, schema, columnNames, filters, readConf, name)
+        case Some(name) => RangedRiakTSPartitioner(connector, bucketName, schema, columnNames, filters, readConf, name, quantum)
         case None       => RangedRiakTSPartitioner(connector, bucketName, schema, columnNames, filters, readConf)
       }
       partitioner.partitions()
@@ -115,8 +116,9 @@ class RiakTSRDD[R] private[spark](
         where: Option[(String, Seq[Any])] = whereConstraints,
         readConf: ReadConf = readConf, connector: RiakConnector = connector,
         filters: Array[Filter] = filters,
-        tsRangeFieldName: Option[String] = tsRangeFieldName): RiakTSRDD[R] =
-    new RiakTSRDD(sc, connector, bucketName, schema, columnNames, where, filters, tsRangeFieldName, query, readConf)
+        tsRangeFieldName: Option[String] = tsRangeFieldName,
+        quantum: Option[Long] = quantum): RiakTSRDD[R] =
+    new RiakTSRDD(sc, connector, bucketName, schema, columnNames, where, filters, tsRangeFieldName, quantum, query, readConf)
 
   def select(columns: String*): RiakTSRDD[R] = {
     copy(columnNames = Some(columns))
@@ -139,6 +141,10 @@ class RiakTSRDD[R] private[spark](
 
   def filter(filters: Array[Filter]): RiakTSRDD[R] = {
     copy(filters = filters)
+  }
+  
+  def quantum(quantum: Long): RiakTSRDD[R] = {
+    copy(quantum = Some(quantum))
   }
 
   def partitionByTimeRanges(tsRangeFieldName: String, filters: Array[Filter]): RiakTSRDD[R] = {

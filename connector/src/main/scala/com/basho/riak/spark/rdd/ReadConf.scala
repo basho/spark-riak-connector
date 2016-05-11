@@ -19,8 +19,10 @@ package com.basho.riak.spark.rdd
 
 import java.io.InputStream
 import java.util.Properties
-
 import org.apache.spark.SparkConf
+import java.time.Duration
+import org.joda.time.Duration
+import org.apache.spark.network.util.JavaUtils
 
 /** RDD read settings
  *
@@ -39,6 +41,7 @@ case class ReadConf (
    * Providing this property automatically turns on RangedRiakTSPartitioner
    */
   val tsRangeFieldName: String = null,
+  val quantum: Option[Long] = None,
 
   /**
     * Turns on streaming values support for PEx.
@@ -60,7 +63,8 @@ case class ReadConf (
     val newUseStreamingValuesForFBRead = options.getOrElse(ReadConf.useStreamingValuesPropName, useStreamingValuesForFBRead.toString).toBoolean
     val newTsTimestampBinding = TsTimestampBindingType(options.getOrElse(ReadConf.tsBindingsTimestamp, tsTimestampBinding.value))
     val newTsRangeFieldName = options.getOrElse(ReadConf.tsRangeFieldPropName, tsRangeFieldName)
-    ReadConf(newFetchSize, newSplitCount, newTsTimestampBinding, newTsRangeFieldName, newUseStreamingValuesForFBRead)
+    val newQuantum = options.get(ReadConf.tsQuantumPropName).map(JavaUtils.timeStringAsMs)
+    ReadConf(newFetchSize, newSplitCount, newTsTimestampBinding, newTsRangeFieldName, newQuantum, newUseStreamingValuesForFBRead)
   }
 }
 
@@ -71,6 +75,7 @@ object ReadConf {
   final val fetchSizePropName = "spark.riak.input.fetch-size"
   final val tsBindingsTimestamp = "spark.riakts.bindings.timestamp"
   final val tsRangeFieldPropName = "spark.riak.partitioning.ts-range-field-name"
+  final val tsQuantumPropName = "spark.riak.partitioning.ts-quantum"
 
   private val defaultProperties: Properties =
      getClass.getResourceAsStream("/ee-default.properties") match {
@@ -104,6 +109,7 @@ object ReadConf {
       splitCount = conf.getInt(splitCountPropName, DefaultSplitCount),
       tsTimestampBinding = TsTimestampBindingType(conf.get(tsBindingsTimestamp, DefaultTsTimestampBinding.value)),
       tsRangeFieldName = conf.get(tsRangeFieldPropName, null),
+      quantum = conf.getOption(tsQuantumPropName).map(JavaUtils.timeStringAsMs),
       useStreamingValuesForFBRead = conf.getBoolean(useStreamingValuesPropName, DefaultUseStreamingValues4FBRead)
     )
   }
