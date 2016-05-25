@@ -58,8 +58,9 @@ In order to use the Spark-Riak connector, you must have the following installed:
   - [Working With TS Dates](./docs/using-connector.md#working-with-ts-dates)
   - [TS Table Range Query Partitioning](./docs/using-connector.md#ts-table-range-query-partitioning)
   - [TS Bulk Write](./docs/using-connector.md#ts-bulk-write)
+  - [Spark Streaming Example](.docs/using-connector.md#spark-streaming-example)
   - [Using Java With The Connector](./docs/using-connector.md#using-java-with-the-connector)
-
+  
 - [Spark-Riak Connector Example Apps](./examples/README.md#examples-and-interactive-scala-shell-repl)
   
 ## Mailing List
