@@ -89,7 +89,7 @@ object AbstractRiakSparkTest {
 
   val _dockerCluster: DockerRiakClusterRule = new DockerRiakClusterRule(DockerRiakCluster.builder()
     .withNodes(1)
-    .withTimeout(1)
+    .withTimeout(2)
     .withForcePull(false),
     System.getProperties.containsKey(RIAK_PBCHOST_PROPERTY))
 }

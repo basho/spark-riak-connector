@@ -19,12 +19,32 @@ package com.basho.riak.spark.writer.mapper
 
 import com.basho.riak.spark._
 import com.basho.riak.spark.rdd.BucketDef
-import com.basho.riak.spark.writer.{WriteDataMapper, WriteDataMapperFactory}
+import com.basho.riak.spark.writer.{ WriteDataMapper, WriteDataMapperFactory }
+import java.util.HashMap
 
-class DefaultWriteDataMapper[T] (bucketDef: BucketDef) extends WriteDataMapper[T, KeyValue]{
+class DefaultWriteDataMapper[T](bucketDef: BucketDef) extends WriteDataMapper[T, KeyValue] {
   override def mapValue(value: T): KeyValue = {
     // scalastyle:off null
-    (null, value)
+    value match {
+      // HashMap and Array are used for processing objects comming from python
+      // TODO: Move to specific data mappers like in com.basho.riak.spark.writer.mapper.TupleWriteDataMapper
+      case m: HashMap[_, _] => {
+        if (m.size == 1) {
+          val entry = m.entrySet().iterator().next()
+          (entry.getKey.toString() -> entry.getValue)
+        } else {
+          (null, m)
+        }
+      }
+      case a: Array[_] => {
+        if (a.size == 1) {
+          (null, a.head)
+        } else {
+          (a.head.toString(), a.tail)
+        }
+      }
+      case _ => (null, value)
+    }
     // scalastyle:on null
   }
 }

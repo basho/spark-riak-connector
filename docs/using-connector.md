@@ -2,8 +2,6 @@
 
 This document will walk you through setting up your application for development with the Spark-Riak connector.
 
-**Note: Currently, if you are using Python, only Riak TS tables, Spark DataFrames and Spark SQL are supported. Reading and writing to Riak KV buckets is not supported yet with Python.**
-
 Scroll down or click below for the desired information:
 - [Configuration of Spark Context](./using-connector.md#configuration-of-spark-context)
 - [Failover Handling](./using-connector.md#failover-handling)
@@ -37,6 +35,7 @@ import com.basho.riak.spark._
 **Python**
 ```python
 import pyspark
+import pyspark_riak
 ```
 You can control how your Spark application interacts with Riak by configuring different options for your `SparkContext` or `SQLContext`. You can set these options within the $SPARK_HOME/conf/spark-default.conf.  If you don't set an option, it will be automatically set to the default values listed below.
 
@@ -75,7 +74,9 @@ conf = pyspark.SparkConf().setAppName("My Spark Riak App")
 conf.set("spark.riak.connection.host", "127.0.0.1:8087")
 conf.set("spark.riak.connections.min", "20")
 conf.set("spark.riak.connections.max", "50")
-sc = pyspark.SparkContext("spark://127.0.0.1:7077", "test", conf)
+sc = pyspark.SparkContext("spark://127.0.0.1:7077", "test", conf)	
+
+pyspark_riak.riak_context(sc)
 ```
 
 
@@ -92,38 +93,69 @@ exhausted.
 
 Once a SparkContext is created, we can load data stored in Riak KV buckets into Spark as RDDs. To specify which bucket to use:
 
+**Scala**
 ```scala
 val kv_bucket_name = new Namespace("test-data")
 ```
 
 Let's do a simple but very powerful full bucket read. We're going to read the content of entire Riak KV bucket in one command, and it will happen in an efficient partitioned parallel way and get values as Strings:
 
+**Scala**
 ```scala
- val data = sc.riakBucket[String](kv_bucket_name).queryAll()
+val data = sc.riakBucket[String](kv_bucket_name).queryAll()
+```
+
+**Python**
+```python
+data = sc.riakBucket(bucket_name, bucket_type).queryAll()
 ```
 
 When you know your keys by name, you can pass them in directly:
 
+**Scala**
 ```scala
 val rdd = sc.riakBucket[String](kv_bucket_name).queryBucketKeys("Alice", "Bob", "Charlie")
 ```
 
+**Python**
+```python
+rdd = sc.riakBucket(bucket_name, bucket_type).queryBucketKeys("Alice", "Bob", "Charlie")
+```
+
 You can also specifiy a range of values (say, from 1 to 5000) defined by a numeric 2i index in Riak if your index is `myIndex`:
 
+**Scala**
 ```scala
 val rdd = sc.riakBucket[String](kv_bucket_name).query2iRange("myIndex", 1L, 5000L)
 ```
 
+**Python**
+```python
+rdd = sc.riakBucket(bucket_name, bucket_type).query2iRange("myIndex", 1L, 5000L)
+```
+
 You can also specify a set of numeric 2i range values to query by:
 
+**Scala**
 ```scala
 val rdd = sc.riakBucket[String](kv_bucket_name).partitionBy2iRanges("myIndex", 1->3, 4->6, 7->12)
 ```
 
+**Python**
+```python
+rdd = sc.riakBucket(bucket_name, bucket_type).partitionBy2iRanges("myIndex", (1, 3), (4, 6), (7, 12))
+```
+
 You can also query by a 2i string tag or set of 2i string tags:
 
+**Scala**
 ```scala
-val rdd = sc.riakBucket[String](kv_bucket_name).query2iKeys("mon_data", "wed_data", "fri_data")
+val rdd = sc.riakBucket[String](kv_bucket_name).query2iKeys("dailyDataIndx", "mon_data", "wed_data", "fri_data")
+```
+
+**Python**
+```python
+rdd = sc.riakBucket(bucket_name, bucket_type).query2iKeys("dailyDataIndx", "mon_data", "wed_data", "fri_data")
 ```
 
 ## Writing Data To KV Bucket
@@ -136,9 +168,15 @@ import com.basho.riak.spark.writer.{WriteDataMapper, WriteDataMapperFactory}
 
 Define the output bucket and issue `saveToRiak` method on an RDD:
 
+**Scala**
 ```scala
 val output_kv_bucket = new Namespace("test-bucket")
 rdd.saveToRiak(output_kv_bucket)
+```
+
+**Python**
+```python
+rdd.saveToRiak(bucket_name, bucket_type)
 ```
 
 ## Writing Data To KV Bucket With 2i Indices
