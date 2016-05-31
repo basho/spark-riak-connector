@@ -6,6 +6,7 @@ This document will walk you through setting up your application for development 
 
 Scroll down or click below for the desired information:
 - [Configuration of Spark Context](./using-connector.md#configuration-of-spark-context)
+- [Failover Handling](./using-connector.md#failover-handling)
 - [Reading Data From KV Bucket](./using-connector.md#reading-data-from-kv-bucket)
 - [Writing Data To KV Bucket](./using-connector.md#writing-data-to-kv-bucket)
 - [Writing Data To KV Bucket With 2i Indices](./using-connector.md#writing-data-to-kv-bucket-with-2i-indices)
@@ -76,6 +77,17 @@ conf.set("spark.riak.connections.min", "20")
 conf.set("spark.riak.connections.max", "50")
 sc = pyspark.SparkContext("spark://127.0.0.1:7077", "test", conf)
 ```
+
+
+## Failover Handling
+ 
+When reading data from Riak, the Spark-Riak connector will run a full bucket query. This query first obtains metadata, called a coverage plan, from Riak about 
+where the data is located in the cluster. This coverage plan will have a list of nodes were the data lives, but the Spark-Riak connector will use the first entry 
+in this list to read the data from Riak. After the Spark-Riak connector recieves the coverage plan, a node may fail and the reads going to the node will also 
+fail. In this event, the Spark-Riak connector will request and alternative coverage plan from Riak for the data that failed to be read from Riak. This alternative 
+coverage plan will return the next node that holds the data that we are attempting to read. Then the Spark-Riak connector will attempt to read the missing data 
+from the nodes in the alternative coverage plan. This will continue until the missing data is successfully read or the list of alternative nodes has been 
+exhausted.
 
 ## Reading Data From KV Bucket
 
