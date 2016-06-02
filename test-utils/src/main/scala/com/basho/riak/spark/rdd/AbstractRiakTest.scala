@@ -21,48 +21,41 @@ import java.io.IOException
 
 import com.basho.riak.client.core.RiakNode
 import com.basho.riak.client.core.query.Namespace
-import com.basho.riak.client.core.util.HostAndPort
 import com.fasterxml.jackson.core.JsonProcessingException
 import net.javacrumbs.jsonunit.JsonAssert
-import net.javacrumbs.jsonunit.core.{Configuration, Option}
-import org.apache.commons.lang3.StringUtils
+import net.javacrumbs.jsonunit.core.{Configuration, Option => JsonUnitOption}
+import org.junit._
 import org.junit.rules.TestWatcher
 import org.junit.runner.Description
-import org.junit.{Before, Rule}
 import org.slf4j.{Logger, LoggerFactory}
 
-import scala.collection.JavaConversions._
+abstract class AbstractRiakTest extends RiakFunctions {
 
-abstract class AbstractRiakTest extends RiakFunctions{
-
-  private val logger: Logger = LoggerFactory.getLogger(this.getClass)
+  private final val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   protected val DEFAULT_NAMESPACE = new Namespace("default","test-bucket")
   protected val DEFAULT_NAMESPACE_4STORE = new Namespace("default", "test-bucket-4store")
-  protected val DEFAULT_RIAK_HOST = System.getProperty("com.basho.riak.pbchost", RiakNode.Builder.DEFAULT_REMOTE_ADDRESS)
 
-  protected override val riakHosts:Set[HostAndPort] = HostAndPort.hostsFromString(DEFAULT_RIAK_HOST, RiakNode.Builder.DEFAULT_REMOTE_PORT).toSet
   protected override val numberOfParallelRequests: Int = 4
+  protected override val nodeBuilder: RiakNode.Builder = new RiakNode.Builder().withMinConnections(numberOfParallelRequests)
 
-  protected override val nodeBuilder: RiakNode.Builder =
-    new RiakNode.Builder()
-      .withMinConnections(numberOfParallelRequests)
-
-  protected def jsonData(): String = null
+  protected val jsonData: Option[String] = None
 
   @Rule
-  def watchman = new TestWatcher() {
+  def watchman: TestWatcher = new TestWatcher() {
     override def starting(description: Description): Unit = {
       super.starting(description)
-      logger.info("\n----------------------------------------\n" +
-                  "  [TEST STARTED]  {}\n" +
-          "----------------------------------------\n",
+      logger.info(
+        "\n----------------------------------------\n" +
+        "  [TEST STARTED]  {}\n" +
+        "----------------------------------------\n",
         description.getDisplayName)
     }
 
     override def finished(description: Description): Unit = {
       super.finished(description)
-      logger.info("\n----------------------------------------\n" +
+      logger.info(
+        "\n----------------------------------------\n" +
         "  [TEST FINISHED]  {}\n" +
         "----------------------------------------\n",
         description.getDisplayName)
@@ -76,39 +69,32 @@ abstract class AbstractRiakTest extends RiakFunctions{
     // Purge data: data might be not only created, but it may be also changed during the previous test case execution
     //
     // For manual check: curl -v http://localhost:10018/buckets/test-bucket/keys?keys=true
-    List(DEFAULT_NAMESPACE, DEFAULT_NAMESPACE_4STORE) foreach (x => resetAndEmptyBucket(x))
+    List(DEFAULT_NAMESPACE, DEFAULT_NAMESPACE_4STORE) foreach resetAndEmptyBucket
 
-    withRiakDo(session => {
-      val data: String = jsonData()
-
-      if (StringUtils.isNotBlank(data)) {
-        createValues(session, DEFAULT_NAMESPACE, data)
-      }
-    })
+    withRiakDo(session => jsonData.foreach(createValues(session, DEFAULT_NAMESPACE, _)))
   }
 
   protected def assertEqualsUsingJSON(jsonExpected: AnyRef, actual: AnyRef): Unit = {
-    assertEqualsUsingJSONImpl(jsonExpected, actual, null)
+    assertEqualsUsingJSONImpl(jsonExpected, actual, null) // scalastyle:ignore
   }
 
   protected def assertEqualsUsingJSONIgnoreOrder(jsonExpected: AnyRef, actual: AnyRef): Unit = {
-    assertEqualsUsingJSONImpl(jsonExpected, actual, JsonAssert.when(Option.IGNORING_ARRAY_ORDER))
+    assertEqualsUsingJSONImpl(jsonExpected, actual, JsonAssert.when(JsonUnitOption.IGNORING_ARRAY_ORDER))
   }
 
   private def assertEqualsUsingJSONImpl(jsonExpected: AnyRef, actual: AnyRef, configuration: Configuration): Unit = {
-    var strExpected: String = null
-    var strActual: String = null
-    try{
+    var strExpected: String = null // scalastyle:ignore
+    var strActual: String = null // scalastyle:ignore
+    try {
       strExpected = tolerantMapper.writerWithDefaultPrettyPrinter().writeValueAsString(parseIfString(jsonExpected))
       strActual = tolerantMapper.writerWithDefaultPrettyPrinter().writeValueAsString(parseIfString(actual))
-    }catch{
+    } catch {
       case ex: JsonProcessingException => throw new RuntimeException(ex)
     }
 
-    if(configuration != null) {
-      JsonAssert.assertJsonEquals(strExpected, strActual, configuration)
-    } else {
-      JsonAssert.assertJsonEquals(strExpected, strActual)
+    scala.Option(configuration) match {
+      case Some(x:Configuration) => JsonAssert.assertJsonEquals(strExpected, strActual, x)
+      case None => JsonAssert.assertJsonEquals(strExpected, strActual)
     }
   }
   

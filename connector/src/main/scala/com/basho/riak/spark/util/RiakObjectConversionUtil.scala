@@ -70,5 +70,6 @@ object RiakObjectConversionUtil {
   private def parseContentTypeAndCharset(contentType: String): (String, String) =
     contentType.split(";").map(x => x.trim.toLowerCase).toList match {
       case ct :: others => ct -> others.find(x => x.startsWith("charset")).getOrElse("UTF-8")
+      case Nil => throw new IllegalArgumentException(s"Content type value '$contentType' cannot be parsed")
     }
 }

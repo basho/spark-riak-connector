@@ -28,27 +28,26 @@ import org.junit.experimental.categories.Category
 case class TestData(id: String, name: String, age: Int, category: String)
 
 @Category(Array(classOf[RiakTSTests]))
-class SparkDataframesTest extends AbstractRDDTest {
+class SparkDataframesTest extends SingleNodeRiakSparkTest with AbstractRDDTest {
 
   private val indexName = "creationNo"
 
-  protected override def jsonData(): String =
-    "[" +
-      "  {key: 'key1', value: {id: 'u1', name: 'Ben', age: 20, category: 'CategoryA'}}" +
-      ", {key: 'key2', value: {id: 'u2', name: 'Clair', age: 30, category: 'CategoryB'}}" +
-      ", {key: 'key3', value: {id: 'u3', name: 'John', age: 70}}" +
-      ", {key: 'key4', value: {id: 'u4', name: 'Chris', age: 10, category: 'CategoryC'}}" +
-      ", {key: 'key5', value: {id: 'u5', name: 'Mary', age: 40, category: 'CategoryB'}}" +
-      ", {key: 'key6', value: {id: 'u6', name: 'George', age: 50, category: 'CategoryC'}}" +
-      "]"
-  protected override def initSparkConf = {
-    super.initSparkConf().setAppName("Dataframes Test")
-  }
+  protected override val jsonData = Some(
+    """[
+      |   {key: 'key1', value: {id: 'u1', name: 'Ben', age: 20, category: 'CategoryA'}},
+      |   {key: 'key2', value: {id: 'u2', name: 'Clair', age: 30, category: 'CategoryB'}},
+      |   {key: 'key3', value: {id: 'u3', name: 'John', age: 70}},
+      |   {key: 'key4', value: {id: 'u4', name: 'Chris', age: 10, category: 'CategoryC'}},
+      |   {key: 'key5', value: {id: 'u5', name: 'Mary', age: 40, category: 'CategoryB'}},
+      |   {key: 'key6', value: {id: 'u6', name: 'George', age: 50, category: 'CategoryC'}}
+      |]""".stripMargin)
+
+  protected override def initSparkConf() = super.initSparkConf().setAppName("Dataframes Test")
 
   private def stringify = (s: Array[String]) => s.mkString("[", ",", "]")
 
-  var sqlContextHolder: SQLContext = null
-  var df: DataFrame = null
+  var sqlContextHolder: SQLContext = _
+  var df: DataFrame = _
 
   @Before
   def initializeDF(): Unit = {
@@ -56,7 +55,7 @@ class SparkDataframesTest extends AbstractRDDTest {
     import sqlContext.implicits._
     sqlContextHolder = sqlContext
     df = sc.riakBucket[TestData](DEFAULT_NAMESPACE.getBucketNameAsString)
-      .queryAll.toDF
+      .queryAll().toDF
     df.registerTempTable("test")
   }
 
@@ -71,10 +70,11 @@ class SparkDataframesTest extends AbstractRDDTest {
   @Test
   def sqlQueryTest(): Unit = {
     val sqlResult = sqlContextHolder.sql("select * from test where category >= 'CategoryC'").toJSON.collect
-    val expected = "[" +
-      "{id:'u4',name:'Chris',age:10,category:'CategoryC'}," + 
-      "{id:'u6',name:'George',age:50,category:'CategoryC'}" +
-      "]"
+    val expected =
+      """ [
+        |   {id:'u4',name:'Chris',age:10,category:'CategoryC'},
+        |   {id:'u6',name:'George',age:50,category:'CategoryC'}
+        | ]""".stripMargin
     assertEqualsUsingJSONIgnoreOrder(expected, stringify(sqlResult))
   }
 
@@ -82,26 +82,28 @@ class SparkDataframesTest extends AbstractRDDTest {
   def udfTest(): Unit = {
     sqlContextHolder.udf.register("stringLength", (s: String) => s.length)
     val udf = sqlContextHolder.sql("select name, stringLength(name) strLgth from test order by strLgth, name").toJSON.collect
-    val expected = "[" +
-      "{name:'Ben',strLgth:3}," +
-      "{name:'John',strLgth:4}," + 
-      "{name:'Mary',strLgth:4}," +
-      "{name:'Chris',strLgth:5}," +
-      "{name:'Clair',strLgth:5}," +
-      "{name:'George',strLgth:6}" +
-      "]"
+    val expected =
+      """ [
+        |   {name:'Ben',strLgth:3},
+        |   {name:'John',strLgth:4},
+        |   {name:'Mary',strLgth:4},
+        |   {name:'Chris',strLgth:5},
+        |   {name:'Clair',strLgth:5},
+        |   {name:'George',strLgth:6}
+        | ]""".stripMargin
     assertEqualsUsingJSON(expected, stringify(udf))
   }
 
   @Test
   def grouppingTest(): Unit = {
     val groupped = df.groupBy("category").count.toJSON.collect
-    val expected = "[" +
-      "{category:'CategoryA',count:1}," +
-      "{category:'CategoryB',count:2}," +
-      "{category:'CategoryC',count:2}," +
-      "{count:1}" +
-      "]"
+    val expected =
+      """ [
+        |   {category:'CategoryA',count:1},
+        |   {category:'CategoryB',count:2},
+        |   {category:'CategoryC',count:2},
+        |   {count:1}
+        | ]""".stripMargin
     assertEqualsUsingJSONIgnoreOrder(expected, stringify(groupped))
   }
 

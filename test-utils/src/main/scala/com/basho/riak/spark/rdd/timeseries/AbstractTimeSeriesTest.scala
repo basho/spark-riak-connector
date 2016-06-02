@@ -28,7 +28,7 @@ import com.basho.riak.client.core.operations.FetchBucketPropsOperation
 import com.basho.riak.client.core.operations.ts.{QueryOperation, StoreOperation}
 import com.basho.riak.client.core.query.Namespace
 import com.basho.riak.client.core.query.timeseries._
-import com.basho.riak.spark.rdd.AbstractRiakSparkTest
+import com.basho.riak.spark.rdd.SingleNodeRiakSparkTest
 import org.apache.spark.Logging
 import org.apache.spark.sql.types._
 import org.junit.Assert._
@@ -43,7 +43,7 @@ case class TimeSeriesData(time: Long, user_id: String, temperature_k: Double)
 /**
   * @author Sergey Galkin <srggal at gmail dot com>
   */
-abstract class AbstractTimeSeriesTest(val createTestData: Boolean = true) extends AbstractRiakSparkTest with Logging {
+abstract class AbstractTimeSeriesTest(val createTestData: Boolean = true) extends SingleNodeRiakSparkTest with Logging {
 
   val _expectedException: ExpectedException = ExpectedException.none()
 
@@ -109,11 +109,9 @@ abstract class AbstractTimeSeriesTest(val createTestData: Boolean = true) extend
     c
   }
 
-  override def initialize(): Unit = {
+  override def setupData(): Unit = {
     /* DO NOT CALL INHERITED initialize to avoid initialization of KV bucket */
-    // super.initialize()
-
-    sc = createSparkContext(initSparkConf())
+    // super.setupData()
 
     createTableIfNotExists(DEFAULT_TS_NAMESPACE)
 

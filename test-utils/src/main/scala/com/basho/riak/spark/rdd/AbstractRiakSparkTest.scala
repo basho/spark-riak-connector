@@ -27,45 +27,39 @@ import scala.reflect.ClassTag
 
 abstract class AbstractRiakSparkTest extends AbstractRiakTest {
   // SparkContext, created per test case
-  protected var sc: SparkContext = null
+  protected var sc: SparkContext = _
 
   protected def initSparkConf(): SparkConf = new SparkConf(false)
     .setMaster("local")
     .setAppName(getClass.getSimpleName)
-    .set("spark.riak.connection.host", DEFAULT_RIAK_HOST)
     .set("spark.riak.write.replicas", "1")
     .set("spark.riak.input.fetch-size", "2")
+    .set("spark.riak.connection.host", riakHosts.map(hp => s"${hp.getHost}:${hp.getPort}").mkString(","))
 
   override def initialize(): Unit = {
     super.initialize()
-
     sc = createSparkContext(initSparkConf())
   }
 
-  protected def createSparkContext(conf: SparkConf): SparkContext = {
-    new SparkContext(conf)
-  }
+  protected def createSparkContext(conf: SparkConf): SparkContext = new SparkContext(conf)
 
   @After
-  def destroySparkContext(): Unit = {
-    if (sc != null) {
-      sc.stop()
-    }
-  }
+  def destroySparkContext(): Unit = Option(sc).foreach(x => x.stop())
 
   protected def fetchAllFromBucket(ns: Namespace): List[(String, String)] = {
     val data = ListBuffer[(String, String)]()
     withRiakDo(session =>
       foreachKeyInBucket(session, ns, (client, l: Location) => {
         val v = readByLocation[String](client, l)
-        data += ((l.getKeyAsString, v))
+        data += l.getKeyAsString -> v
       })
     )
     data.toList
   }
 
-  protected def readByLocation[T: ClassTag](riakSession: RiakClient, location: Location): T =
+  protected def readByLocation[T: ClassTag](riakSession: RiakClient, location: Location): T = {
     readByLocation(riakSession, location, (l: Location, ro: RiakObject) => convertRiakObject(l, ro))
+  }
 
   protected def convertRiakObject[T: ClassTag](l: Location, ro: RiakObject):T
 }

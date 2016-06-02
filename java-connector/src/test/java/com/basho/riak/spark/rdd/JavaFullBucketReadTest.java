@@ -4,6 +4,8 @@ import com.basho.riak.spark.japi.SparkJavaUtil;
 import com.clearspring.analytics.util.Lists;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import scala.Option;
+import scala.Some;
 import scala.Tuple2;
 
 import java.util.HashMap;
@@ -20,14 +22,16 @@ public class JavaFullBucketReadTest extends AbstractJavaSparkTest {
     private final int NUMBER_OF_TEST_VALUES = 1000;
 
     @Override
-    public String jsonData() {
-        return asStrictJSON(rangeClosed(1, NUMBER_OF_TEST_VALUES).mapToObj(i -> new HashMap<String, Object>() {{
-            put("key", "k" + i);
-            put("value", "v" + i);
-            put("indexes", new HashMap<String, String>() {{
-                put("creationNo", String.valueOf(i));
-            }});
-        }}).collect(toList()), false);
+    public Option<String> jsonData() {
+        return Some.apply(
+                asStrictJSON(rangeClosed(1, NUMBER_OF_TEST_VALUES).mapToObj(i -> new HashMap<String, Object>() {{
+                    put("key", "k" + i);
+                    put("value", "v" + i);
+                    put("indexes", new HashMap<String, String>() {{
+                        put("creationNo", String.valueOf(i));
+                    }});
+                }}).collect(toList()), false)
+        );
     }
 
     @Category(RiakTSTests.class)

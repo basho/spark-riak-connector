@@ -39,7 +39,7 @@ import scala.reflect.ClassTag
 case class UserTS(timestamp: String, user_id: String)
 
 @Category(Array(classOf[IntegrationTests]))
-class ReadFromRiakRDDTest extends AbstractRDDTest{
+class ReadFromRiakRDDTest extends SingleNodeRiakSparkTest with AbstractRDDTest {
 
   val _expectedException: ExpectedException = ExpectedException.none()
 
@@ -48,8 +48,8 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
 
   private val CREATION_INDEX = "creationNo"
 
-  protected override def jsonData(): String =
-    """[
+  protected override val jsonData = Some(
+    """ [
       |  { key: 'key-1', indexes: {creationNo: 1, category: 'neighbor'}, value: {user_id: 'u1', timestamp: '2014-11-24T13:14:04.823Z'}}
       | ,{ key: 'key-2', indexes: {creationNo: 2, category: 'visitor'}, value:  {user_id: 'u1', timestamp: '2014-11-24T13:15:04.824Z'}}
       | ,{ key: 'key-3', indexes: {creationNo: 3, category: 'neighbor'}, value: {user_id: 'u1', timestamp: '2014-11-24T13:18:04Z'}}
@@ -57,7 +57,7 @@ class ReadFromRiakRDDTest extends AbstractRDDTest{
       | ,{ key: 'key-5', indexes: {creationNo: 5, category: 'stranger'}, value: {user_id: 'u3', timestamp: '2014-11-24T13:16:04.823Z'}}
       | ,{ key: 'key-6', indexes: {creationNo: 6, category: 'stranger'}, value: {user_id: 'u3', timestamp: '2014-11-24T13:21:04.825Z'}}
       | ,{ key: 'key-7', indexes: {creationNo: 7, category: 'stranger'}, value: {user_id: 'u3', timestamp: '2014-11-24T12:01:04.825Z'}}
-      | ]""".stripMargin
+      | ]""".stripMargin)
 
   protected override def initSparkConf() =
     super.initSparkConf()

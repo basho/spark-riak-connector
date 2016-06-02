@@ -24,10 +24,10 @@ import org.junit.{Assert, Test}
 case class TSData(latitude: Float, longitude: Float, timestamp: String, user_id: String, gauge1: Int, gauge2: String)
 
 @Category(Array(classOf[RiakCommonTests]))
-class RDDTest extends AbstractRDDTest {
+class RDDTest extends SingleNodeRiakSparkTest with AbstractRDDTest {
   private final val CREATION_INDEX = "creationNo"
 
-  protected override def jsonData(): String =
+  protected override val jsonData = Some(
     """[
       | {key: 'my_key_1', indexes: {creationNo: 1}, value: {latitude: 28.946907, longitude: -82.00319, timestamp: '2014-11-24T13:14:04.823Z', user_id: '2c1421c4-161d-456b-a1c1-63ceededc3d5',gauge1: 142}},
       | {key: 'my_key_2', indexes: {creationNo: 2}, value: {latitude: 28.946907, longitude: -82.00319, timestamp: '2014-11-24T13:14:05.823Z', user_id: '2c1421c4-161d-456b-a1c1-63ceededc3d5',gauge1: 145, gauge2: 'min'}},
@@ -39,7 +39,7 @@ class RDDTest extends AbstractRDDTest {
       |                  {indexes: {creationNo: 8}, value: {latitude: 28.946907, longitude: -82.00319, timestamp: '2014-11-24T13:14:07.823Z', user_id: 'e36fb24a-5f61-4107-a5a2-405647a3a6bd'}},
       |                  {indexes: {creationNo: 9}, value: {latitude: 28.946907, longitude: -82.00319, timestamp: '2014-11-24T13:14:06.823Z', user_id: '36e3616f-59f2-4096-b5cb-3ab94db5da41'}},
       |                  {indexes: {creationNo: 10}, value: {latitude: 28.946907, longitude: -82.00319, timestamp: '2014-11-24T13:14:07.823Z', user_id: '36e3616f-59f2-4096-b5cb-3ab94db5da41'}}
-      |]""".stripMargin
+      |]""".stripMargin)
 
   @Test
   def check2IPageableProcessing(): Unit = {
@@ -93,53 +93,53 @@ class RDDTest extends AbstractRDDTest {
   }
   
   @Test
-  def test2iPartitioning() = {
+  def test2iPartitioning(): Unit = {
     val size = 3
     val points = (1 to size + 1).map(_ * 100)
     val ranges = points zip points.tail
     val rdd = sc.riakBucket[TSData](DEFAULT_NAMESPACE)
     .partitionBy2iRanges(CREATION_INDEX, ranges: _*)
     
-    Assert.assertEquals(size, rdd.partitions.size)
+    Assert.assertEquals(size, rdd.partitions.length)
   }
   
   @Test
-  def test2iParallelizationIntMultiple() = {
+  def test2iParallelizationIntMultiple(): Unit = {
     val rdd = sc.riakBucket[TSData](DEFAULT_NAMESPACE)
     .query2iRange(CREATION_INDEX, 101, 2000)
     
-    Assert.assertEquals(10, rdd.partitions.size)
+    Assert.assertEquals(10, rdd.partitions.length)
   }
   
   @Test
-  def test2iParallelizationBigIntMultiple() = {
+  def test2iParallelizationBigIntMultiple(): Unit = {
     val rdd = sc.riakBucket[TSData](DEFAULT_NAMESPACE)
     .query2iRange(CREATION_INDEX, BigInt(101L), BigInt(2000L))
     
-    Assert.assertEquals(10, rdd.partitions.size)
+    Assert.assertEquals(10, rdd.partitions.length)
   }
   
   @Test
-  def test2iParallelizationLongMultiple() = {
+  def test2iParallelizationLongMultiple(): Unit = {
     val rdd = sc.riakBucket[TSData](DEFAULT_NAMESPACE)
     .query2iRange(CREATION_INDEX, 101L, 2000L)
     
-    Assert.assertEquals(10, rdd.partitions.size)
+    Assert.assertEquals(10, rdd.partitions.length)
   }
   
   @Test
-  def test2iParallelizationIntSingle() = {
+  def test2iParallelizationIntSingle(): Unit = {
     val rdd = sc.riakBucket[TSData](DEFAULT_NAMESPACE)
     .query2iRange(CREATION_INDEX, 101, 109)
     
-    Assert.assertEquals(1, rdd.partitions.size)
+    Assert.assertEquals(1, rdd.partitions.length)
   }
-  
+
   @Test
-  def test2iParallelizationStringShouldBeSingle() = {
+  def test2iParallelizationStringShouldBeSingle(): Unit = {
     val rdd = sc.riakBucket[TSData](DEFAULT_NAMESPACE)
-    .query2iRange(CREATION_INDEX, "a", "z")
-    
-    Assert.assertEquals(1, rdd.partitions.size)
+      .query2iRange(CREATION_INDEX, "a", "z")
+
+    Assert.assertEquals(1, rdd.partitions.length)
   }
 }

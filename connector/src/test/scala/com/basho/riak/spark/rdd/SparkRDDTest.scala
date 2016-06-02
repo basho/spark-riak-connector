@@ -30,23 +30,23 @@ import scala.collection.mutable.ListBuffer
 case class UserData(timestamp: String, user_id: String)
 
 @Category(Array(classOf[RiakCommonTests]))
-class SparkRDDTest extends AbstractRDDTest {
+class SparkRDDTest extends SingleNodeRiakSparkTest with AbstractRDDTest {
   private val CREATION_INDEX = "creationNo"
 
-  protected override def jsonData(): String =
-    "[" +
-      "  {key: 'key-1', indexes: {creationNo: 1}, value: {timestamp: '2014-11-24T13:14:04.823Z', user_id: 'u1'}}" +
-      ", {key: 'key-2', indexes: {creationNo: 2}, value: {timestamp: '2014-11-24T13:15:04.823Z', user_id: 'u1'}}" +
-      ", {key: 'key-3', indexes: {creationNo: 3}, value: {timestamp: '2014-11-24T13:18:04', user_id: 'u1'}}" +
-      ", {key: 'key-4', indexes: {creationNo: 4}, value: {timestamp: '2014-11-24T13:14:04Z', user_id: 'u2'}}" +
-      ", {key: 'key-5', indexes: {creationNo: 5}, value: {timestamp: '2014-11-24T13:16:04.823Z', user_id: 'u3'}}" +
-      ", {key: 'key-6', indexes: {creationNo: 6}, value: {timestamp: '2014-11-24T13:21:04.823Z', user_id: 'u3'}}" +
-    "]"
+  protected override val jsonData = Option(
+    """ [
+      |   {key: 'key-1', indexes: {creationNo: 1}, value: {timestamp: '2014-11-24T13:14:04.823Z', user_id: 'u1'}},
+      |   {key: 'key-2', indexes: {creationNo: 2}, value: {timestamp: '2014-11-24T13:15:04.823Z', user_id: 'u1'}},
+      |   {key: 'key-3', indexes: {creationNo: 3}, value: {timestamp: '2014-11-24T13:18:04', user_id: 'u1'}},
+      |   {key: 'key-4', indexes: {creationNo: 4}, value: {timestamp: '2014-11-24T13:14:04Z', user_id: 'u2'}},
+      |   {key: 'key-5', indexes: {creationNo: 5}, value: {timestamp: '2014-11-24T13:16:04.823Z', user_id: 'u3'}},
+      |   {key: 'key-6', indexes: {creationNo: 6}, value: {timestamp: '2014-11-24T13:21:04.823Z', user_id: 'u3'}}
+      | ]
+    """.stripMargin)
 
-  var rdd: RDD[UserData] = null
+  var rdd: RDD[UserData] = _
 
-  protected override def initSparkConf() =
-    super.initSparkConf()
+  protected override def initSparkConf() = super.initSparkConf()
       .setAppName("RDD tests")
 
   @Before
@@ -56,9 +56,9 @@ class SparkRDDTest extends AbstractRDDTest {
   }
 
   @Test
-  def calculateCount(){
+  def calculateCount(): Unit = {
     val count = rdd.count()
-    assertEquals(6, count)
+    assertEquals(6, count) // scalastyle:ignore
   }
 
   @Test

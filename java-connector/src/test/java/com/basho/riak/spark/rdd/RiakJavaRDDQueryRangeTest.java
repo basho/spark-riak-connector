@@ -4,6 +4,8 @@ import com.basho.riak.spark.japi.rdd.RiakJavaPairRDD;
 import com.basho.riak.spark.japi.rdd.RiakJavaRDD;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import scala.Option;
+import scala.Some;
 import scala.Tuple2;
 
 import java.util.List;
@@ -16,8 +18,8 @@ public class RiakJavaRDDQueryRangeTest extends AbstractJavaSparkTest {
     private String CREATION_INDEX = "creationNo";
 
     @Override
-    public String jsonData() {
-        return "[" +
+    public Option<String> jsonData() {
+        return Some.apply("[" +
                 " { key: 'key-1', indexes: {creationNo: 1, category: 'neighbor'}, value: {user_id: 'u1', timestamp: '2014-11-24T13:14:04.823Z'}}" +
                 ",{ key: 'key-2', indexes: {creationNo: 2, category: 'visitor'}, value:  {user_id: 'u1', timestamp: '2014-11-24T13:15:04.824Z'}}" +
                 ",{ key: 'key-3', indexes: {creationNo: 3, category: 'neighbor'}, value: {user_id: 'u1', timestamp: '2014-11-24T13:18:04'}}" +
@@ -25,7 +27,7 @@ public class RiakJavaRDDQueryRangeTest extends AbstractJavaSparkTest {
                 ",{ key: 'key-5', indexes: {creationNo: 5, category: 'stranger'}, value: {user_id: 'u3', timestamp: '2014-11-24T13:16:04.823Z'}}" +
                 ",{ key: 'key-6', indexes: {creationNo: 6, category: 'stranger'}, value: {user_id: 'u3', timestamp: '2014-11-24T13:21:04.825Z'}}" +
                 ",{ key: 'key-7', indexes: {creationNo: 7, category: 'stranger'}, value: {user_id: 'u3', timestamp: '2014-11-24T12:01:04.825Z'}}" +
-                "]";
+                "]");
     }
 
     @Category(RiakCommonTests.class)

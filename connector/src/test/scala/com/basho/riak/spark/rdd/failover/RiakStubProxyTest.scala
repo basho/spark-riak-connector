@@ -14,9 +14,9 @@ class RiakStubProxyTest(splitSize: Int) extends FullBucketReadTest(splitSize) {
   var stubNode: RiakNodeStub = _
 
   override def initialize(): Unit = {
+    super.initialize()
     stubNode = RiakNodeStub(new ProxyMessageHandler(riakHosts.toList.head))
     stubNode.start()
-    super.initialize()
   }
 
   @After

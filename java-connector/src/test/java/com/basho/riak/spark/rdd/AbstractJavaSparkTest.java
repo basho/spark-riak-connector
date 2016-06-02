@@ -17,7 +17,6 @@
  */
 package com.basho.riak.spark.rdd;
 
-import com.basho.riak.client.api.convert.JSONConverter;
 import com.basho.riak.client.core.query.Location;
 import com.basho.riak.client.core.query.RiakObject;
 import com.basho.riak.spark.util.RiakObjectConversionUtil;
@@ -28,17 +27,14 @@ import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.PairFunction;
 import scala.Tuple2;
 import scala.reflect.ClassTag;
-import scala.runtime.AbstractFunction2;
 
-import java.io.IOException;
 import java.io.Serializable;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.stream.StreamSupport;
 
-public abstract class AbstractJavaSparkTest extends AbstractRiakSparkTest {
+public abstract class AbstractJavaSparkTest extends SingleNodeRiakSparkTest {
     // JavaSparkContext, created per test case
     protected JavaSparkContext jsc = null;
 
@@ -61,20 +57,6 @@ public abstract class AbstractJavaSparkTest extends AbstractRiakSparkTest {
         @Override
         public Tuple2<K, V> call(Tuple2<K, V> t) throws Exception {
             return t;
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    protected static class FuncMapRiakObject extends AbstractFunction2<Location, RiakObject, Tuple2<String, Map>> implements Serializable {
-
-        @Override
-        public Tuple2<String, Map> apply(Location l, RiakObject ro) {
-            try {
-                return new Tuple2<>(l.getKeyAsString(),
-                        JSONConverter.getObjectMapper().readValue(ro.getValue().unsafeGetValue(), Map.class));
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
         }
     }
 
