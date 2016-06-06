@@ -4,9 +4,9 @@
 
     <groupId>com.basho.riak</groupId>
     <artifactId>spark-riak-connector-parent</artifactId>
-    <version>1.5.0</version>
+    <version>1.5.1-SNAPSHOT</version>
     <packaging>pom</packaging>
-    <description>Spark Connector for Riak 2.3</description>
+    <description>Spark Connector for Riak KV and Riak TS</description>
     <url>https://github.com/basho/spark-riak-connector</url>
 
     <licenses>
