@@ -51,20 +51,62 @@
         <riak.test.category>com.basho.riak.spark.rdd.RiakKVTests</riak.test.category>
     </properties>
 
-    <distributionManagement>
-        <snapshotRepository>
-            <id>basho-artifactory-release</id>
-            <name>Basho Artifactory Releases</name>
-            <url>https://basholabs.artifactoryonline.com/basholabs/libs-release-local</url>
-        </snapshotRepository>
-        <repository>
-            <id>basho-artifactory-snapshots</id>
-            <name>Basho Artifactory Snapshots</name>
-            <url>https://basholabs.artifactoryonline.com/basholabs/libs-snapshot-local</url>
-        </repository>
-    </distributionManagement>
-
     <profiles>
+        <profile>
+            <id>deploy-to-artifactory</id>
+            <activation>
+                <property>
+                    <name>!performRelease</name>
+                </property>
+            </activation>
+
+            <distributionManagement>
+                <snapshotRepository>
+                    <id>basho-artifactory-release</id>
+                    <name>Basho Artifactory Releases</name>
+                    <url>https://basholabs.artifactoryonline.com/basholabs/libs-release-local</url>
+                </snapshotRepository>
+                <repository>
+                    <id>basho-artifactory-snapshots</id>
+                    <name>Basho Artifactory Snapshots</name>
+                    <url>https://basholabs.artifactoryonline.com/basholabs/libs-snapshot-local</url>
+                </repository>
+            </distributionManagement>
+
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.jfrog.buildinfo</groupId>
+                        <artifactId>artifactory-maven-plugin</artifactId>
+                        <version>2.4.0</version>
+                        <inherited>false</inherited>
+                        <executions>
+                            <execution>
+                                <id>build-info</id>
+                                <goals>
+                                    <goal>publish</goal>
+                                </goals>
+                                <configuration>
+                                    <publisher>
+                                        <contextUrl>https://basholabs.artifactoryonline.com/basholabs</contextUrl>
+                                        <username>{{ARTIFACTORY_USER}}</username>
+                                        <password>{{ARTIFACTORY_PASS}}</password>
+                                        <repoKey>libs-release-local</repoKey>
+                                        <snapshotRepoKey>libs-snapshot-local</snapshotRepoKey>
+                                    </publisher>
+                                    <buildInfo>
+                                        <buildName>{{TRAVIS_REPO_SLUG}}</buildName>
+                                        <buildNumber>{{TRAVIS_BUILD_NUMBER}}</buildNumber>
+                                        <buildUrl>https://travis-ci.com/{{TRAVIS_REPO_SLUG}}/builds/{{TRAVIS_BUILD_ID}}</buildUrl>
+                                    </buildInfo>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
         <profile>
             <id>release</id>
             <activation>
@@ -90,20 +132,6 @@
             <build>
                 <plugins>
                     <plugin>
-                        <groupId>org.jfrog.buildinfo</groupId>
-                        <artifactId>artifactory-maven-plugin</artifactId>
-                        <version>2.4.0</version>
-                        <inherited>true</inherited>
-                        <executions>
-                            <execution>
-                                <id>build-info</id>
-                                <goals />
-                            </execution>
-                        </executions>
-                        <configuration/>
-                    </plugin>
-
-                    <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-gpg-plugin</artifactId>
                         <version>1.6</version>
@@ -116,15 +144,6 @@
                                 </goals>
                             </execution>
                         </executions>
-                    </plugin>
-                    <plugin>
-                        <artifactId>maven-release-plugin</artifactId>
-                        <version>2.5.2</version>
-                        <configuration>
-                            <mavenExecutorId>forked-path</mavenExecutorId>
-                            <stagingRepository>https://oss.sonatype.org/service/local/staging/deploy/maven2</stagingRepository>
-                            <connectionUrl>scm:git:ssh://github.com/basho/spark-riak-connector.git</connectionUrl>
-                        </configuration>
                     </plugin>
                 </plugins>
             </build>
@@ -199,6 +218,15 @@
     <build>
         <pluginManagement>
             <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-release-plugin</artifactId>
+                    <version>2.5.3</version>
+                    <configuration>
+                        <useReleaseProfile>true</useReleaseProfile>
+                        <goals>deploy</goals>
+                    </configuration>
+                </plugin>
                 <plugin>
                     <groupId>com.mycila</groupId>
                     <artifactId>license-maven-plugin</artifactId>
@@ -362,37 +390,13 @@
 						</execution>
 					</executions>
 				</plugin>
-                <plugin>
-                    <groupId>org.jfrog.buildinfo</groupId>
-                    <artifactId>artifactory-maven-plugin</artifactId>
-                    <version>2.4.0</version>
-                    <inherited>false</inherited>
-                    <executions>
-                        <execution>
-                            <id>build-info</id>
-                            <goals>
-                                <goal>publish</goal>
-                            </goals>
-                            <configuration>
-                                <publisher>
-                                    <contextUrl>https://basholabs.artifactoryonline.com/basholabs</contextUrl>
-                                    <username>{{ARTIFACTORY_USER}}</username>
-                                    <password>{{ARTIFACTORY_PASS}}</password>
-                                    <repoKey>libs-release-local</repoKey>
-                                    <snapshotRepoKey>libs-snapshot-local</snapshotRepoKey>
-                                </publisher>
-                                <buildInfo>
-                                    <buildName>{{TRAVIS_REPO_SLUG}}</buildName>
-                                    <buildNumber>{{TRAVIS_BUILD_NUMBER}}</buildNumber>
-                                    <buildUrl>https://travis-ci.com/{{TRAVIS_REPO_SLUG}}/builds/{{TRAVIS_BUILD_ID}}</buildUrl>
-                                </buildInfo>
-                            </configuration>
-                        </execution>
-                    </executions>
-                </plugin>
             </plugins>
         </pluginManagement>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-release-plugin</artifactId>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
