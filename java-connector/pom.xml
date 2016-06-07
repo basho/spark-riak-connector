@@ -15,7 +15,7 @@
         <dependency>
             <groupId>com.basho.riak</groupId>
             <artifactId>spark-riak-connector</artifactId>
-            <version>${project.version}</version>
+            <version>1.5.1-SNAPSHOT</version>
         </dependency>
 
         <dependency>
@@ -30,7 +30,7 @@
         <dependency>
             <groupId>com.basho.riak</groupId>
             <artifactId>spark-riak-connector-test-utils</artifactId>
-            <version>${project.version}</version>
+            <version>1.5.1-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
         <dependency>
