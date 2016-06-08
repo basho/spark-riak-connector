@@ -4,9 +4,10 @@
 
     <groupId>com.basho.riak</groupId>
     <artifactId>spark-riak-connector-parent</artifactId>
-    <version>1.5.0</version>
+    <version>1.5.2-SNAPSHOT</version>
     <packaging>pom</packaging>
-    <description>Spark Connector for Riak 2.3</description>
+    <name>spark-riak-connector-parent</name>
+    <description>Spark Connector for Riak KV and Riak TS</description>
     <url>https://github.com/basho/spark-riak-connector</url>
 
     <licenses>
@@ -51,20 +52,62 @@
         <riak.test.category>com.basho.riak.spark.rdd.RiakKVTests</riak.test.category>
     </properties>
 
-    <distributionManagement>
-        <snapshotRepository>
-            <id>basho-artifactory-release</id>
-            <name>Basho Artifactory Releases</name>
-            <url>https://basholabs.artifactoryonline.com/basholabs/libs-release-local</url>
-        </snapshotRepository>
-        <repository>
-            <id>basho-artifactory-snapshots</id>
-            <name>Basho Artifactory Snapshots</name>
-            <url>https://basholabs.artifactoryonline.com/basholabs/libs-snapshot-local</url>
-        </repository>
-    </distributionManagement>
-
     <profiles>
+        <profile>
+            <id>deploy-to-artifactory</id>
+            <activation>
+                <property>
+                    <name>!performRelease</name>
+                </property>
+            </activation>
+
+            <distributionManagement>
+                <snapshotRepository>
+                    <id>basho-artifactory-release</id>
+                    <name>Basho Artifactory Releases</name>
+                    <url>https://basholabs.artifactoryonline.com/basholabs/libs-release-local</url>
+                </snapshotRepository>
+                <repository>
+                    <id>basho-artifactory-snapshots</id>
+                    <name>Basho Artifactory Snapshots</name>
+                    <url>https://basholabs.artifactoryonline.com/basholabs/libs-snapshot-local</url>
+                </repository>
+            </distributionManagement>
+
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.jfrog.buildinfo</groupId>
+                        <artifactId>artifactory-maven-plugin</artifactId>
+                        <version>2.4.0</version>
+                        <inherited>false</inherited>
+                        <executions>
+                            <execution>
+                                <id>build-info</id>
+                                <goals>
+                                    <goal>publish</goal>
+                                </goals>
+                                <configuration>
+                                    <publisher>
+                                        <contextUrl>https://basholabs.artifactoryonline.com/basholabs</contextUrl>
+                                        <username>{{ARTIFACTORY_USER}}</username>
+                                        <password>{{ARTIFACTORY_PASS}}</password>
+                                        <repoKey>libs-release-local</repoKey>
+                                        <snapshotRepoKey>libs-snapshot-local</snapshotRepoKey>
+                                    </publisher>
+                                    <buildInfo>
+                                        <buildName>{{TRAVIS_REPO_SLUG}}</buildName>
+                                        <buildNumber>{{TRAVIS_BUILD_NUMBER}}</buildNumber>
+                                        <buildUrl>https://travis-ci.com/{{TRAVIS_REPO_SLUG}}/builds/{{TRAVIS_BUILD_ID}}</buildUrl>
+                                    </buildInfo>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
         <profile>
             <id>release</id>
             <activation>
@@ -73,6 +116,20 @@
                     <value>true</value>
                 </property>
             </activation>
+
+            <distributionManagement>
+                <snapshotRepository>
+                    <id>sonatype-nexus-snapshots</id>
+                    <name>Sonatype Nexus Snapshots</name>
+                    <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+                </snapshotRepository>
+                <repository>
+                    <id>sonatype-nexus-staging</id>
+                    <name>Nexus Release Repository</name>
+                    <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
+                </repository>
+            </distributionManagement>
+
             <build>
                 <plugins>
                     <plugin>
@@ -88,13 +145,6 @@
                                 </goals>
                             </execution>
                         </executions>
-                    </plugin>
-                    <plugin>
-                        <artifactId>maven-release-plugin</artifactId>
-                        <version>2.5.2</version>
-                        <configuration>
-                            <mavenExecutorId>forked-path</mavenExecutorId>
-                        </configuration>
                     </plugin>
                 </plugins>
             </build>
@@ -169,6 +219,15 @@
     <build>
         <pluginManagement>
             <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-release-plugin</artifactId>
+                    <version>2.5.3</version>
+                    <configuration>
+                        <useReleaseProfile>true</useReleaseProfile>
+                        <goals>deploy</goals>
+                    </configuration>
+                </plugin>
                 <plugin>
                     <groupId>com.mycila</groupId>
                     <artifactId>license-maven-plugin</artifactId>
@@ -260,9 +319,9 @@
                     </executions>
                 </plugin>
                 <plugin>
-                    <groupId>org.scala-tools</groupId>
-                    <artifactId>maven-scala-plugin</artifactId>
-                    <version>2.15.2</version>
+                    <groupId>net.alchim31.maven</groupId>
+                    <artifactId>scala-maven-plugin</artifactId>
+                    <version>3.2.2</version>
                     <configuration>
                         <scalaVersion>${scala.version}</scalaVersion>
                         <args>
@@ -275,6 +334,7 @@
                             <goals>
                                 <goal>compile</goal>
                                 <goal>testCompile</goal>
+                                <goal>doc-jar</goal>
                             </goals>
                         </execution>
                     </executions>
@@ -282,7 +342,16 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-javadoc-plugin</artifactId>
-                    <version>2.9.1</version>
+                    <version>2.10.3</version>
+                    <executions>
+                        <execution>
+                            <id>attach-javadoc</id>
+                            <phase>verify</phase>
+                            <goals>
+                                <goal>jar</goal>
+                            </goals>
+                        </execution>
+                    </executions>
                 </plugin>
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
@@ -322,37 +391,13 @@
 						</execution>
 					</executions>
 				</plugin>
-                <plugin>
-                    <groupId>org.jfrog.buildinfo</groupId>
-                    <artifactId>artifactory-maven-plugin</artifactId>
-                    <version>2.4.0</version>
-                    <inherited>false</inherited>
-                    <executions>
-                        <execution>
-                            <id>build-info</id>
-                            <goals>
-                                <goal>publish</goal>
-                            </goals>
-                            <configuration>
-                                <publisher>
-                                    <contextUrl>https://basholabs.artifactoryonline.com/basholabs</contextUrl>
-                                    <username>{{ARTIFACTORY_USER}}</username>
-                                    <password>{{ARTIFACTORY_PASS}}</password>
-                                    <repoKey>libs-release-local</repoKey>
-                                    <snapshotRepoKey>libs-snapshot-local</snapshotRepoKey>
-                                </publisher>
-                                <buildInfo>
-                                    <buildName>{{TRAVIS_REPO_SLUG}}</buildName>
-                                    <buildNumber>{{TRAVIS_BUILD_NUMBER}}</buildNumber>
-                                    <buildUrl>https://travis-ci.com/{{TRAVIS_REPO_SLUG}}/builds/{{TRAVIS_BUILD_ID}}</buildUrl>
-                                </buildInfo>
-                            </configuration>
-                        </execution>
-                    </executions>
-                </plugin>
             </plugins>
         </pluginManagement>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-release-plugin</artifactId>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
@@ -362,8 +407,8 @@
                 <artifactId>maven-enforcer-plugin</artifactId>
             </plugin>
             <plugin>
-                <groupId>org.scala-tools</groupId>
-                <artifactId>maven-scala-plugin</artifactId>
+                <groupId>net.alchim31.maven</groupId>
+                <artifactId>scala-maven-plugin</artifactId>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -372,6 +417,10 @@
             <plugin>
                 <groupId>org.jfrog.buildinfo</groupId>
                 <artifactId>artifactory-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
             </plugin>
         </plugins>
     </build>
