@@ -11,6 +11,7 @@
 
     <artifactId>spark-riak-connector-examples</artifactId>
     <packaging>jar</packaging>
+    <name>spark-riak-connector-examples</name>
 
     <dependencies>
         <dependency>
