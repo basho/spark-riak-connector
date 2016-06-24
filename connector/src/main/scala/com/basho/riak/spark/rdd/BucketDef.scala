@@ -29,6 +29,7 @@ case class BucketDef(bucketType: String,
 }
 
 object BucketDef{
-  def apply(bucketName: String): BucketDef = new BucketDef("default", bucketName)
+  val DefaultBucketType = "default"
+  def apply(bucketName: String): BucketDef = new BucketDef(DefaultBucketType, bucketName)
   def apply(ns: Namespace): BucketDef = new BucketDef(ns.getBucketTypeAsString, ns.getBucketNameAsString)
 }

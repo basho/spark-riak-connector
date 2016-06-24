@@ -46,6 +46,7 @@
         <spark.version>1.6.1</spark.version>
         <scala.version>2.10.5</scala.version>
         <scala.major.version>2.10</scala.major.version>
+        <java.source.version>1.8</java.source.version>
         <java.target.version>1.8</java.target.version>
         <fasterxml.jackson.version>2.4.4</fasterxml.jackson.version>
         
@@ -212,7 +213,6 @@
     <modules>
         <module>connector</module>
         <module>examples</module>
-        <module>java-connector</module>
         <module>test-utils</module>
     </modules>
 
@@ -263,6 +263,14 @@
                         <target>${java.target.version}</target>
                         <encoding>${project.build.sourceEncoding}</encoding>
                     </configuration>
+                    <executions>
+                        <execution>
+                            <phase>compile</phase>
+                            <goals>
+                                <goal>compile</goal>
+                            </goals>
+                        </execution>
+                    </executions>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -331,9 +339,23 @@
                     </configuration>
                     <executions>
                         <execution>
+                            <id>scala-compile-first</id>
+                            <phase>process-resources</phase>
                             <goals>
+                                <goal>add-source</goal>
                                 <goal>compile</goal>
+                            </goals>
+                        </execution>
+                        <execution>
+                            <id>scala-test-compile</id>
+                            <phase>process-test-resources</phase>
+                            <goals>
                                 <goal>testCompile</goal>
+                            </goals>
+                        </execution>
+                        <execution>
+                            <id>attach-javadocs</id>
+                            <goals>
                                 <goal>doc-jar</goal>
                             </goals>
                         </execution>

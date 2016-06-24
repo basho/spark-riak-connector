@@ -63,11 +63,6 @@
             <version>1.5.2-SNAPSHOT</version>
             <classifier>uber</classifier>
         </dependency>
-        <dependency>
-            <groupId>com.basho.riak</groupId>
-            <artifactId>spark-riak-connector-java</artifactId>
-            <version>1.5.2-SNAPSHOT</version>
-        </dependency>
 
         <dependency>
             <groupId>com.basho.riak</groupId>

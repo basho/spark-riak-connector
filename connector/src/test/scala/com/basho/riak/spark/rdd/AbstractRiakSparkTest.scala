@@ -62,4 +62,6 @@ abstract class AbstractRiakSparkTest extends AbstractRiakTest {
   }
 
   protected def convertRiakObject[T: ClassTag](l: Location, ro: RiakObject):T
+
+  protected def stringify = (s: Array[String]) => s.mkString("[", ",", "]")
 }

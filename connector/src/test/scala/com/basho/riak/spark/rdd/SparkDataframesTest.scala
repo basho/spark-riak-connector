@@ -44,8 +44,6 @@ class SparkDataframesTest extends SingleNodeRiakSparkTest with AbstractRDDTest {
 
   protected override def initSparkConf() = super.initSparkConf().setAppName("Dataframes Test")
 
-  private def stringify = (s: Array[String]) => s.mkString("[", ",", "]")
-
   var sqlContextHolder: SQLContext = _
   var df: DataFrame = _
 

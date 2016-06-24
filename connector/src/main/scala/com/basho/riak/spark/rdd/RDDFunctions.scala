@@ -18,7 +18,6 @@
 package com.basho.riak.spark.rdd
 
 import com.basho.riak.client.core.query.Namespace
-import com.basho.riak.client.core.query.timeseries.{Row => RiakRow}
 import com.basho.riak.spark._
 import com.basho.riak.spark.rdd.connector.RiakConnector
 import com.basho.riak.spark.writer.ts.RowDef
@@ -35,7 +34,7 @@ class RDDFunctions[T](rdd: RDD[T]) extends Serializable {
    * Store data from the `RDD` to the specified Riak bucket.
    */
   def saveToRiak(bucketName: String,
-                      bucketType: String = "default",
+                      bucketType: String = BucketDef.DefaultBucketType,
                       writeConf: WriteConf = WriteConf(sparkContext.getConf))
                      (implicit connector: RiakConnector = RiakConnector(sparkContext.getConf),
                       vwf: WriteDataMapperFactory[T, KeyValue]): Unit = {
@@ -57,7 +56,7 @@ class RDDFunctions[T](rdd: RDD[T]) extends Serializable {
   }
 
   def saveToRiakTS(bucketName: String,
-                   bucketType: String = "default",
+                   bucketType: String = BucketDef.DefaultBucketType,
                    writeConf: WriteConf = WriteConf(sparkContext.getConf))
                   (implicit evidence: T <:< SparkRow,
                    connector: RiakConnector = RiakConnector(sparkContext.getConf),
