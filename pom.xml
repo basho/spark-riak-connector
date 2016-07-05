@@ -560,7 +560,8 @@
             <dependency>
                 <groupId>com.basho.riak.test</groupId>
                 <artifactId>riak-test-docker</artifactId>
-                <version>1.0-SNAPSHOT</version>
+                <version>1.0</version>
+                <scope>test</scope>
                 <exclusions>
                     <exclusion>
                         <groupId>commons-logging</groupId>

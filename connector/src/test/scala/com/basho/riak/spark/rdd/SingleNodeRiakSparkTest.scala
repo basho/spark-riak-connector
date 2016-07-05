@@ -12,19 +12,21 @@ import scala.collection.JavaConversions._
 
 abstract class SingleNodeRiakSparkTest extends AbstractRiakSparkTest {
 
-  protected override def riakHosts: Set[HostAndPort] =
-    HostAndPort.hostsFromString(dockerCluster.getIps.mkString(","), RiakNode.Builder.DEFAULT_REMOTE_PORT).toSet
-
-  override protected def initSparkConf(): SparkConf = super.initSparkConf()
-    .set("spark.riak.connection.host", dockerCluster.getIps.map(x => s"$x:${RiakNode.Builder.DEFAULT_REMOTE_PORT}").mkString(","))
+  protected override def riakHosts: Set[HostAndPort] =  HostAndPort.hostsFromString(
+    dockerCluster.enabled() match {
+      case true => dockerCluster.getIps.mkString(",")
+      case _ => System.getProperty(RIAK_PBCHOST_PROPERTY, RiakNode.Builder.DEFAULT_REMOTE_ADDRESS)
+      }, RiakNode.Builder.DEFAULT_REMOTE_PORT).toSet
 }
 
 object SingleNodeRiakSparkTest {
+  val RIAK_PBCHOST_PROPERTY = "com.basho.riak.pbchost"
 
   @ClassRule
   def dockerCluster: DockerRiakClusterRule = _dockerCluster
 
   val _dockerCluster: DockerRiakClusterRule = new DockerRiakClusterRule(DockerRiakCluster.builder()
     .withNodes(1)
-    .withTimeout(1))
+    .withTimeout(1),
+    System.getProperties.containsKey(RIAK_PBCHOST_PROPERTY))
 }
