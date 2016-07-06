@@ -34,7 +34,7 @@ import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.stream.StreamSupport;
 
-public abstract class AbstractJavaSparkTest extends SingleNodeRiakSparkTest {
+public abstract class AbstractJavaSparkTest extends AbstractRiakSparkTest {
     // JavaSparkContext, created per test case
     protected JavaSparkContext jsc = null;
 

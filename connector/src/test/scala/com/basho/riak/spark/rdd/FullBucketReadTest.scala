@@ -20,6 +20,7 @@ package com.basho.riak.spark.rdd
 import java.{lang => jl, util => ju}
 
 import com.basho.riak.spark._
+import com.basho.riak.test.rule.annotations.OverrideRiakClusterConfig
 import org.apache.spark.SparkConf
 import org.junit.Assert._
 import org.junit.Test
@@ -43,7 +44,8 @@ object FullBucketReadTest {
 
 @RunWith(value = classOf[Parameterized])
 @Category(Array(classOf[RiakTSTests]))
-class FullBucketReadTest(splitSize: Int) extends SingleNodeRiakSparkTest with AbstractRDDTest {
+@OverrideRiakClusterConfig(nodes = 3, timeout = 3)
+class FullBucketReadTest(splitSize: Int) extends AbstractRDDTest {
   private val NUMBER_OF_TEST_VALUES = 1000
 
   protected override val jsonData = Some({

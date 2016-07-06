@@ -30,7 +30,7 @@ import scala.collection.mutable.ListBuffer
 case class UserData(timestamp: String, user_id: String)
 
 @Category(Array(classOf[RiakCommonTests]))
-class SparkRDDTest extends SingleNodeRiakSparkTest with AbstractRDDTest {
+class SparkRDDTest extends AbstractRDDTest {
   private val CREATION_INDEX = "creationNo"
 
   protected override val jsonData = Option(

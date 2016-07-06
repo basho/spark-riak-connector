@@ -22,27 +22,17 @@ import java.text.SimpleDateFormat
 import java.util._
 import java.util.concurrent.TimeUnit
 
-import com.basho.riak.client.api.commands.timeseries.CreateTable
-import com.basho.riak.client.api.commands.timeseries.Delete
 import com.basho.riak.client.api.commands.timeseries.{CreateTable, Delete}
 import com.basho.riak.client.core.netty.RiakResponseException
-import com.basho.riak.client.core.netty.RiakResponseException
 import com.basho.riak.client.core.operations.FetchBucketPropsOperation
-import com.basho.riak.client.core.operations.FetchBucketPropsOperation
-import com.basho.riak.client.core.operations.ts.QueryOperation
-import com.basho.riak.client.core.operations.ts.StoreOperation
 import com.basho.riak.client.core.operations.ts.{QueryOperation, StoreOperation}
-import com.basho.riak.client.core.query.Namespace
 import com.basho.riak.client.core.query.Namespace
 import com.basho.riak.client.core.query.timeseries.Cell
 import com.basho.riak.client.core.query.timeseries.ColumnDescription
 import com.basho.riak.client.core.query.timeseries.FullColumnDescription
 import com.basho.riak.client.core.query.timeseries.Row
 import com.basho.riak.client.core.query.timeseries.TableDefinition
-import com.basho.riak.client.core.query.timeseries._
-import com.basho.riak.spark.rdd.SingleNodeRiakSparkTest
-import com.basho.riak.spark.rdd.SingleNodeRiakSparkTest
-import com.basho.riak.spark.rdd.timeseries.TimeSeriesData
+import com.basho.riak.spark.rdd.AbstractRiakSparkTest
 import org.apache.spark.Logging
 import org.apache.spark.sql.types._
 import org.junit.Assert._
@@ -57,7 +47,7 @@ case class TimeSeriesData(time: Long, user_id: String, temperature_k: Double)
 /**
   * @author Sergey Galkin <srggal at gmail dot com>
   */
-abstract class AbstractTimeSeriesTest(val createTestData: Boolean = true) extends SingleNodeRiakSparkTest with Logging {
+abstract class AbstractTimeSeriesTest(val createTestData: Boolean = true) extends AbstractRiakSparkTest with Logging {
 
   val _expectedException: ExpectedException = ExpectedException.none()
 
