@@ -26,7 +26,7 @@ import scala.collection.JavaConverters._
 
 @RunWith(value = classOf[Parameterized])
 @Category(Array(classOf[RiakKVTests]))
-class FinePartitioningTest(splitSize: Int) extends SingleNodeRiakSparkTest with AbstractRDDTest {
+class FinePartitioningTest(splitSize: Int) extends  AbstractRDDTest {
 
   final val COVERAGE_ENTRIES_COUNT = 64
 

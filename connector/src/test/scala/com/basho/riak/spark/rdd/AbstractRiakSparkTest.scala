@@ -18,16 +18,32 @@
 package com.basho.riak.spark.rdd
 
 import com.basho.riak.client.api.RiakClient
+import com.basho.riak.client.core.RiakNode
 import com.basho.riak.client.core.query.{Location, Namespace, RiakObject}
-import org.apache.spark.{SparkConf, SparkContext}
+import com.basho.riak.client.core.util.HostAndPort
+import com.basho.riak.test.cluster.DockerRiakCluster
+import com.basho.riak.test.rule.DockerRiakClusterRule
+import org.apache.spark.SparkContext
 import org.junit.After
 
 import scala.collection.mutable.ListBuffer
 import scala.reflect.ClassTag
+import com.basho.riak.spark.rdd.AbstractRiakSparkTest._
+import org.apache.spark.SparkConf
+import org.junit.ClassRule
+
+import scala.collection.JavaConversions._
+
 
 abstract class AbstractRiakSparkTest extends AbstractRiakTest {
   // SparkContext, created per test case
   protected var sc: SparkContext = _
+
+  protected override def riakHosts: Set[HostAndPort] =  HostAndPort.hostsFromString(
+    dockerCluster.enabled() match {
+      case true => dockerCluster.getIps.mkString(",")
+      case _ => System.getProperty(RIAK_PBCHOST_PROPERTY, RiakNode.Builder.DEFAULT_REMOTE_ADDRESS)
+    }, RiakNode.Builder.DEFAULT_REMOTE_PORT).toSet
 
   protected def initSparkConf(): SparkConf = new SparkConf(false)
     .setMaster("local")
@@ -64,4 +80,16 @@ abstract class AbstractRiakSparkTest extends AbstractRiakTest {
   protected def convertRiakObject[T: ClassTag](l: Location, ro: RiakObject):T
 
   protected def stringify = (s: Array[String]) => s.mkString("[", ",", "]")
+}
+
+object AbstractRiakSparkTest {
+  val RIAK_PBCHOST_PROPERTY = "com.basho.riak.pbchost"
+
+  @ClassRule
+  def dockerCluster: DockerRiakClusterRule = _dockerCluster
+
+  val _dockerCluster: DockerRiakClusterRule = new DockerRiakClusterRule(DockerRiakCluster.builder()
+    .withNodes(1)
+    .withTimeout(1),
+    System.getProperties.containsKey(RIAK_PBCHOST_PROPERTY))
 }

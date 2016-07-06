@@ -1,6 +1,7 @@
 package com.basho.riak.spark.rdd;
 
 import com.basho.riak.spark.japi.SparkJavaUtil;
+import com.basho.riak.test.rule.annotations.OverrideRiakClusterConfig;
 import com.clearspring.analytics.util.Lists;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -17,6 +18,7 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.IntStream.rangeClosed;
 import static org.junit.Assert.assertEquals;
 
+@OverrideRiakClusterConfig(nodes = 3, timeout = 3)
 public class JavaFullBucketReadTest extends AbstractJavaSparkTest {
 
     private final int NUMBER_OF_TEST_VALUES = 1000;

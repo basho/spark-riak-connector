@@ -32,7 +32,7 @@ import org.junit.experimental.categories.Category
   * In order to run this test System property 'com.basho.riak-kv.pbchost' should be provided with address of started Riak KV.
   * If such system property is not provided this suite case will be skipped
   */
-class NotAvailableFeaturesTest extends SingleNodeRiakSparkTest with AbstractRDDTest {
+class NotAvailableFeaturesTest extends AbstractRDDTest {
   val _expectedException: ExpectedException = ExpectedException.none()
   @Rule
   def expectedException: ExpectedException = _expectedException
