@@ -30,59 +30,48 @@ git clone https://github.com/basho/spark-riak-connector.git
 After cloning this repository, you can build the Spark-Riak connector:
 
 ```
-mvn clean install
-```
-When you run `install`, the integration tests will execute with the Maven Failsafe Plugin. This ensures the Spark-Riak connector can be built even if there is no Riak cluster running.
-
-To turn on streaming values support for PEX, a special maven profile, "pex_streaming_vals", should be activated. It will make Full Bucket Reads (FBR) more efficient: values will be streamed as a part of the FBR response instead of being fetched in a separate operations. This feature is supported only for Riak TS.
-```
-mvn clean install -P pex_streaming_vals
-```
-Or
-```
-mvn clean install -Dpex_streaming_vals
-```
-The following command should be used to skip tests:
-```
-mvn clean install -DskipTests
+sbt clean package
 ```
 
 Once the connector is built there are several jars that are produced:
-`spark-riak-connector/target/` contains `spark-riak-connector-{{version}}.jar` - this is the connector jar. 
+`spark-riak-connector/target/` contains `spark-riak-connector-{{version}}.jar` - this is the connector jar.
+ 
+To create uber jar you should use assembly task:
 
-You'll find the results of the build in your local maven repository in the com/basho/riak directory. Most likely that will be in your home directory and the path will look like this: `~/.m2/repository/com/basho/riak/`
+```
+sbt assembly
+```
+As a result uber jar will be produced.
+`spark-riak-connector/target/` will contain `spark-riak-connector-{{version}}-uber.jar` - this is the connector uber jar.
+
+For publishing connector locally you can use publish-local task:
+
+```
+sbt publish-local
+```
+You'll find the results of the build in your local ivy2 repository in the com/basho/riak directory. Most likely that will be in your home directory and the path will look like this: `~/.ivy2/local/com/basho/riak/`
+
+You can publish connector to Maven local repo using publishM2 task:
+```
+sbt publishM2
+```
+You'll find the results of the build in your local maven repository in the com/basho/riak directory. Most likely that will be in your home directory and the path will look like this: ~/.m2/repository/com/basho/riak/
 
 
 ## Test
 
 For the Spark-Riak Connector, unit tests are separated from integration tests. 
-If there is no Riak installation running, it is still possible to successfully run unit tests:
-```
-mvn clean test
-```
-If Riak is installed it is possible to run both unit tests and integration test. Futhermore, KV-specific integration tests are separated from TS-specific ones. To choose which set of tests to run appropriate maven profile should be selected: 
 
-Profile name |Tests                                      | Default |
--------------|-------------------------------------------|---------|
-riak_ts      | TS-specific tests and majority of KV-tests| no      |
-riak_kv      | KV-only tests                             | yes     |
+To run all test use test task:
 ```
-mvn clean verify -P riak_ts
-mvn clean verify -P riak_kv
+sbt clean test
 ```
-A Riak host can be provided in "com.basho.riak.pbchost" variable
+
+To run specific tests you should use command aliases: 
 ```
-mvn clean verify -P riak_ts -Dcom.basho.riak.pbchost=myhost:8087
-```
-If Riak was installed with devrel and is running on localhost on 10017 port, it is possible to use special "devrel" maven profile instead of providing "com.basho.riak.pbchost" variable
-```
-mvn clean verify -P devrel,riak_ts
-```
-Or
-```
-mvn clean verify -P riak_ts -Denvironment=devrel
-```
-Will do the same as 
-```
-mvn clean verify -P riak_ts -Dcom.basho.riak.pbchost=localhost:10017
-```
+sbt runIntegrationTests
+sbt runRegressionTests
+sbt runRiakKVTests
+sbt runRiakTSTests
+sbt runNonIntegrationTests
+``` 

@@ -2,7 +2,7 @@ package com.basho.riak.spark.rdd;
 
 import static com.basho.riak.spark.japi.SparkJavaUtil.javaFunctions;
 import static org.junit.Assert.assertEquals;
-import static scala.collection.JavaConversions.asJavaList;
+import static scala.collection.JavaConversions.seqAsJavaList;
 
 import java.io.Serializable;
 import java.util.Arrays;
@@ -48,8 +48,8 @@ public class JavaRDDWriteTest extends AbstractJavaSparkTest {
         ), 1);
 
         javaFunctions(rdd).saveToRiak(DEFAULT_NAMESPACE_4STORE(), TupleWriteDataMapper.factory());
-
-        List<Tuple2<String, String>> t1Data = asJavaList(fetchAllFromBucket(DEFAULT_NAMESPACE_4STORE()));
+        
+        List<Tuple2<String, String>> t1Data = seqAsJavaList(fetchAllFromBucket(DEFAULT_NAMESPACE_4STORE()));
 
         assertEqualsUsingJSONIgnoreOrder("[" +
                 "['${json-unit.ignore}', 'key1']," +

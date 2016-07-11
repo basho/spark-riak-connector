@@ -1,9 +1,23 @@
-language: java
+language: scala
 jdk: oraclejdk8
-sudo: false
+sudo: required
+
+cache:
+  directories:
+    - $HOME/.ivy2
 
 services:
-  - riak
+  - docker
+
+scala:
+  - 2.10.6
+  - 2.11.7
+
+before_script:
+  - mkdir -p $HOME/.sbt/launchers/0.13.8/
+  - curl -L -o $HOME/.sbt/launchers/0.13.8/sbt-launch.jar http://dl.bintray.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/0.13.8/sbt-launch.jar
 
 script:
-  - mvn verify -Dkv -Dcom.basho.riak.pbchost=127.0.0.1:8087
+  - sbt ++$TRAVIS_SCALA_VERSION test
+  - sbt ++$TRAVIS_SCALA_VERSION package
+  - sbt ++$TRAVIS_SCALA_VERSION assembly

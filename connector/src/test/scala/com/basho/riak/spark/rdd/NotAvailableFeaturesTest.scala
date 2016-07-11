@@ -52,7 +52,7 @@ class NotAvailableFeaturesTest extends AbstractRiakSparkTest {
     }
   }
 
-  @Category(Array(classOf[RiakKVTests]))
+  @Category(Array(classOf[RiakKVTests],classOf[RiakKVNotAvailableFeaturesTest]))
   @Test
   def timeSeriesOnKV(): Unit = {
     expectedException.expect(timeSeriesMatcher)
@@ -61,7 +61,7 @@ class NotAvailableFeaturesTest extends AbstractRiakSparkTest {
       .collect()
   }
 
-  @Category(Array(classOf[RiakKVTests]))
+  @Category(Array(classOf[RiakKVTests],classOf[RiakKVNotAvailableFeaturesTest]))
   @Test
   def fullBucketReadOnKV(): Unit = {
     expectedException.expect(coverageMatcher)
@@ -70,7 +70,7 @@ class NotAvailableFeaturesTest extends AbstractRiakSparkTest {
       .collect()
   }
 
-  @Category(Array(classOf[RiakKVTests]))
+  @Category(Array(classOf[RiakKVTests],classOf[RiakKVNotAvailableFeaturesTest]))
   @Test
   def queryRangeLocalOnKV(): Unit = {
     expectedException.expect(coverageMatcher)
