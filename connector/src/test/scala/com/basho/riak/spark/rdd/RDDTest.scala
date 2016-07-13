@@ -24,7 +24,7 @@ import org.junit.{Assert, Test}
 case class TSData(latitude: Float, longitude: Float, timestamp: String, user_id: String, gauge1: Int, gauge2: String)
 
 @Category(Array(classOf[RiakCommonTests]))
-class RDDTest extends AbstractRDDTest {
+class RDDTest extends AbstractRiakSparkTest {
   private final val CREATION_INDEX = "creationNo"
 
   protected override val jsonData = Some(

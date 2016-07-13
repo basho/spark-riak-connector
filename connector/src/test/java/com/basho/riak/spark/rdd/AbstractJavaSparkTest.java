@@ -17,16 +17,12 @@
  */
 package com.basho.riak.spark.rdd;
 
-import com.basho.riak.client.core.query.Location;
-import com.basho.riak.client.core.query.RiakObject;
-import com.basho.riak.spark.util.RiakObjectConversionUtil;
 import org.apache.spark.SparkConf;
 import org.apache.spark.SparkContext;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.PairFunction;
 import scala.Tuple2;
-import scala.reflect.ClassTag;
 
 import java.io.Serializable;
 import java.util.Iterator;
@@ -64,10 +60,5 @@ public abstract class AbstractJavaSparkTest extends AbstractRiakSparkTest {
     protected static class UserTS implements Serializable {
         public String timestamp;
         public String user_id;
-    }
-
-    @Override
-    public <T> T convertRiakObject(Location l, RiakObject ro, ClassTag<T> ev) {
-        return RiakObjectConversionUtil.from(l, ro, ev);
     }
 }

@@ -3,7 +3,7 @@ package com.basho.riak.spark.rdd.failover
 import com.basho.riak.client.core.util.HostAndPort
 import com.basho.riak.client.core.RiakMessage
 import com.basho.riak.spark._
-import com.basho.riak.spark.rdd.{AbstractRDDTest, RiakTSTests}
+import com.basho.riak.spark.rdd.{AbstractRiakSparkTest, RiakTSTests}
 import com.basho.riak.stub.{ProxyMessageHandler, RiakNodeStub}
 import com.basho.riak.test.rule.annotations.OverrideRiakClusterConfig
 import org.apache.spark.SparkConf
@@ -14,7 +14,7 @@ import shaded.com.basho.riak.protobuf.RiakMessageCodes._
 
 @Category(Array(classOf[RiakTSTests]))
 @OverrideRiakClusterConfig(nodes = 3, timeout = 3)
-class FailoverTest extends AbstractRDDTest {
+class FailoverTest extends AbstractRiakSparkTest {
   private val NUMBER_OF_TEST_VALUES = 1000
   private val STUBS_AMOUNT = 1
 

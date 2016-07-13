@@ -18,7 +18,7 @@
 package com.basho.riak.spark.rdd.timeseries
 
 import com.basho.riak.spark._
-import com.basho.riak.spark.rdd.{AbstractRDDTest, RiakTSTests}
+import com.basho.riak.spark.rdd.RiakTSTests
 import com.basho.riak.spark.writer.WriteDataMapperFactory._
 import org.apache.spark.SparkException
 import org.apache.spark.rdd.RDD
@@ -33,7 +33,7 @@ import com.basho.riak.spark.util.TSConversionUtil
   * @author Sergey Galkin <srggal at gmail dot com>
   */
 @Category(Array(classOf[RiakTSTests]))
-class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) with AbstractRDDTest {
+class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) {
 
   @Test
   def saveSqlRowsToRiak(): Unit = {

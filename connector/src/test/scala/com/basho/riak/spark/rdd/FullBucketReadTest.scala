@@ -45,7 +45,7 @@ object FullBucketReadTest {
 @RunWith(value = classOf[Parameterized])
 @Category(Array(classOf[RiakTSTests]))
 @OverrideRiakClusterConfig(nodes = 3, timeout = 3)
-class FullBucketReadTest(splitSize: Int) extends AbstractRDDTest {
+class FullBucketReadTest(splitSize: Int) extends AbstractRiakSparkTest {
   private val NUMBER_OF_TEST_VALUES = 1000
 
   protected override val jsonData = Some({

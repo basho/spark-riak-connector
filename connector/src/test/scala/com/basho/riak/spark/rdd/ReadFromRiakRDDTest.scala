@@ -39,7 +39,7 @@ import scala.reflect.ClassTag
 case class UserTS(timestamp: String, user_id: String)
 
 @Category(Array(classOf[IntegrationTests]))
-class ReadFromRiakRDDTest extends AbstractRDDTest {
+class ReadFromRiakRDDTest extends AbstractRiakSparkTest {
 
   val _expectedException: ExpectedException = ExpectedException.none()
 

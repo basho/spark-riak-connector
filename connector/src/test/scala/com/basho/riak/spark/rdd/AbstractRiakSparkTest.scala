@@ -29,6 +29,7 @@ import org.junit.After
 import scala.collection.mutable.ListBuffer
 import scala.reflect.ClassTag
 import com.basho.riak.spark.rdd.AbstractRiakSparkTest._
+import com.basho.riak.spark.util.RiakObjectConversionUtil
 import org.apache.spark.SparkConf
 import org.junit.ClassRule
 
@@ -74,10 +75,8 @@ abstract class AbstractRiakSparkTest extends AbstractRiakTest {
   }
 
   protected def readByLocation[T: ClassTag](riakSession: RiakClient, location: Location): T = {
-    readByLocation(riakSession, location, (l: Location, ro: RiakObject) => convertRiakObject(l, ro))
+    readByLocation(riakSession, location, (l: Location, ro: RiakObject) => RiakObjectConversionUtil.from[T](l, ro))
   }
-
-  protected def convertRiakObject[T: ClassTag](l: Location, ro: RiakObject):T
 
   protected def stringify = (s: Array[String]) => s.mkString("[", ",", "]")
 }

@@ -17,7 +17,7 @@
  *******************************************************************************/
 package com.basho.riak.spark.rdd.timeseries
 
-import com.basho.riak.spark.rdd.{AbstractRDDTest, RiakTSTests}
+import com.basho.riak.spark.rdd.RiakTSTests
 import com.basho.riak.spark.toSparkContextFunctions
 import org.apache.spark.SparkException
 import org.apache.spark.sql.SQLContext
@@ -32,7 +32,7 @@ import org.junit.experimental.categories.Category
   * @author Sergey Galkin <srggal at gmail dot com>
   */
 @Category(Array(classOf[RiakTSTests]))
-class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
+class TimeSeriesReadTest extends AbstractTimeSeriesTest {
 
   @Test
   def readDataAsSqlRow(): Unit = {
@@ -480,7 +480,7 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest with AbstractRDDTest {
 }
 
 @Category(Array(classOf[RiakTSTests]))
-class TimeSeriesReadWithoutSchemaTest extends AbstractTimeSeriesTest with AbstractRDDTest {
+class TimeSeriesReadWithoutSchemaTest extends AbstractTimeSeriesTest {
 
   @Test
   def riakTSRDDToDataFrame(): Unit = {
