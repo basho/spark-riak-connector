@@ -20,10 +20,7 @@ package com.basho.riak.spark.rdd
 import java.io.IOException
 
 import com.basho.riak.client.core.RiakNode
-import com.basho.riak.client.core.RiakNode
 import com.basho.riak.client.core.query.Namespace
-import com.basho.riak.client.core.query.Namespace
-import com.fasterxml.jackson.core.JsonProcessingException
 import com.fasterxml.jackson.core.JsonProcessingException
 import net.javacrumbs.jsonunit.JsonAssert
 import net.javacrumbs.jsonunit.core.{Configuration, Option => JsonUnitOption}

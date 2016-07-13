@@ -21,19 +21,19 @@ import com.basho.riak.client.core.query.Namespace
 import com.basho.riak.spark._
 import com.basho.riak.spark.rdd.connector.RiakConnector
 import com.basho.riak.spark.writer.ts.RowDef
-import com.basho.riak.spark.writer.{RiakWriter, WriteConf, WriteDataMapperFactory}
+import com.basho.riak.spark.writer.{RiakWriter, WritableToRiak, WriteConf, WriteDataMapperFactory}
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{Row => SparkRow}
 
-class RDDFunctions[T](rdd: RDD[T]) extends Serializable {
+class RDDFunctions[T](rdd: RDD[T]) extends WritableToRiak[T] with Serializable {
 
-  val sparkContext: SparkContext = rdd.sparkContext
+  override val sparkContext: SparkContext = rdd.sparkContext
 
   /**
    * Store data from the `RDD` to the specified Riak bucket.
    */
-  def saveToRiak(bucketName: String,
+  override def saveToRiak(bucketName: String,
                       bucketType: String = BucketDef.DefaultBucketType,
                       writeConf: WriteConf = WriteConf(sparkContext.getConf))
                      (implicit connector: RiakConnector = RiakConnector(sparkContext.getConf),
@@ -55,7 +55,7 @@ class RDDFunctions[T](rdd: RDD[T]) extends Serializable {
     rdd.sparkContext.runJob(rdd, writer.write _)
   }
 
-  def saveToRiakTS(bucketName: String,
+  override def saveToRiakTS(bucketName: String,
                    bucketType: String = BucketDef.DefaultBucketType,
                    writeConf: WriteConf = WriteConf(sparkContext.getConf))
                   (implicit evidence: T <:< SparkRow,

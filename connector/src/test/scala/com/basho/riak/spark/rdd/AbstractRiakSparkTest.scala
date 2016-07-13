@@ -47,7 +47,7 @@ abstract class AbstractRiakSparkTest extends AbstractRiakTest {
     }, RiakNode.Builder.DEFAULT_REMOTE_PORT).toSet
 
   protected def initSparkConf(): SparkConf = new SparkConf(false)
-    .setMaster("local")
+    .setMaster("local[2]")
     .setAppName(getClass.getSimpleName)
     .set("spark.riak.write.replicas", "1")
     .set("spark.riak.input.fetch-size", "2")
