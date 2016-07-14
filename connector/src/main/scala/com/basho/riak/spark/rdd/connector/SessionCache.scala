@@ -117,6 +117,8 @@ class SessionCache(val cacheSize: Int) extends Logging {
       }
 
       val ns = nodes.toBuffer
+
+      // To prevent 'stuck on exit' all the Java Client threads should be a non daemon/background
       val cluster = RiakCluster.builder(ns.asJava)
           .withBootstrap(new Bootstrap()
             .group(new NioEventLoopGroup(0, new DefaultThreadFactory(classOf[NioEventLoopGroup], true)))
