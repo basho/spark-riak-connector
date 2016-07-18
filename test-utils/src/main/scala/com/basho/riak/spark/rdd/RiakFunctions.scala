@@ -45,39 +45,11 @@ import scala.reflect.ClassTag
 
 case class RiakObjectData( value: Object, key: String, indexes: mutable.Map[String, Object])
 
-/**
- * INTENDED FOR TEST AND DEMO USAGE ONLY
- */
-trait RiakFunctions {
+trait RiakFunctions extends JsonFunctions {
   protected def riakHosts: Set[HostAndPort]
   protected def numberOfParallelRequests:Int
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
   protected val nodeBuilder: RiakNode.Builder
-
-  protected val tolerantMapper = new ObjectMapper()
-    .configure(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES, true)
-    .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true)
-    .configure(JsonParser.Feature.ALLOW_SINGLE_QUOTES, true)
-    .configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true)
-    .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false)
-    .registerModule(DefaultScalaModule)
-
-  def asStrictJSON(data: Any, prettyPrint: Boolean = false): String = {
-    val writter: ObjectWriter = prettyPrint match {
-      case true =>
-        tolerantMapper.writerWithDefaultPrettyPrinter()
-      case _ =>
-        tolerantMapper.writer()
-    }
-
-    writter.writeValueAsString(
-      data match {
-        case s: String =>
-          tolerantMapper.readValue(s, classOf[Object])
-        case _ => data
-      }
-    )
-  }
 
   def withRiakDo[T](code: RiakClient => T): T = {
     closeRiakSessionAfterUse(createRiakSession()) { session =>
@@ -441,5 +413,33 @@ object RiakFunctions {
       override protected val nodeBuilder: Builder = nb
       override val numberOfParallelRequests: Int = minConnections(nb)
     }
+  }
+}
+
+
+trait JsonFunctions {
+  protected val tolerantMapper = new ObjectMapper()
+    .configure(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES, true)
+    .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true)
+    .configure(JsonParser.Feature.ALLOW_SINGLE_QUOTES, true)
+    .configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true)
+    .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false)
+    .registerModule(DefaultScalaModule)
+
+  def asStrictJSON(data: Any, prettyPrint: Boolean = false): String = {
+    val writter: ObjectWriter = prettyPrint match {
+      case true =>
+        tolerantMapper.writerWithDefaultPrettyPrinter()
+      case _ =>
+        tolerantMapper.writer()
+    }
+
+    writter.writeValueAsString(
+      data match {
+        case s: String =>
+          tolerantMapper.readValue(s, classOf[Object])
+        case _ => data
+      }
+    )
   }
 }
