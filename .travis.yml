@@ -6,4 +6,4 @@ services:
   - riak
 
 script:
-  - mvn deploy -Dkv -Dcom.basho.riak.pbchost=127.0.0.1:8087
+  - mvn verify -Dkv -Dcom.basho.riak.pbchost=127.0.0.1:8087
