@@ -58,7 +58,7 @@ abstract class AbstractFailoverOfflineTest extends Logging {
   }
 }
 
-class RootCauseMatcher[T <: Throwable](val excClass: Class[T]) extends ThrowableCauseMatcher(Matchers.isA(excClass)) {
+class RootCauseMatcher[T <: Throwable](val excClass: Class[T]) extends ThrowableCauseMatcher[T](Matchers.isA(excClass)) {
 
   private def getOneBeforeRootCause(item: T): Throwable = {
     val throwables = ExceptionUtils.getThrowableList(item)
