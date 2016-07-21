@@ -14,9 +14,9 @@ scala:
   - 2.11.7
 
 before_script:
-  - mkdir -p $HOME/.sbt/launchers/0.13.12/
-  - curl -L -o $HOME/.sbt/launchers/0.13.12/sbt-launch.jar http://dl.bintray.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/0.13.12/sbt-launch.jar
-
+#  - mkdir -p $HOME/.sbt/launchers/0.13.12/
+#  - curl -L -o $HOME/.sbt/launchers/0.13.12/sbt-launch.jar http://dl.bintray.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/0.13.12/sbt-launch.jar
+  - sbt --about
 script:
   - sbt ++$TRAVIS_SCALA_VERSION test
   - sbt ++$TRAVIS_SCALA_VERSION package
