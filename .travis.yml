@@ -5,6 +5,7 @@ sudo: required
 cache:
   directories:
     - $HOME/.ivy2
+    - $HOME/.sbt
 
 services:
   - docker
@@ -14,10 +15,7 @@ scala:
   - 2.11.7
 
 before_script:
-#  - mkdir -p $HOME/.sbt/launchers/0.13.12/
-#  - curl -L -o $HOME/.sbt/launchers/0.13.12/sbt-launch.jar http://dl.bintray.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/0.13.12/sbt-launch.jar
-  - sbt --about
+  - sbt update # update dependencies here in order to cache them and mount them later to docker container
+
 script:
-  - sbt ++$TRAVIS_SCALA_VERSION test
-  - sbt ++$TRAVIS_SCALA_VERSION package
-  - sbt ++$TRAVIS_SCALA_VERSION assembly
+  - docker run --rm -it -v $HOME/.ivy2:/root/.ivy2 -v $HOME/.sbt:/root/.sbt -v /var/run/docker.sock:/var/run/docker.sock -v $(which docker):/bin/docker -v $(pwd):/usr/src/riak-test-docker -w /usr/src/riak-test-docker asuprun/test-env sbt ++$TRAVIS_SCALA_VERSION test
