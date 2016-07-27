@@ -36,7 +36,7 @@ lazy val sparkRiakConnector = (project in file("connector"))
   .settings(
     assemblyJarName in assembly := s"$namespace-${version.value}-uber.jar",
     assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false),
-    assembleArtifact in assemblyPackageDependency := false,
+    assembleArtifact in assemblyPackageDependency := true,
     test in assembly := {},
     artifact in (Compile, assembly) ~= { art =>
       art.copy(`classifier` = Some("uber"))
@@ -98,7 +98,7 @@ lazy val commonDependencies = Seq(
       "org.powermock"                %  "powermock-module-junit4"   % Versions.powermokc % "test",
       "org.powermock"                %  "powermock-api-mockito"     % Versions.powermokc % "test",
       "com.novocode"                 %  "junit-interface"           % Versions.junitInterface % "test",
-      "com.basho.riak.test"          %  "riak-test-docker"          % Versions.riakTestDocker excludeAll (
+      "com.basho.riak.test"          %  "riak-test-docker"          % Versions.riakTestDocker % "test" excludeAll (
         ExclusionRule("commons-logging","commons-logging"),
         ExclusionRule(organization = "com.fasterxml.jackson.core"),
         ExclusionRule(organization = "com.fasterxml.jackson.datatype"))
@@ -109,8 +109,8 @@ lazy val commonDependencies = Seq(
     Seq(
       "Local Maven Repo" at "file:///" + Path.userHome + "/.m2/repository",
       "Basho Bintray Repo" at "https://dl.bintray.com/basho/data-platform",
-      "Artifactory Realm" at s"$artifactory/libs-snapshot-local",
-      "Artifactory Realm" at s"$artifactory/libs-release-local"
+      "Artifactory Realm snapshot" at s"$artifactory/libs-snapshot-local",
+      "Artifactory Realm release" at s"$artifactory/libs-release-local"
     )
   }
 )
