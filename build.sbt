@@ -17,7 +17,9 @@
   */
 
 import com.spotify.docker.client.DefaultDockerClient
+import sbt.ExclusionRule
 import sbt.Keys._
+import sbtassembly.MergeStrategy
 
 import scala.util.Properties
 
@@ -100,22 +102,30 @@ lazy val commonSettings = Seq(
 
 lazy val commonDependencies = Seq(
   libraryDependencies ++= Seq(
-      "com.basho.riak"               %  "dataplatform-riak-client"  % Versions.riakClient,
+      "com.basho.riak"               %  "dataplatform-riak-client"  % Versions.riakClient exclude("io.netty", "netty-all")
+                                                                                          exclude("org.slf4j","slf4j-api"),
       "org.apache.spark"             %% "spark-sql"                 % Versions.spark % "provided",
       "org.apache.spark"             %% "spark-streaming"           % Versions.spark % "provided",
-      "com.fasterxml.jackson.module" %% "jackson-module-scala"      % Versions.jacksonModule exclude("com.google.guava", "guava"),
-      "net.javacrumbs.json-unit"     %  "json-unit"                 % Versions.jsonUnit exclude("com.fasterxml.jackson.module", "jackson-module-scala"),
-      "junit"                        %  "junit"                     % Versions.junit,
+      "com.google.guava"             %  "guava"                     % Versions.guava,
+      "com.fasterxml.jackson.module" %% "jackson-module-scala"      % Versions.jacksonModule exclude("com.google.guava", "guava")
+                                                                                             exclude("com.google.code.findbugs", "jsr305")
+                                                                                             exclude("com.thoughtworks.paranamer", "paranamer"),
+      "net.javacrumbs.json-unit"     %  "json-unit"                 % Versions.jsonUnit % "test",
+      "junit"                        %  "junit"                     % Versions.junit % "test",
       "org.hamcrest"                 %  "hamcrest-all"              % Versions.hamrest % "test",
       "org.mockito"                  %  "mockito-core"              % Versions.mockito % "test",
       "org.powermock"                %  "powermock-module-junit4"   % Versions.powermokc % "test",
       "org.powermock"                %  "powermock-api-mockito"     % Versions.powermokc % "test",
       "com.novocode"                 %  "junit-interface"           % Versions.junitInterface % "test",
-      "com.basho.riak.test"          %  "riak-test-docker"          % Versions.riakTestDocker % "test" excludeAll (
-        ExclusionRule("commons-logging","commons-logging"),
-        ExclusionRule(organization = "com.fasterxml.jackson.core"),
-        ExclusionRule(organization = "com.fasterxml.jackson.datatype"))
+      "com.basho.riak.test"          %  "riak-test-docker"          % Versions.riakTestDocker % "test"
     ),
+
+  //Expected than connector will use exact jackson version which Spark uses and there is no needs to incorporate it into uber jar
+  libraryDependencies ~= { _.map( x => {
+    if (x.configurations.isEmpty || (!x.configurations.get.equals("provided") && x.organization.contains("com.fasterxml.jackson.core"))) {
+      x.excludeAll(ExclusionRule(organization = "com.fasterxml.jackson.core"))
+    } else x
+  })},
 
   resolvers := {
     val artifactory = "https://basholabs.artifactoryonline.com/basholabs"
