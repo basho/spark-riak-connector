@@ -41,6 +41,15 @@ object SimpleScalaRiakDataframesExample {
 
   case class UserData(user_id: String, name: String, age: Int, category: String)
 
+  val testData = Seq(
+    UserData("u1", "Ben", 23, "CategoryA"),
+    UserData("u2", "Clair", 19, "CategoryB"),
+    UserData("u3", "John", 21, null),
+    UserData("u4", "Chris", 50, "Categoryc"),
+    UserData("u5", "Mary", 15, "CategoryB"),
+    UserData("u6", "George", 31, "CategoryC")
+  )
+
   def main(args: Array[String]) {
     val sparkConf = new SparkConf().setAppName("Riak Spark Dataframes Example")
 
@@ -57,7 +66,7 @@ object SimpleScalaRiakDataframesExample {
     import sqlContext.implicits._
 
     // Save test data from json file to riak bucket
-    val inputRDD = sqlContext.read.json("examples/src/main/resources/test_data.json").toJSON.map {
+    val inputRDD = sc.parallelize(testData).map {
       line =>
         val obj = RiakObjectConversionUtil.to(line)
         // RiakObjectConversionUtil.to() sets content type to text/plain if String is passed

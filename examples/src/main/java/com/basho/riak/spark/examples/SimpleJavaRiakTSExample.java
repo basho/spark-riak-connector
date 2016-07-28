@@ -17,14 +17,13 @@
  */
 package com.basho.riak.spark.examples;
 
-import com.basho.riak.client.core.query.timeseries.Row;
 import com.basho.riak.spark.japi.rdd.RiakTSJavaRDD;
-import com.google.common.base.Joiner;
 import com.google.common.collect.Iterables;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.Row$;
+import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema;
 
 import java.io.Serializable;
 import java.util.Calendar;
@@ -79,10 +78,10 @@ public class SimpleJavaRiakTSExample implements Serializable {
     
     loadDemoData(jsc);
     
-    RiakTSJavaRDD<Row> rdd = javaFunctions(jsc).riakTSTable(TABLE_NAME, Row.class)
+    RiakTSJavaRDD<GenericRowWithSchema> rdd = javaFunctions(jsc).riakTSTable(TABLE_NAME, GenericRowWithSchema.class)
       .sql(String.format("SELECT * FROM %s WHERE time >= %d AND time <= %d  AND  weather = 'sunny' AND family = 'f'", TABLE_NAME, from, to));
-    
-    rdd.foreach(x -> System.out.println(Joiner.on(",").join(x.getCellsCopy())));
+
+    rdd.foreach(x -> System.out.println(x.toString()));
   }
 
   protected static void loadDemoData(JavaSparkContext jsc) {
