@@ -271,7 +271,7 @@ class AutomaticRangedRiakTSPartitioner(connector: RiakConnector, tableName: Stri
 
   private def buildQuery(from: Long, to: Long) = {
     val rangeFieldFilter: Array[Filter] = if (from == to)
-      Array(EqualTo(tsRangeFieldName, from))
+      Array(GreaterThanOrEqual(tsRangeFieldName, from), LessThanOrEqual(tsRangeFieldName, to))
     else
       Array(GreaterThanOrEqual(tsRangeFieldName, from), LessThan(tsRangeFieldName, to))
     val partitionFilters = rangeFieldFilter ++ otherFilters
