@@ -16,11 +16,14 @@
   * under the License.
   */
 
+import com.spotify.docker.client.DefaultDockerClient
 import sbt.Keys._
 
 import scala.util.Properties
 
 lazy val namespace = "spark-riak-connector"
+
+lazy val pullDockerRiakImage = taskKey[Unit]("Pulls Riak image from Docker Hub")
 
 //scalastyle:off
 lazy val root = (project in file("."))
@@ -42,9 +45,19 @@ lazy val sparkRiakConnector = (project in file("connector"))
       art.copy(`classifier` = Some("uber"))
     },
     fork in Test := true,
+    javaOptions in Test := sys.props.map { case (k, v) => s"-D$k=$v" }.toSeq,
     customMergeStrategy)
   .settings(publishSettings)
-  .settings(addArtifact(artifact in (Compile, assembly), assembly).settings: _*)
+  .settings(addArtifact(artifact in(Compile, assembly), assembly).settings: _*)
+  .settings(
+    pullDockerRiakImage := {
+      if (Option(sys.props("com.basho.riak.pbchost")).isEmpty) DefaultDockerClient.fromEnv.build()
+        .pull(Option(sys.props("com.basho.riak.test.cluster.image-name")) match {
+          case Some(x) => x
+          case None => "basho/riak-ts:latest"
+        })
+    },
+    (test in Test) <<= (test in Test) dependsOn pullDockerRiakImage)
   .dependsOn(sparkRiakConnectorTestUtils)
   .enablePlugins(AssemblyPlugin)
 
