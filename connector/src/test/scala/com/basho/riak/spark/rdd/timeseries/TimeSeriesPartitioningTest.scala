@@ -40,15 +40,23 @@ import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.types.TimestampType
 import org.junit.{After, Rule, Test}
 import org.junit.rules.ExpectedException
-import org.mockito.Matchers.any
+import org.mockito.Matchers.{ eq => mEq }
+import org.mockito.Matchers._
 import org.mockito.Mockito._
 import org.mockito.invocation.InvocationOnMock
 import org.mockito.stubbing.Answer
 
 import com.basho.riak.client.api.commands.timeseries.CoveragePlan
+import com.basho.riak.client.core.query.timeseries.Cell
+import com.basho.riak.client.core.query.timeseries.ColumnDescription
+import com.basho.riak.client.core.query.timeseries.ColumnDescription.ColumnType
 import com.basho.riak.client.core.query.timeseries.CoverageEntry
 import com.basho.riak.client.core.query.timeseries.CoveragePlanResult
+import com.basho.riak.client.core.query.timeseries.{ Row => RiakRow }
 import com.basho.riak.client.core.util.HostAndPort
+import com.basho.riak.spark.query.QueryTS
+import com.basho.riak.spark.query.TSDataQueryingIterator
+import com.basho.riak.spark.query.TSQueryData
 import com.basho.riak.spark.rdd.RiakTSRDD
 import com.basho.riak.spark.rdd.connector.RiakConnector
 import com.basho.riak.spark.rdd.connector.RiakSession
@@ -108,7 +116,6 @@ class TimeSeriesPartitioningTest {
     val partitions = df.rdd.partitions
     assertEquals(partitionsCount, partitions.size)
   }
-  
 
   @Test
   def smallRangeShouldBeSinglePartitionTest(): Unit = {
@@ -124,7 +131,7 @@ class TimeSeriesPartitioningTest {
     val partitions = df.rdd.partitions
     assertEquals(1, partitions.size)
   }
-  
+
   @Test
   def invalidRangeTest(): Unit = {
     expectedException.expect(classOf[IllegalArgumentException])
@@ -140,7 +147,7 @@ class TimeSeriesPartitioningTest {
 
     val partitions = df.rdd.partitions
   }
-  
+
   @Test
   def withOptionTestFromToTo(): Unit = {
     val df = sqlContext.read
@@ -228,7 +235,7 @@ class TimeSeriesPartitioningTest {
       .filter(s"time <=  CAST('$to' AS TIMESTAMP)")
     val partitions = df.rdd.partitions
   }
-  
+
   @Test
   def withLessThanQuantaLimitTest(): Unit = {
     val df = sqlContext.read
@@ -245,7 +252,7 @@ class TimeSeriesPartitioningTest {
     val filteredPartitions = partitions.filter(x => x.asInstanceOf[RiakTSPartition].queryData.size != 1)
     assertEquals(0, filteredPartitions.size)
   }
-  
+
   @Test
   def withGreaterThanQuantaLimitTest(): Unit = {
     val (localFrom, localTo) = (new Timestamp(1000000L), new Timestamp(3000000L))
@@ -301,7 +308,7 @@ class TimeSeriesPartitioningTest {
 
     assertEquals(3, partitions.size)
   }
-  
+
   @Test
   def coveragePlanBasedPartitioningGreaterThanSplitCount(): Unit = {
 
@@ -319,6 +326,7 @@ class TimeSeriesPartitioningTest {
     when(coveragePlan.iterator()).thenAnswer(new Answer[util.Iterator[_]] {
       override def answer(invocation: InvocationOnMock): util.Iterator[_] = mapCE.values.flatten.iterator.asJava
     })
+
     when(coveragePlan.hosts()).thenReturn(setAsJavaSet(mapCE.keySet))
     val rdd = new RiakTSRDD[Row](sc, connector, bucketName, Some(schema), None, None, filters)
     val partitions = rdd.partitions
@@ -342,4 +350,25 @@ class TimeSeriesPartitioningTest {
     }
     ces.groupBy(ce => HostAndPort.fromParts(ce.getHost, ce.getPort))
   }
+
+  @Test
+  def dataIteratorMustIterateThroughEmptyResponses(): Unit = {
+    val emptyTSD = TSQueryData("empty", None)
+    val nonEmptyTSD = TSQueryData("non-empty", None)
+     val tsQD = List(
+         emptyTSD,
+         emptyTSD,
+         emptyTSD,
+         nonEmptyTSD,
+         nonEmptyTSD)
+     val emptyResponse = (Seq[ColumnDescription](), Seq[RiakRow]())
+     val nonEmptyResponse = (Seq(new ColumnDescription("Col1", ColumnType.VARCHAR)), Seq(new RiakRow(List(new Cell("val1")))))
+     val connector = mock(classOf[RiakConnector])
+     val qTs = spy(QueryTS(connector, tsQD))
+     doReturn(emptyResponse).when(qTs).nextChunk(mEq(emptyTSD))
+     doReturn(nonEmptyResponse).when(qTs).nextChunk(mEq(nonEmptyTSD))
+     val it = new TSDataQueryingIterator(qTs)
+     assertEquals(2, it.size)
+  }
+
 }

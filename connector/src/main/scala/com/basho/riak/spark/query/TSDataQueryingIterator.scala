@@ -46,6 +46,11 @@ class TSDataQueryingIterator(query: QueryTS) extends Iterator[Row] with Logging 
     }
     _iterator match {
       case Some(it) => it.hasNext
+//            case Some(it) => {
+//              if (it.hasNext) true
+//              else if (subqueries.hasNext) hasNext
+//              else false
+//            }
       case None     => false
     }
   }
