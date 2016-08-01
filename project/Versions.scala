@@ -11,5 +11,5 @@ object Versions {
   val hamrest = "1.3"
   val mockito = "1.10.19"
   val junitInterface = "0.11"
-  val riakTestDocker = "1.0"
+  val riakTestDocker = "1.1"
 }
