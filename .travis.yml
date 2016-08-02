@@ -16,6 +16,8 @@ scala:
 
 before_script:
   - sbt update # update dependencies here in order to cache them and mount them later to docker container
+  - sbt assembly
 
 script:
   - docker run --rm -it -v $HOME/.ivy2:/root/.ivy2 -v $HOME/.sbt:/root/.sbt -v /var/run/docker.sock:/var/run/docker.sock -v $(which docker):/bin/docker -v $(pwd):/usr/src/riak-test-docker -w /usr/src/riak-test-docker asuprun/test-env sbt ++$TRAVIS_SCALA_VERSION test
+  - docker run --rm -it  -v $HOME/.ivy2/cache/com.basho.riak.test/riak-test-docker/jars/:/usr/src/riak-test-docker/ -v /var/run/docker.sock:/var/run/docker.sock -v $(which docker):/bin/docker -v $(pwd):/usr/src/spark-riak-connector -w /usr/src/spark-riak-connector -e SPARK_CLASSPATH=/usr/src/spark-riak-connector/connector/target/scala-2.10/spark-riak-connector-1.5.2-SNAPSHOT-uber.jar:/usr/src/riak-test-docker/riak-test-docker-1.1.jar -e PYTHONPATH=/usr/src/spark-riak-connector/connector/python asuprun/test-env /bin/bash -c "py.test /usr/src/spark-riak-connector/connector/python/tests/test_pyspark_riak.py -s"
