@@ -22,62 +22,32 @@ package com.basho.riak.spark.rdd.timeseries
 import java.sql.Timestamp
 import java.util
 
-import scala.annotation.migration
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
-
 import org.apache.spark.SparkConf
-import org.apache.spark.SparkContext
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.sources.EqualTo
 import org.apache.spark.sql.sources.Filter
 import org.apache.spark.sql.sources.GreaterThanOrEqual
 import org.apache.spark.sql.sources.LessThan
-import org.apache.spark.sql.types.DoubleType
-import org.apache.spark.sql.types.StringType
-import org.apache.spark.sql.types.StructField
-import org.apache.spark.sql.types.StructType
-import org.apache.spark.sql.types.TimestampType
-import org.junit.{After, Rule, Test}
-import org.junit.rules.ExpectedException
-import org.mockito.Matchers.{ eq => mEq }
+import org.junit.Test
 import org.mockito.Matchers._
 import org.mockito.Mockito._
 import org.mockito.invocation.InvocationOnMock
 import org.mockito.stubbing.Answer
-
 import com.basho.riak.client.api.commands.timeseries.CoveragePlan
-import com.basho.riak.client.core.query.timeseries.Cell
-import com.basho.riak.client.core.query.timeseries.ColumnDescription
-import com.basho.riak.client.core.query.timeseries.ColumnDescription.ColumnType
 import com.basho.riak.client.core.query.timeseries.CoverageEntry
 import com.basho.riak.client.core.query.timeseries.CoveragePlanResult
-import com.basho.riak.client.core.query.timeseries.{ Row => RiakRow }
 import com.basho.riak.client.core.util.HostAndPort
-import com.basho.riak.spark.query.QueryTS
-import com.basho.riak.spark.query.TSDataQueryingIterator
-import com.basho.riak.spark.query.TSQueryData
 import com.basho.riak.spark.rdd.RiakTSRDD
 import com.basho.riak.spark.rdd.connector.RiakConnector
 import com.basho.riak.spark.rdd.connector.RiakSession
 import com.basho.riak.spark.rdd.partitioner.RiakTSPartition
 import com.basho.riak.spark.toSparkContextFunctions
+import org.junit.Assert.assertEquals
 
-import junit.framework.Assert.assertEquals
+class TimeSeriesPartitioningTest extends AbstractTimeSeriesTest(createTestData = false) {
 
-class TimeSeriesPartitioningTest {
-
-  val _expectedException: ExpectedException = ExpectedException.none
-
-  @Rule
-  def expectedException: ExpectedException = _expectedException
-
-  val schema = StructType(List(
-    StructField(name = "time", dataType = TimestampType),
-    StructField(name = "user_id", dataType = StringType),
-    StructField(name = "temperature_k", dataType = DoubleType)))
-
-  val bucketName = "bucket"
   val partitionsCount = 15
   val fromMillis: Long = 10000
   val toMillis: Long = fromMillis + partitionsCount
@@ -90,17 +60,11 @@ class TimeSeriesPartitioningTest {
     LessThan("time", to),
     EqualTo("user_id", "user1"))
 
-  val sparkConf = new SparkConf().setAppName("Riak TS Spark Dataframes Example").setMaster("local")
+  var sqlContext: org.apache.spark.sql.SQLContext = null
 
-  val sc = new SparkContext(sparkConf)
-
-  val sqlContext = new org.apache.spark.sql.SQLContext(sc)
-
-  @After
-  def destroySparkContext(): Unit = {
-    if (sc != null) {
-      sc.stop()
-    }
+  override def initialize(): Unit = {
+    super.initialize()
+    sqlContext = new org.apache.spark.sql.SQLContext(sc)
   }
 
   @Test
@@ -180,13 +144,14 @@ class TimeSeriesPartitioningTest {
       .format("org.apache.spark.sql.riak")
       .schema(schema)
       .load(bucketName)
+      .select("time", "user_id", "temperature_k")
       .filter(s"time >  CAST('$from' AS TIMESTAMP) AND time <= CAST('$to' AS TIMESTAMP)")
 
     val partitions = df.rdd.partitions
     assertEquals(partitionsCount, partitions.size)
-    assertEquals("SELECT time, user_id, temperature_k FROM bucket  WHERE time >= 10001 AND time < 10002",
+    assertEquals(s"SELECT time, user_id, temperature_k FROM $bucketName  WHERE time >= 10001 AND time < 10002",
       partitions.head.asInstanceOf[RiakTSPartition].queryData.head.sql)
-    assertEquals("SELECT time, user_id, temperature_k FROM bucket  WHERE time >= 10015 AND time < 10016",
+    assertEquals(s"SELECT time, user_id, temperature_k FROM $bucketName  WHERE time >= 10015 AND time < 10016",
       partitions.last.asInstanceOf[RiakTSPartition].queryData.head.sql)
   }
 
@@ -198,13 +163,14 @@ class TimeSeriesPartitioningTest {
       .format("org.apache.spark.sql.riak")
       .schema(schema)
       .load(bucketName)
+      .select("time", "user_id", "temperature_k")
       .filter(s"time >=  CAST('$from' AS TIMESTAMP) AND time < CAST('$to' AS TIMESTAMP)")
 
     val partitions = df.rdd.partitions
     assertEquals(partitionsCount, partitions.size)
-    assertEquals("SELECT time, user_id, temperature_k FROM bucket  WHERE time >= 10000 AND time < 10001",
+    assertEquals(s"SELECT time, user_id, temperature_k FROM $bucketName  WHERE time >= 10000 AND time < 10001",
       partitions.head.asInstanceOf[RiakTSPartition].queryData.head.sql)
-    assertEquals("SELECT time, user_id, temperature_k FROM bucket  WHERE time >= 10014 AND time < 10015",
+    assertEquals(s"SELECT time, user_id, temperature_k FROM $bucketName  WHERE time >= 10014 AND time < 10015",
       partitions.last.asInstanceOf[RiakTSPartition].queryData.head.sql)
   }
 
@@ -350,25 +316,4 @@ class TimeSeriesPartitioningTest {
     }
     ces.groupBy(ce => HostAndPort.fromParts(ce.getHost, ce.getPort))
   }
-
-  @Test
-  def dataIteratorMustIterateThroughEmptyResponses(): Unit = {
-    val emptyTSD = TSQueryData("empty", None)
-    val nonEmptyTSD = TSQueryData("non-empty", None)
-     val tsQD = List(
-         emptyTSD,
-         emptyTSD,
-         emptyTSD,
-         nonEmptyTSD,
-         nonEmptyTSD)
-     val emptyResponse = (Seq[ColumnDescription](), Seq[RiakRow]())
-     val nonEmptyResponse = (Seq(new ColumnDescription("Col1", ColumnType.VARCHAR)), Seq(new RiakRow(List(new Cell("val1")))))
-     val connector = mock(classOf[RiakConnector])
-     val qTs = spy(QueryTS(connector, tsQD))
-     doReturn(emptyResponse).when(qTs).nextChunk(mEq(emptyTSD))
-     doReturn(nonEmptyResponse).when(qTs).nextChunk(mEq(nonEmptyTSD))
-     val it = new TSDataQueryingIterator(qTs)
-     assertEquals(2, it.size)
-  }
-
 }
