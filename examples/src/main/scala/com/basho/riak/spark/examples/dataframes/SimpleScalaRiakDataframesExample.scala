@@ -65,6 +65,8 @@ object SimpleScalaRiakDataframesExample {
     // To enable toDF()
     import sqlContext.implicits._
 
+    println(s" Saving data to Riak: \n ${println(testData)}")
+
     // Save test data from json file to riak bucket
     val inputRDD = sc.parallelize(testData).map {
       line =>
@@ -78,6 +80,9 @@ object SimpleScalaRiakDataframesExample {
 
     // Read from Riak with UDT to enable schema inference using reflection
     val df = sc.riakBucket[UserData](namespace).queryAll.toDF
+
+    println(s"Dataframe from Riak query: \n ${df.show()}")
+
     df.registerTempTable("users")
 
     println("count by category")
