@@ -1,14 +1,25 @@
+/**
+  * Copyright (c) 2015-2016 Basho Technologies, Inc.
+  *
+  * This file is provided to you under the Apache License,
+  * Version 2.0 (the "License"); you may not use this file
+  * except in compliance with the License.  You may obtain
+  * a copy of the License at
+  *
+  *   http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing,
+  * software distributed under the License is distributed on an
+  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  * KIND, either express or implied.  See the License for the
+  * specific language governing permissions and limitations
+  * under the License.
+  */
 package com.basho.riak.spark.query
 
 import com.basho.riak.client.core.query.timeseries.Row
-import com.basho.riak.client.core.query.{ Location, RiakObject }
 import org.apache.spark.Logging
-import com.basho.riak.spark.util.DataConvertingIterator
-import com.basho.riak.spark.util.TSConversionUtil
-import org.apache.spark.sql.types.StructType
-import com.basho.riak.spark.rdd.TsTimestampBindingType
 import com.basho.riak.client.core.query.timeseries.ColumnDescription
-import scala.reflect.ClassTag
 
 class TSDataQueryingIterator(query: QueryTS) extends Iterator[Row] with Logging {
 
@@ -28,29 +39,37 @@ class TSDataQueryingIterator(query: QueryTS) extends Iterator[Row] with Logging 
   }
   
   protected[this] def prefetch() = {
-    val r = query.nextChunk(subqueries.next)
+    val nextSubQuery = subqueries.next
+    logTrace(s"Prefetching chunk of data: ts-query(token=$nextSubQuery)")
+
+    val r = query.nextChunk(nextSubQuery)
+
     r match {
       case (cds, rows) =>
-        logDebug(s"Returned ${rows.size} rows")
-        if(!columns.isDefined)
+        if( isTraceEnabled() ) {
+          logTrace(s"ts-query($nextSubQuery) returns:\n  columns: ${r._1}\n  data:\n\t ${r._2}")
+        } else {
+          logDebug(s"ts-query($nextSubQuery) returns:\n  data.size: ${r._2.size}")
+        }
+
+        if(!columns.isDefined) {
           columns = Some(cds)
+        }
+
         _iterator = Some(rows.iterator)
+
       case _ => _iterator = None
+        logWarning(s"ts-query(token=$nextSubQuery) returns: NOTHING")
     }
   }
 
   override def hasNext: Boolean = {
-    if (subqueries.hasNext) {
-      if (_iterator.isEmpty || (_iterator.isDefined && !_iterator.get.hasNext))
+    while( subqueries.hasNext && (_iterator.isEmpty || (_iterator.isDefined && !_iterator.get.hasNext))) {
         prefetch()
     }
+
     _iterator match {
       case Some(it) => it.hasNext
-//            case Some(it) => {
-//              if (it.hasNext) true
-//              else if (subqueries.hasNext) hasNext
-//              else false
-//            }
       case None     => false
     }
   }
