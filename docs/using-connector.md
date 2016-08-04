@@ -16,7 +16,8 @@ Scroll down or click below for the desired information:
 - [Working With TS Dates](./using-connector.md#working-with-ts-dates)
 - [TS Table Range Query Partitioning](./using-connector.md#ts-table-range-query-partitioning)
 - [TS Bulk Write](./using-connector.md#ts-bulk-write)
-- [Spark Streaming Example](./using-connector.md#spark-streaming-example)
+- [Using Jupyter Notebook](./using-connector.md#using-jupyter-notebook)
+- [Spark Streaming](./using-connector.md#spark-streaming)
 - [Using Java With The Connector](./using-connector.md#using-java-with-the-connector)
 
 
@@ -647,167 +648,125 @@ conf.set("spark.riakts.write.bulk-size", "500")
 conf.set("spark.riak.connections.min", "50")
 ```
 
-## Spark Streaming Example
+## Using Jupyter Notebook
 
-The Spark-Riak Connector can be used with Spark Streaming. To demonstrate this usage, we will work through two small Scala examples. These examples are located in the [examples folder](../examples/src/main/scala/com/basho/riak/spark/examples) of the Spark-Riak Connector repo.
+To use the Spark-Riak connector with Jupyter notebook you install Jupyter Notebook(you can follow [these](http://jupyter.readthedocs.io/en/latest/install.html) instructions or use the official Docker image [image](https://hub.docker.com/r/jupyter/pyspark-notebook/)). Once installed, start Jupyter with `jupyter notebook`. Then execute the following code to initialize a Spark context:
 
-These examples require the use of Kafka. Please install Kafka and setup a Kafka broker prior to running this example. We will assume that there is a Kafka broker running at `127.0.0.1:9092` with a topic called `streaming`. Instructions on setting up Kafka topics can be found in [this guide](https://kafka.apache.org/documentation.html#quickstart). You can create a broker and topic with the following:
+```python
+import findspark
+findspark.init()
+import pyspark
+import os
 
+os.environ['PYSPARK_SUBMIT_ARGS'] = "--packages com.basho.riak:spark-riak-connector:1.5.1 --repositories https://dl.bintray.com/basho/data-platform pyspark-shell"
+conf = pyspark.SparkConf().setAppName("My Spark Riak App")
+conf.set("spark.riak.connection.host", "127.0.0.1:8087")
+sc = pyspark.SparkContext(conf)
 ```
-path/to/kafka/bin/zookeeper-server-start.sh config/zookeeper.properties
-path/to/kafka/bin/kafka-server-start.sh config/server.properties
-path/to/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic streaming
-```
 
-We also assume Riak TS is installed and there is a Riak TS node running at `127.0.0.1:8087`. You can find instruction to do so [here](http://docs.basho.com/riak/ts/1.2.0/installing/mac-osx/). You will need to build the examples as well. Please follow the instructions on [building the examples](../examples#building-and-running-examplesdemos). After setting up, there are two examples to run: a KV bucket example and a TS table example.
+Now you have a Spark context that is ready to use with Riak and running inside a Jupyter notebook.
 
-###Spark Streaming KV Buckets Example
+## Spark Streaming
 
-Now that we are set up, let's look at the KV bucket example [here](../examples/src/main/scala/com/basho/riak/spark/examples/streaming/StreamingKVExample.scala). 
+As stated in the [official Spark Streaming documentation](http://spark.apache.org/docs/latest/streaming-programming-guide.html), "Spark Streaming is an extension of the core Spark API that enables scalable, high-throughput, fault-tolerant stream processing of live data streams. Data can be ingested from many sources like Kafka, Flume, Kinesis, or TCP sockets, and can be processed using complex algorithms expressed with high-level functions like map, reduce, join and window."
 
-In the first chunk of code in the main method, we are just setting up our local Spark Streaming context and setting the name for the KV bucket to `test-data`:
+### The Basic Idea
+
+#### Spark Streaming
+
+Here is a basic Spark Streaming sample which writes to the console with `errorlines.print()`:
+
+Create a StreamingContext with a SparkConf configuration:
 
 ```scala
-val sparkConf = new SparkConf(true)
-      .setAppName("Simple Spark Streaming to Riak KV Demo")
-setSparkOpt(sparkConf, "spark.master", "local")
-setSparkOpt(sparkConf, "spark.riak.connection.host", "127.0.0.1:8087")
-
-val sc = new SparkContext(sparkConf)
-val streamCtx = new StreamingContext(sc, Durations.seconds(15))
-val sqlContext = new org.apache.spark.sql.SQLContext(sc)
-import sqlContext.implicits._
-val namespace = new Namespace("test-data")
+    val ssc = new StreamingContext(sparkConf, Seconds(1))
 ```
 
-Next we are setting up Kafka properties:
+Create a DStream that will connect to serverIP:serverPort:
 
 ```scala
-val kafkaProps = Map[String, String](
-      "metadata.broker.list" -> "127.0.0.1:9092",
-      "client.id" -> UUID.randomUUID().toString
-    )
+    val lines = ssc.socketTextStream(serverIP, serverPort)
 ```
 
-Then, we are using `KafkaUtils` to create a stream from the Kafka topic `streaming` into our KV bucket `test-data`:
+Count all lines with 'ERROR' in each batch:
 
 ```scala
-    KafkaUtils
-      .createDirectStream[String, String, StringDecoder, StringDecoder](streamCtx, kafkaProps, Set[String]("streaming"))
-      .foreachRDD { rdd =>
-        val rows = sqlContext.read.json(rdd.values).map {
-          line => val obj = RiakObjectConversionUtil.to(line)
-            obj.setContentType("application/json")
-            obj
-        }.saveToRiak(namespace)
-      }
+    val errorlines = lines.filter(lines => lines contains "ERROR")
+    val errorcount = errorlines.count()
+    println(errorcount)
 ```
- And finally, we are starting the stream:
- 
- ```scala
- streamCtx.start()
- streamCtx.awaitTermination()
- ```
 
- Now that we understand the code, we can run the `StreamingKVExample.scala` example with:
- 
- ```
- /path/to/spark-riak-connector-examples/bin/run-example streaming.StreamingKVExample
- ```
- 
- This will start a stream from the Kafka topic `streaming` into the KV bucket `test-data` that we just created. This stream will run until terminated. Whenever a message is produced for Kafka topic `streaming`, the Spark Streaming context that the example creates will automatically stream the message from the topic into the KV bucket. To see this in action, we need to send a message to the Kafka topic `streaming` with the Kafka console producer script, which can be found in the Kafka directory.
- 
- ```
- /path/to/kafka/bin/kafka-console-producer.sh --broker-list localhost:9092 --topic streaming
- ```
- 
- This script will read messages from the terminal and pass it to the topic. From the topic, the Spark Streaming context will write the message to Riak KV bucket `test-data`.  As an example put the following into the terminal:
- 
- ```
- {"time": "2016-01-01 08:30:00.000", "weather": "sunny", "temperature": 25.0, "humidity": 67.0, "pressure": 30.20, "family": "f"}
- ```
- 
-You should now be able to see this data entry in the KV bucket `test-data`.
+Print a few of the error lines to the console and start the stream:
+```scala
+    errorlines.print()
+    ssc.start()  
+    ssc.awaitTermination() // Wait for the computation to terminate
+```
 
-###Spark Streaming TS Table Example
+#### Spark Streaming With Riak
 
-Having seen how Spark Streaming works with KV buckets, let's now look at the TS table example [here](../examples/src/main/scala/com/basho/riak/spark/examples/streaming/StreamingTSExample.scala). 
-
-The code is somewhat similar to the KV bucket example, but with crucial differences. Let's have a look:
+To add Riak related features to the `StreamingContext` and `RDD` it is required to add some packages into the scope:
 
 ```scala
- val schema = StructType(List(
-      StructField(name = "weather", dataType = StringType),
-      StructField(name = "family", dataType = StringType),
-      StructField(name = "time", dataType = TimestampType),
-      StructField(name = "temperature", dataType = DoubleType),
-      StructField(name = "humidity", dataType = DoubleType),
-      StructField(name = "pressure", dataType = DoubleType)))
-
-    val sparkConf = new SparkConf(true)
-      .setAppName("Simple Spark Streaming to Riak TS Demo")
-
-    setSparkOpt(sparkConf, "spark.master", "local")
-    setSparkOpt(sparkConf, "spark.riak.connection.host", "127.0.0.1:8087")
-    setSparkOpt(sparkConf, "kafka.broker", "127.0.0.1:9092")
-
-    val sc = new SparkContext(sparkConf)
-    val streamCtx = new StreamingContext(sc, Durations.seconds(15))
-    val sqlContext = new org.apache.spark.sql.SQLContext(sc)
-    import sqlContext.implicits._
-
-    val kafkaProps = Map[String, String](
-      "metadata.broker.list" -> sparkConf.get("kafka.broker"),
-      "client.id" -> UUID.randomUUID().toString
-    )
+    import com.basho.riak.spark.streaming._
 ```
 
-This first section of code just sets up the table schema, a Spark Streaming context, a Spark SQL context, and Kafka properties. Note that we need to set up a TS table that reflect the schema in the previous section of code. We can create this TS table with:
-
+And after that we can simply replace the print statement with a `saveToRiak` call:
+```scala
+    errorlines.saveToRiak("test-bucket-4store")
 ```
-curl -v -XPUT -H 'Content-Type: application/json' "http://$RIAK_HTTP/admin/explore/clusters/default/bucket_types/ts_weather_demo" -d '{"props":{"n_val":3, "table_def":"CREATE TABLE ts_weather_demo (weather varchar not null,family varchar not null,time timestamp not null,temperature  double,humidity double,pressure double,PRIMARY KEY ((weather, family, quantum(time, 1, 'h')), weather, family, time))"}}'
-```
 
-Be sure to substitute the Riak node's IP address and HTTP port in for `$RIAK_HTTP`.
+### Setting up Streaming
 
-The next section of the code is:
+#### Create A 'StreamingContext'
+
+The streaming context has only two parameters which are required for minimal configuration. The first one is `sparkConf`. Please see [how to create and use `SparkConf`](using-connector.md#configuration-of-spark-context) for more information. The second required parameter is the `batchDuration` which sets the interval in which streaming data will be divided into batches: Note the Spark API provides a Milliseconds, Seconds, Minutes, all of which are accepted as a `Duration`. This `Duration` is not to be confused with the [scala.concurrent.duration.Duration](http://www.scala-lang.org/api/current/index.html#scala.concurrent.duration.Duration) 
 
 ```scala
-    KafkaUtils
-      .createDirectStream[String, String, StringDecoder, StringDecoder](streamCtx, kafkaProps,
-      Set[String]("streaming"))
-      .foreachRDD { rdd => rdd.map(println)
-        val rows = sqlContext.read.schema(schema).json(rdd.values)
-          .withColumn("time", 'time.cast("Timestamp"))
-          .select("weather", "family", "time", "temperature", "humidity", "pressure")
-
-        rows.write
-          .format("org.apache.spark.sql.riak")
-          .mode(SaveMode.Append)
-          .save("ts_weather_demo")
-      }
+    val ssc = new StreamingContext(conf, Seconds(n))
 ```
-In this section of code, we are setting up a stream from Kafka topic `streaming` into TS table `ts_weather_demo`. Here we are using our Spark SQL context to read each RDD streamed from the Kafka topic and then write into the TS table.
 
-Now that we have seen the code let's run the example (see [here](../examples#building-and-running-examplesdemos) if you need to build the example). You can run the `StreamingTSExample.scala` example, after building, with:
+#### Creating A Stream
 
- ```
- /path/to/spark-riak-connector-examples/bin/run-example streaming.StreamingTSExample
- ```
+You can create any of the available Spark streams or customize your own streams. Please see [this section](http://spark.apache.org/docs/latest/streaming-programming-guide.html#basic-sources) from the Spark documentation for more details.
 
-Now that the stream is up and running, we need to actually send data to the Kafka topic. Let's start the Kafka console producer. This will allow us to stream messages from the terminal into the Kafka `streaming` topic.
+#### Enable Spark Streaming With Riak
 
- ```
- /path/to/bin/kafka-console-producer.sh --broker-list localhost:9092 --topic streaming
- ```
- 
-Now paste the following message into the terminal:
+The following enables Riak-related functions on the `StreamingContext`, `DStream` and `RDD`:
 
- ```
- {"time": "2016-01-01 08:30:00.000", "weather": "sunny", "temperature": 25.0, "humidity": 67.0, "pressure": 30.20, "family": "f"}
- ```
+```scala
+    import com.basho.riak.spark.streaming._
+```
 
-You can check that this worked by doing a simple SQL query for the example data. 
+#### Writing to Riak From A Stream
+
+The data can be stored either to KV or TS storage.
+
+Saving data to KV:
+```scala
+    stream.saveToRiak(DEFAULT_NAMESPACE_4STORE.getBucketNameAsString)
+    ssc.start() // start computation
+```
+
+The difference between writing to KV and TS is really small. To meet the requirements of TS, it is necessary to convert data into Spark Row object.
+Saving data to TS:
+```scala
+    stream
+        .map(data => Row(...)
+        .saveToRiak(DEFAULT_NAMESPACE_4STORE.getBucketNameAsString)
+    ssc.start() // start computation
+```
+
+#### Reading From Riak From The `StreamingContext`
+
+Since Riak-specific `StreamingContext` extends usual Riak-specific `SparkContext`, it is possible to read data from Riak using `StreamingContext`:
+```scala
+    var rdd = ssc.riakBucket(DEFAULT_NAMESPACE_4STORE).queryAll()
+```
+
+### Find out more
+http://spark.apache.org/docs/latest/streaming-programming-guide.html
+
 
 ## Using Java With The Connector
 
