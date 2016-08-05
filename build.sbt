@@ -20,6 +20,7 @@ import com.spotify.docker.client.DefaultDockerClient
 import sbt.ExclusionRule
 import sbt.Keys._
 import sbtassembly.MergeStrategy
+import com.atlassian.labs.gitstamp.GitStampPlugin._
 
 import scala.util.Properties
 
@@ -37,6 +38,7 @@ lazy val root = (project in file("."))
 lazy val sparkRiakConnector = (project in file("connector"))
   .settings(commonSettings: _*)
   .settings(commonDependencies: _*)
+  .settings(gitStampSettings: _*)
   .settings(name := namespace)
   .settings(
     assemblyJarName in assembly := s"$namespace-${version.value}-uber.jar",

@@ -16,8 +16,6 @@
   * under the License.
   */
 
-addSbtPlugin("com.typesafe.sbt" % "sbt-git" % "0.6.4")
-
 addSbtPlugin("org.scalastyle" %% "scalastyle-sbt-plugin" % "0.6.0")
 
 resolvers += Classpaths.sbtPluginReleases
@@ -27,3 +25,5 @@ resolvers += "Spark Packages Main repo" at "https://dl.bintray.com/spark-package
 addSbtPlugin("org.spark-packages" %% "sbt-spark-package" % "0.2.4")
 
 addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.8.2")
+
+addSbtPlugin("com.atlassian.labs" % "sbt-git-stamp" % "0.1.2")
