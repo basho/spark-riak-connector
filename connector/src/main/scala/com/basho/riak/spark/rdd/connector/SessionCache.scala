@@ -188,7 +188,7 @@ class SessionCache(val cacheSize: Int) extends Logging {
         }
       } catch {
         case e: InterruptedException => {
-          logWarning(s"Session Cleaner was interrunpted", e)
+          logTrace(s"Session Cleaner was interrupted", e)
         }
       }
       logDebug(s"Checking for expired sessions stopped")
