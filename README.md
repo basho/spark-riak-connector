@@ -16,14 +16,14 @@ The Spark-Riak connector enables you to connect Spark applications to Riak KV an
 
 ## Compatibility
 
-* Riak TS 1.2+
+* Riak TS 1.3.1+
 * Apache Spark 1.6+
 * Scala 2.10
 * Java 8
 
 ## Coming Soon
 
-* Support for Riak KV 2.2 and later
+* Support for Riak KV 2.3 and later
 
 ## Prerequisites
 
