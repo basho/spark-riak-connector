@@ -41,7 +41,7 @@ lazy val sparkRiakConnector = (project in file("connector"))
   .settings(gitStampSettings: _*)
   .settings(name := namespace)
   .settings(
-    assemblyJarName in assembly := s"$namespace-${version.value}-uber.jar",
+    assemblyJarName in assembly := s"spark-riak-connector_${scalaBinaryVersion.value}-${version.value}-uber.jar",
     assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false),
     assembleArtifact in assemblyPackageDependency := true,
     test in assembly := {},
