@@ -18,7 +18,7 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.IntStream.rangeClosed;
 import static org.junit.Assert.assertEquals;
 
-@OverrideRiakClusterConfig(nodes = 3, timeout = 3)
+@OverrideRiakClusterConfig(nodes = 3, timeout = 5)
 public class JavaFullBucketReadTest extends AbstractJavaSparkTest {
 
     private final int NUMBER_OF_TEST_VALUES = 1000;

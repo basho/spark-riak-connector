@@ -9,3 +9,8 @@ dependency-reduced-pom.xml
 nbactions.xml
 nb-configuration.xml
 .DS_Store
+connector/python/.cache/
+connector/python/*.pyc
+connector/python/pyspark_riak/*.pyc
+connector/python/tests/__pycache__/
+connector/python/tests/*.pyc

@@ -47,7 +47,7 @@ testRDD.saveToRiak(new Namespace("kv_bucket_a"))
 
 When saving RDD's to Riak that only have values (i.e not key-value pairs), keys will be automatically generated for each value in the RDD.
 
-Query Riak TS bucket and print results:
+Query Riak KV bucket and print results:
 
 ```scala
 val queryRDD = sc.riakBucket[String](new Namespace("kv_bucket_a")).queryAll()
@@ -213,11 +213,63 @@ Start pyspark with:
 --driver-class-path /path/to/spark-riak-connector-{{version}}-uber.jar 
 ```
 
-Make some imports:
+Make required imports:
 
 ```python
-import riak, datetime, time, random
+import pyspark
+import pyspark_riak
 ```
+
+Patch SparkContext instance to enable Riak APIs:
+
+```python
+pyspark_riak.riak_context(sc)
+```
+
+Create an RDD with some test data and save to Riak KV bucket:
+
+```python
+source_data = [{"key1":{"pr_key":"pr_val1"}}, {"key2":{"pr_key":"pr_val2"}}]
+source_rdd = sc.parallelize(source_data, 1)
+source_rdd.saveToRiak("test-python-bucket", "default")
+```
+
+Make a full bucket read query :
+
+```python
+rdd = sc.riakBucket("test-python-bucket", "default").queryAll()
+```
+
+This will return rdd of key-value pairs. Filter values and print
+
+```python
+data = rdd.collect()
+values = map(lambda x: x[1], data)
+for e in values:
+  print e
+```
+
+Query Riak KV bucket by keys:
+
+```python
+keyRDD = sc.riakBucket("test-python-bucket", "default").queryBucketKeys("key1", "key2")
+data = keyRdd.collect()
+values = map(lambda x: x[1], data)
+for e in values:
+  print e
+```
+
+If your data contains 2i secondary indices you can query by that too:
+
+```python
+rangeRDD = sc.riakBucket("test-python-bucket", "default").query2iRange("myIndex", 1L, 5000L)
+data = rangeRDD.collect()
+values = map(lambda x: x[1], data)
+for e in values:
+  print e
+```
+
+Now let's work with a Riak TS table.
 
 Set up Riak TS connection:
 

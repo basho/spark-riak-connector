@@ -13,7 +13,7 @@ import org.junit.{After, Test}
 import shaded.com.basho.riak.protobuf.RiakMessageCodes._
 
 @Category(Array(classOf[RiakTSTests]))
-@OverrideRiakClusterConfig(nodes = 3, timeout = 3)
+@OverrideRiakClusterConfig(nodes = 3, timeout = 5)
 class FailoverTest extends AbstractRiakSparkTest {
   private val NUMBER_OF_TEST_VALUES = 1000
   private val STUBS_AMOUNT = 1
