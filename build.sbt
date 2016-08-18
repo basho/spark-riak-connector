@@ -71,10 +71,8 @@ lazy val examples = (project in file("examples"))
   .settings(
     name := s"$namespace-examples",
     libraryDependencies ++= Seq(
-      "org.apache.spark"              %% "spark-streaming-kafka" % Versions.spark % "provided",
-      "org.apache.kafka"              %% "kafka"                 % Versions.kafka,
-      "org.jfree"                     %  "jfreechart"            % Versions.jfree,
-      "com.github.wookietreiber"      %% "scala-chart"           % Versions.scalaChart))
+      "org.apache.spark"              %% "spark-streaming-kafka" % Versions.spark,
+      "org.apache.kafka"              %% "kafka"                 % Versions.kafka))
   .settings(publishSettings)
   .dependsOn(sparkRiakConnector, sparkRiakConnectorTestUtils)
   .disablePlugins(AssemblyPlugin)

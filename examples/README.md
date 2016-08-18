@@ -1,104 +1,146 @@
-# Examples and Interactive Scala Shell (REPL)
-Riak Spark connector comes with several sample programs and demos:
+# Examples
+The Spark-Riak connector comes with several sample programs and demos:
 
 - [Simple Scala example](#simple-scala-example)
-- [Simple Scala RiakTS example](#simple-scala-ts-example)
+- [Simple Scala Riak TS example](#simple-scala-riak-ts-example)
 - [Simple Scala DataFrame example](#simple-scala-dataframe-example)
-- [Simple Scala RiakTS DatFrame example](#simple-scala-ts-dataframe-example)
+- [Simple Scala Riak TS DataFrame example](#simple-scala-riak-ts-dataframe-example)
 - [Simple Java example](#simple-java-example)
-- [Simple Java RiakTS example](#simple-java-riakts-example)
+- [Simple Java Riak TS example](#simple-java-riak-ts-example)
 - [OFAC demo](#ofac-demo)
-
-It also comes with a helper for running a ready-to-go [bootstrapped Spark shell](#interactive-scala-shell).
+- [Scala RiakTS Parquet Example](#scala-riak-ts-parquet-example)
+- [Spark Streaming Examples](#spark-streaming-examples)
+  - [Spark Streaming Scala Riak KV Example](#spark-streaming-riak-kv-example)
+  - [Spark Streaming Scala Riak TS Example](#spark-streaming-riak-ts-example)
 
 ## Building and Running Examples/Demos
-1. All of the examples assume that you have a Riak KV or Riak TS cluster installed and running on localhost:8087. You can follow these guides to setup a Riak KV or Riak TS cluster: [Installing Riak KV](http://docs.basho.com/riak/kv/2.1.4/setup/installing/) and [Installing Riak TS](http://docs.basho.com/riak/ts/1.2.0/installing/).
 
-2. If you don't have Maven installed, go to the [Maven download page](https://maven.apache.org/download.cgi) and follow the installation instructions for your OS.
+1. All of the examples assume that you have a Riak KV or Riak TS cluster installed and running on localhost:8087. You can follow these guides to setup a Riak KV or Riak TS cluster: [Installing Riak KV](http://docs.basho.com/riak/kv/latest/setup/installing/) and [Installing Riak TS](http://docs.basho.com/riak/ts/latest/installing/).
+
+2. If you don't have SBT installed, go to the [SBT download page](http://www.scala-sbt.org/download.html) and follow the installation instructions for your OS.
 
 3. Then, install the dependencies (we will skip integration tests to speed things up):
 ```
-mvn install -DskipTests
+sbt clean package assembly
 ```
 
-4. Extract REPL/Examples:
+4. Go to examples repl folder:
 ```
-unzip examples/target/spark-riak-connector-examples-REPL.zip
-```
-
-5. Run the example or demo that you want by running `./bin/run-example <class> [params]`. For example: `./bin/run-example SimpleScalaRiakExample` will run the SimpleScalaRiakExample example locally.
-
-## Interactive Scala Shell
-The easiest way to start using Spark is through the Scala shell. You can begin using the Scala shell by running:
-```
-./bin/rspark-shell
+cd examples/src/main/repl
 ```
 
-The original Spark shell will run, bootstrapped with all necessary [imports](./src/main/repl/conf/rspark-shell-defaults.scala) and proper classpath.
+5. Update conf/config.sh file with your settings if needed
+
+6. Run the example or demo that you want by running `bin/run-example <class>`. For example: `./bin/run-example SimpleScalaRiakExample` will run the SimpleScalaRiakExample example locally.
+
+
 
 ## Simple Scala Example
+
 This Scala example demonstrates how to use Riak Spark connector to query all data from the corresponding bucket.
 This example creates test data in the Riak, pulls it back to Spark by utilizing RiakRDD, and as a result,
 calculates the number of values loaded from the Riak bucket.
 
 Run it locally:
 ```
-./bin/run-example SimpleScalaRiakExample
+bin/run-example SimpleScalaRiakExample
 ```
 
 Sources [SimpleScalaRiakExample.scala](./src/main/scala/com/basho/riak/spark/examples/SimpleScalaRiakExample.scala)
 
-## Simple Scala RiakTS Example
+
+
+## Simple Scala Riak TS Example
+
 This Scala example demonstrates how to use Riak Spark connector to do range queries in TS and how to do the same in KV
 
-Run it locally:
+Before running, you will need to create and activate a TS table called `ts_weather_demo` if it does not already exist. You can find more information on creating and activating TS tables [here](http://docs.basho.com/riak/ts/latest/using/creating-activating/), or you can run the following:
+
 ```
-./bin/run-example SimpleScalaRiakTSExample
+riak-admin bucket-type create ts_weather_demo '{"props":{"n_val":3, "table_def":"CREATE TABLE ts_weather_demo (weather varchar not null, family varchar not null, time timestamp not null, temperature double, humidity double, pressure double, PRIMARY KEY ((weather, family, quantum(time, 1, 'h')), weather, family, time))"}}'
+
+riak-admin bucket-type activate ts_weather_demo
+```
+
+You can run the example locally with:
+```
+bin/run-example SimpleScalaRiakTSExample
 ```
 
 Sources [SimpleScalaRiakTSExample.scala](./src/main/scala/com/basho/riak/spark/examples/SimpleScalaRiakTSExample.scala)
 
+
+
 ## Simple Scala DataFrame Example
+
 This Scala example demonstrates how to use Spark Dataframes with RiakKV 
 
-Run it locally:
+You can run the example locally with:
 ```
-./bin/run-example dataframes.SimpleScalaRiakDataframesExample
+bin/run-example dataframes.SimpleScalaRiakDataframesExample
 ```
 
 Sources [SimpleScalaRiakDataframesExample.scala](./src/main/scala/com/basho/riak/spark/examples/dataframes/SimpleScalaRiakDataframesExample.scala)
 
-## Simple Scala Riak TS DataFrame Example
+
+## Simple Scala Riak TS DataFrame example
+
 This Scala example demonstrates how to use Spark Dataframes with Riak TS 
 
-Run it locally:
+Before running, you will need to create and activate a TS table called `ts_weather_demo` if it does not already exist. You can find more information on creating and activating TS tables [here](http://docs.basho.com/riak/ts/latest/using/creating-activating/), or you can run the following:
+
 ```
-./bin/run-example dataframes.SimpleScalaRiakTSDataframesExample
+riak-admin bucket-type create ts_weather_demo '{"props":{"n_val":3, "table_def":"CREATE TABLE ts_weather_demo (weather varchar not null, family varchar not null, time timestamp not null, temperature double, humidity double, pressure double, PRIMARY KEY ((weather, family, quantum(time, 1, 'h')), weather, family, time))"}}'
+
+riak-admin bucket-type activate ts_weather_demo
+```
+
+You can run the example locally with:
+```
+bin/run-example dataframes.SimpleScalaRiakTSDataframesExample
 ```
 
 Sources [SimpleScalaRiakTSDataframesExample.scala](./src/main/scala/com/basho/riak/spark/examples/dataframes/SimpleScalaRiakTSDataframesExample.scala)
 
+
+
 ## Simple Java example
+
 This Java example demonstrates how to use Riak Spark connector to query query Riak KV.
 This example creates test data in the Riak, pulls it back to Spark by utilizing such features as full bucket read, 2i range query, 2i keys query, and query by keys.
 
 Run it locally:
 ```
-./bin/run-example SimpleJavaRiakExample
+bin/run-example SimpleJavaRiakExample
 ```
 Sources [SimpleJavaRiakExample.java](./src/main/java/com/basho/riak/spark/examples/SimpleJavaRiakExample.java)
 
-## Simple Java RiakTS example
+
+
+## Simple Java Riak TS example
+
 This Java example demonstrates how to use Riak Spark connector to query query Riak TS.
+
 This example creates test data in the Riak, pulls it back to Spark by utilizing range scan query.
 
-Run it locally:
+Before running, you will need to create and activate a TS table called `ts_weather_demo` if it does not already exist. You can find more information on creating and activating TS tables [here](http://docs.basho.com/riak/ts/latest/using/creating-activating/), or you can run the following:
+
 ```
-./bin/run-example SimpleJavaRiakTSExample
+riak-admin bucket-type create ts_weather_demo '{"props":{"n_val":3, "table_def":"CREATE TABLE ts_weather_demo (weather varchar not null, family varchar not null, time timestamp not null, temperature double, humidity double, pressure double, PRIMARY KEY ((weather, family, quantum(time, 1, 'h')), weather, family, time))"}}'
+
+riak-admin bucket-type activate ts_weather_demo
+```
+
+You can run the example locally with:
+```
+bin/run-example SimpleJavaRiakTSExample
 ```
 Sources [SimpleJavaRiakExample.java](./src/main/java/com/basho/riak/spark/examples/SimpleJavaRiakTSExample.java)
 
+
+
 ## OFAC demo
+
 This demo shows how Riak and Spark can be used to analyze semi-structured data using Scala.
 
 As part of its enforcement efforts, the Office of Foreign Assets Control (OFAC) publishes a list of individuals and companies owned, controlled by, or acting for/on behalf of targeted countries. It also lists individuals, groups, and entities, such as terrorists and narcotics traffickers designated under programs that are not country-specific. Collectively, such individuals and companies are called "Specially Designated Nationals” (SDNs). Their assets are blocked and U.S. persons are generally prohibited from dealing with them.
@@ -120,11 +162,102 @@ In the demo we are going to generate descriptive and summary statistics from the
 * What is the probability distribution of the vessel tonnage for vessels on the list? (supporting chart: histogram)
 * What are the most common titles of the individuals on the list? (see output during execution)
 
-We'll support our answers by drawing appropriate charts.
-
 You can run the demo locally by:
 ```
-./bin/run-example demos.ofac.OFACDemo
+bin/run-example demos.ofac.OFACDemo
 ```
 
 Sources [OFACDemo.scala](./src/main/scala/com/basho/riak/spark/examples/demos/ofac/OFACDemo.scala)
+
+
+## Scala Riak TS Parquet Example
+
+Simple demo which illustrates how data can be extracted from Riak TS and saved as a parquet file.
+
+Before running, you will need to create and activate a TS table called `parquet_demo` if it does not already exist. You can find more information on creating and activating TS tables [here](http://docs.basho.com/riak/ts/latest/using/creating-activating/), or you can run the following:
+
+```
+riak-admin bucket-type create parquet_demo '{"props":{"n_val":3, "table_def":"CREATE TABLE parquet_demo (site varchar not null, species varchar not null, measurementDate timestamp not null, latitude double, longitude double, value double, PRIMARY KEY ((site, species, quantum(measurementDate, 24, h)),site, species, measurementDate))"}}'
+
+riak-admin bucket-type activate parquet_demo
+```
+
+You can run the example locally with:
+```
+bin/run-example parquet.ScalaRiakParquetExample
+```
+
+Sources [ScalaRiakParquetExample.scala](./src/main/scala/com/basho/riak/spark/examples/parquet/ScalaRiakParquetExample.scala)
+
+
+## Spark Streaming Examples
+
+The Spark-Riak Connector can be used with Spark Streaming. To demonstrate this usage, we will work through two small Scala examples, one for Riak KV and the other for Riak TS.
+
+These examples require the use of Kafka. Please install Kafka and setup a Kafka broker prior to running this example. We will assume that there is a Kafka broker running at `127.0.0.1:9092` with a topic called `streaming`. Instructions for setting up Kafka topics can be found in [this guide](https://kafka.apache.org/documentation.html#quickstart). You can create a broker and topic with the following:
+
+```
+path/to/kafka/bin/zookeeper-server-start.sh config/zookeeper.properties
+path/to/kafka/bin/kafka-server-start.sh config/server.properties
+path/to/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic streaming
+```
+
+We also assume Riak KV/TS is installed and there is a Riak KV/TS node running at `127.0.0.1:8087`. You can find instruction to do so [here](http://docs.basho.com/riak/ts/latest/installing/). 
+
+Riak KV, Kafka and Spark master hostnames must be specified in [config.sh](./src/main/repl/conf/config.sh) prior to running the examples.
+
+### Spark Streaming Riak KV Example
+
+This example will start a stream from the Kafka topic `streaming` into the KV bucket `test-data`. This stream will run until terminated. Whenever a message is produced for Kafka topic `streaming`, the Spark Streaming context will automatically stream the message from the topic into the KV bucket. To see this in action, we first need to run the example:
+
+```
+/path/to/spark-riak-connector-examples/bin/run-example streaming.StreamingKVExample
+```
+
+Next, we need to send a message to the Kafka topic `streaming` with the Kafka console producer script, which can be found in the Kafka directory:
+
+```
+/path/to/kafka/bin/kafka-console-producer.sh --broker-list localhost:9092 --topic streaming
+```
+ 
+This script will read messages from the terminal and pass it to the topic. From the topic, the Spark Streaming context will write the message to Riak KV bucket `test-data`.  As an example put the following into the terminal:
+ 
+```
+{"time": "2016-01-01 08:30:00.000", "weather": "sunny", "temperature": 25.0, "humidity": 67.0, "pressure": 30.20, "family": "f"}
+```
+ 
+You should now be able to see this data entry in the KV bucket `test-data`.
+
+### Spark Streaming Riak TS Example
+
+Having seen how Spark Streaming works with KV buckets, let's now look at the TS table example.
+
+This example will start a stream from the Kafka topic `streaming` into the TS table `ts_weather_demo`. This stream will run until terminated. Whenever a message is produced for Kafka topic `streaming`, the Spark Streaming context will automatically stream the message from the topic into the TS table. To see this in action, we first need to create and activate the TS table. You can find more information on creating and activating TS tables [here](http://docs.basho.com/riak/ts/latest/using/creating-activating/). For this demo we will create and activate the table with the following:
+
+```
+riak-admin bucket-type create ts_weather_demo '{"props":{"n_val":3, "table_def":"CREATE TABLE ts_weather_demo (weather varchar not null, family varchar not null, time timestamp not null, temperature double, humidity double, pressure double, PRIMARY KEY ((weather, family, quantum(time, 1, 'h')), weather, family, time))"}}'
+
+riak-admin bucket-type activate ts_weather_demo
+```
+
+Now that we have created a TS table, you can run the `StreamingTSExample.scala` example with:
+
+```
+/path/to/spark-riak-connector-examples/bin/run-example streaming.StreamingTSExample
+```
+
+Now that the stream is up and running, we need to send data to the Kafka topic. Let's start the Kafka console producer. This will allow us to stream messages from the terminal into the Kafka `streaming` topic.
+
+```
+/path/to/bin/kafka-console-producer.sh --broker-list localhost:9092 --topic streaming
+```
+ 
+Now paste the following message into the terminal:
+
+```
+{"time": "2016-01-01 08:30:00.000", "weather": "sunny", "temperature": 25.0, "humidity": 67.0, "pressure": 30.20, "family": "f"}
+```
+
+You can check that this worked by doing a simple SQL query for the example data. 
+
+Sources [StreamingKVExample.scala](./src/main/scala/com/basho/riak/spark/examples/streaming/StreamingKVExample.scala)

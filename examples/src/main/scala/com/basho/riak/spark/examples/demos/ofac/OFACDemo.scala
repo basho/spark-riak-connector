@@ -17,7 +17,6 @@
  */
 package com.basho.riak.spark.examples.demos.ofac
 
-import java.awt.Color
 import com.basho.riak.client.core.query.indexes.LongIntIndex
 import com.basho.riak.spark.rdd.{RiakFunctions, BucketDef}
 import com.basho.riak.spark.util.RiakObjectConversionUtil
@@ -26,12 +25,6 @@ import org.slf4j.{LoggerFactory, Logger}
 
 import scala.io.Source
 import scala.annotation.meta.field
-import scalax.chart.api._
-import org.jfree.chart.renderer.category.{StandardBarPainter, BarRenderer}
-import org.jfree.chart.renderer.xy.{StandardXYBarPainter, XYBarRenderer}
-import org.jfree.data.statistics.{HistogramType, HistogramDataset}
-import org.jfree.chart.axis.AxisLocation
-import org.jfree.data.xy.{MatrixSeries, MatrixSeriesCollection}
 
 import com.basho.riak.spark._
 import com.basho.riak.client.core.query.{RiakObject, Namespace}
@@ -125,22 +118,6 @@ object OFACDemo {
     // Save to Riak
     countryBans.saveToRiak(OFAC_COUNTRY_BANS)
 
-    // Draw bar plot
-    val chart = BarChart(
-      countryBans.take(10).map(x => (x._1.toString, x._2.toInt)).toVector,
-      title = "Top 10 countries by number of banned individuals",
-      orientation = Orientation.Horizontal,
-      legend = false
-    )
-
-    chart.plot.range.axis.label = "Count"
-    chart.plot.setRangeAxisLocation(AxisLocation.BOTTOM_OR_LEFT)
-    val chartRenderer  = chart.plot.getRenderer.asInstanceOf[BarRenderer]
-    chartRenderer.setBarPainter(new StandardBarPainter)
-    chartRenderer.setSeriesPaint(0, new Color(79, 129, 189))
-
-    chart.saveAsPNG("top10-countries-banned.png")
-
     // -- How many vessels are in the OFAC list by country and vessel type?
     val vess = rdd.filter(x => {
       !x.get("Vess_type").get.toString.contains("-0-") && !x.get("Vess_flag").get.toString.contains("-0-")
@@ -156,26 +133,6 @@ object OFACDemo {
     // Save to Riak
     vessTypeBans.saveToRiak(OFAC_VESSTYPE_BANS)
 
-    // Draw heatmap
-    // At first we create Vessel/Country matrix, that we are going to represent on the heatmap
-    val vessMap = vessTypeBans.collectAsMap()
-    val vessels = vessTypeBans.map(_._1._1).distinct().collect()
-    val countries = vessTypeBans.map(_._1._2).distinct().collect()
-    val vessCntrMatrix = new MatrixSeries("Matrix", vessels.length, countries.length)
-    for(row <- vessels.indices; col <- countries.indices) {
-      vessCntrMatrix.update(row, col, vessMap.getOrElse((vessels(row), countries(col)), 0L).toDouble)
-    }
-
-    // Now we are ready to plot it
-    val heatmap = HeatMapChart(
-      new MatrixSeriesCollection(vessCntrMatrix),
-      rangeLabels = vessels,
-      domainLabels = countries.map(_.capitalize),
-      title = "Vessels in the OFAC list by country and vessel type",
-      legend = false)
-
-    heatmap.saveAsPNG("vess-type-heatmap.png", resolution = (800, 600))
-
     // -- Build a histogram of the vessel's tonnage
     val bins = 20
     val tonnage = rdd.filter(!_.get("Tonnage").get.toString.contains("-0-")).map(x => {
@@ -189,30 +146,6 @@ object OFACDemo {
     // Save to Riak
     RangesAndCount.saveToRiak(OFAC_TONNAGE_HIST)
 
-    // Plot histogram
-    val histData = new HistogramDataset()
-    histData.setType(HistogramType.RELATIVE_FREQUENCY)
-    histData.addSeries("H", tonnage.collect(), bins)
-    val hist = XYBarChart(
-      histData,
-      title = "Vessel tonnage histogram",
-      legend = false
-    )
-    hist.plot.domain.axis.label = "Ranges (ton)"
-    hist.plot.range.axis.label = "Frequency"
-    hist.plot.setDomainZeroBaselineVisible(true)
-    hist.plot.setRangeZeroBaselineVisible(true)
-    hist.plot.setBackgroundPaint(Color.WHITE)
-    hist.plot.setDomainGridlinePaint(new Color(150,150,150))
-    hist.plot.setRangeGridlinePaint(new Color(150,150,150))
-
-    val histRenderer = hist.plot.getRenderer.asInstanceOf[XYBarRenderer]
-    histRenderer.setBarPainter(new StandardXYBarPainter)
-    histRenderer.setSeriesPaint(0, new Color(192, 192, 192))
-    histRenderer.setDrawBarOutline(false)
-
-    hist.saveAsPNG("vessel-tonnage.png")
-
     // -- What kind of titles do individuals in the OFAC list use?
     val titles = rdd.filter(x => {
       !x.get("Title").get.toString.contains("-0-") && x.get("SDN_Type").get.toString.contains("individual")
@@ -224,23 +157,6 @@ object OFACDemo {
     println(s"\nWhat kind of titles do individuals in the OFAC list use?\n\t${wordcount.take(20).mkString("\n\t")}")
 
     wordcount.saveToRiak(OFAC_TITLES)
-
-    // Draw word count bar plot
-    val wc = BarChart(
-      wordcount.take(20).map(x => (x._1.toString, x._2.toInt)).toVector,
-      title = "Top 20 most frequent words in title",
-      orientation = Orientation.Horizontal,
-      legend = false
-    )
-    wc.plot.range.axis.label = "Count"
-    wc.plot.domain.axis.label = "Word"
-    wc.plot.setRangeAxisLocation(AxisLocation.BOTTOM_OR_LEFT)
-
-    val wcRenderer  = wc.plot.getRenderer.asInstanceOf[BarRenderer]
-    wcRenderer.setBarPainter(new StandardBarPainter)
-    wcRenderer.setSeriesPaint(0, new Color(133, 191, 119))
-
-    wc.saveAsPNG("top20-titles.png")
   }
 
   def createTestData(sc: SparkContext): Unit = {

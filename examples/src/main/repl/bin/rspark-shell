@@ -19,11 +19,14 @@
 #
 
 FWDIR="$(cd "`dirname "$0"`"/..; pwd)"
+BASEDIR=$(echo "$(pwd)" | awk -F "/examples" '{print $1}')
 export EXAMPLES_HOME="$FWDIR"
 
 . "$FWDIR"/conf/config.sh
 
 spark-shell --jars $SPARK_JARS \
 	--conf spark.riak.connection.host=$RIAK_HOST:$RIAK_PORT \
+	--conf kafka.broker=$KAFKA_BROKER \
+	--packages org.apache.spark:spark-streaming-kafka_$SCALA_VERSION:$SPARK_VERSION,org.apache.kafka:kafka_$SCALA_VERSION:$KAFKA_VERSION \
 	-i $FWDIR/conf/rspark-shell-defaults.scala \
 	$@

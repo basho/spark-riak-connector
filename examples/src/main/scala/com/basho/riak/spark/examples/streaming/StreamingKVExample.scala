@@ -50,9 +50,9 @@ object StreamingKVExample {
       }
 
     streamCtx.start()
-    streamCtx.awaitTermination()
     println("Spark streaming context started. Spark UI could be found at http://SPARK_MASTER_HOST:4040")
     println("NOTE: if you're running job on the 'local' master open http://localhost:4040")
+    streamCtx.awaitTermination()
   }
 
   private def setSparkOpt(sparkConf: SparkConf, option: String, defaultOptVal: String): SparkConf = {

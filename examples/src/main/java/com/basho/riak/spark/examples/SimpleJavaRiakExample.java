@@ -53,23 +53,30 @@ public class SimpleJavaRiakExample implements Serializable {
     final List<String> allValues = SparkJavaUtil.javaFunctions(jsc).riakBucket(SOURCE_DATA, String.class).queryAll().collect();
     System.out.println("All values:");
     allValues.forEach(System.out::println);
+    System.out.println("\n");
 
     final List<String> filteredBy2iRangeLocal = SparkJavaUtil.javaFunctions(jsc).riakBucket(SOURCE_DATA, String.class).query2iRangeLocal("creationNo", 2L, 5L).collect();
     System.out.println("Values filtered by secondary index range local:");
     filteredBy2iRangeLocal.forEach(System.out::println);
+    System.out.println("\n");
 
     final List<String> filteredBy2iRange = SparkJavaUtil.javaFunctions(jsc).riakBucket(SOURCE_DATA, String.class).query2iRange("creationNo", 2L, 5L).collect();
     System.out.println("Values filtered by secondary index range:");
     filteredBy2iRange.forEach(System.out::println);
+    System.out.println("\n");
 
     final List<String> filteredByKeys = SparkJavaUtil.javaFunctions(jsc).riakBucket(SOURCE_DATA, String.class).queryBucketKeys("key-1", "key-3", "key-6").collect();
     System.out.println("Values filtered by keys:");
     filteredByKeys.forEach(System.out::println);
+    System.out.println("\n");
 
     final List<String> filteredBy2iKeys = SparkJavaUtil.javaFunctions(jsc).riakBucket(SOURCE_DATA, String.class).query2iKeys("creationNo", 1L, 3L, 6L).collect();
     System.out.println("Values filtered by 2i keys:");
     filteredBy2iKeys.forEach(System.out::println);
+    System.out.println("\n");
   }
+
+
 
   private static void createDemoData(JavaSparkContext jsc) throws IOException {
     List<Demo> vals = tolerantMapper.readValue(TEST_DATA, new TypeReference<List<Demo>>() {});
