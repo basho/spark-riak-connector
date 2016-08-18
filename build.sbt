@@ -80,6 +80,11 @@ lazy val examples = (project in file("examples"))
 lazy val sparkRiakConnectorTestUtils = (project in file("test-utils"))
   .settings(commonSettings: _*)
   .settings(commonDependencies: _*)
+  .settings(Seq(
+    libraryDependencies ++= Seq(
+      "net.javacrumbs.json-unit"     %  "json-unit"                 % Versions.jsonUnit
+    )
+  ))
   .settings(name := s"$namespace-test-utils")
   .settings(publishSettings)
   .disablePlugins(AssemblyPlugin)
@@ -110,7 +115,6 @@ lazy val commonDependencies = Seq(
       "com.fasterxml.jackson.module" %% "jackson-module-scala"      % Versions.jacksonModule exclude("com.google.guava", "guava")
                                                                                              exclude("com.google.code.findbugs", "jsr305")
                                                                                              exclude("com.thoughtworks.paranamer", "paranamer"),
-      "net.javacrumbs.json-unit"     %  "json-unit"                 % Versions.jsonUnit % "test",
       "junit"                        %  "junit"                     % Versions.junit % "test",
       "org.hamcrest"                 %  "hamcrest-all"              % Versions.hamrest % "test",
       "org.mockito"                  %  "mockito-core"              % Versions.mockito % "test",

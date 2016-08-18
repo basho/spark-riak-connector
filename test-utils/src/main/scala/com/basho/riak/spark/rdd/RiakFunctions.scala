@@ -418,7 +418,7 @@ object RiakFunctions {
 
 
 trait JsonFunctions {
-  protected val tolerantMapper = new ObjectMapper()
+  protected def tolerantMapper = new ObjectMapper()
     .configure(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES, true)
     .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true)
     .configure(JsonParser.Feature.ALLOW_SINGLE_QUOTES, true)

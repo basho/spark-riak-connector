@@ -27,11 +27,23 @@ class TSDataQueryingIterator(query: QueryTS) extends Iterator[Row] with Logging 
   private val subqueries = query.queryData.iterator
   private var columns: Option[Seq[ColumnDescription]] = None
 
+  /**
+    * @return result always corresponds to the latest data returned by next() if there were no subsequent call [[hasNext]]
+    *         or there is no outstanding data except following cases:
+    *
+    * - when [[next()]] and [[hasNext]] methods haven't been called yet, then data will be fetched implicitly
+    * and corresponding ColumnDefs will be returned.
+    * - when [[hasNext]] has been called and there is a next [[Row]], columnDefs for the next [[Row]] will be returned then,
+    */
   def columnDefs: Seq[ColumnDescription] = {
-    if (!columns.isDefined) {
-      // if columns were requested go and load data
+    if (_iterator.isEmpty && columns.isEmpty) {
+      /**
+        *  if it is a newly created data iterator it has no outstanding data from the previous fetch(prefetch)
+        *  and it is safe to do a prefetch and use column defs returned by it
+       */
       prefetch()
     }
+
     columns match {
       case None      => Seq()
       case Some(cds) => cds
@@ -39,32 +51,40 @@ class TSDataQueryingIterator(query: QueryTS) extends Iterator[Row] with Logging 
   }
   
   protected[this] def prefetch() = {
-    val nextSubQuery = subqueries.next
-    logTrace(s"Prefetching chunk of data: ts-query(token=$nextSubQuery)")
+    while( subqueries.hasNext && !isPrefetchedDataAvailable) {
+      val nextSubQuery = subqueries.next
+      logTrace(s"Prefetching chunk of data: ts-query(token=$nextSubQuery)")
 
-    val r = query.nextChunk(nextSubQuery)
+      val r = query.nextChunk(nextSubQuery)
 
-    r match {
-      case (cds, rows) =>
-        if( isTraceEnabled() ) {
-          logTrace(s"ts-query($nextSubQuery) returns:\n  columns: ${r._1}\n  data:\n\t ${r._2}")
-        } else {
-          logDebug(s"ts-query($nextSubQuery) returns:\n  data.size: ${r._2.size}")
-        }
+      r match {
+        case (cds, rows) =>
+          if (isTraceEnabled()) {
+            logTrace(s"ts-query($nextSubQuery) returns:\n  columns: ${r._1}\n  data:\n\t ${r._2}")
+          } else {
+            logDebug(s"ts-query($nextSubQuery) returns:\n  data.size: ${r._2.size}")
+          }
 
-        if(!columns.isDefined) {
-          columns = Some(cds)
-        }
+          if (cds != null && cds.nonEmpty) {
+            columns = Some(cds)
+          } else if (columns.isEmpty) {
+            // We have to initialize columns here, to make a difference and use it as indikator
+            columns = Some(Seq())
+          }
 
-        _iterator = Some(rows.iterator)
+          _iterator = Some(rows.iterator)
 
-      case _ => _iterator = None
-        logWarning(s"ts-query(token=$nextSubQuery) returns: NOTHING")
+        case _ => _iterator = None
+          logWarning(s"ts-query(token=$nextSubQuery) returns: NOTHING")
+      }
     }
   }
 
+  private def isPrefetchedDataAvailable: Boolean =
+    !(_iterator.isEmpty || (_iterator.isDefined && !_iterator.get.hasNext))
+
   override def hasNext: Boolean = {
-    while( subqueries.hasNext && (_iterator.isEmpty || (_iterator.isDefined && !_iterator.get.hasNext))) {
+    if (!isPrefetchedDataAvailable) {
         prefetch()
     }
 

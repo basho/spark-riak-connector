@@ -17,19 +17,15 @@
   */
 package com.basho.riak.spark.rdd
 
-import java.io.IOException
-
+import com.basho.riak.JsonTestFunctions
 import com.basho.riak.client.core.RiakNode
 import com.basho.riak.client.core.query.Namespace
-import com.fasterxml.jackson.core.JsonProcessingException
-import net.javacrumbs.jsonunit.JsonAssert
-import net.javacrumbs.jsonunit.core.{Configuration, Option => JsonUnitOption}
 import org.junit._
 import org.junit.rules.TestWatcher
 import org.junit.runner.Description
 import org.slf4j.{Logger, LoggerFactory}
 
-abstract class AbstractRiakTest extends RiakFunctions {
+abstract class AbstractRiakTest extends RiakFunctions with JsonTestFunctions {
 
   private final val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
@@ -72,42 +68,6 @@ abstract class AbstractRiakTest extends RiakFunctions {
     List(DEFAULT_NAMESPACE, DEFAULT_NAMESPACE_4STORE) foreach resetAndEmptyBucket
 
     withRiakDo(session => jsonData.foreach(createValues(session, DEFAULT_NAMESPACE, _)))
-  }
-
-  protected def assertEqualsUsingJSON(jsonExpected: AnyRef, actual: AnyRef): Unit = {
-    assertEqualsUsingJSONImpl(jsonExpected, actual, null) // scalastyle:ignore
-  }
-
-  protected def assertEqualsUsingJSONIgnoreOrder(jsonExpected: AnyRef, actual: AnyRef): Unit = {
-    assertEqualsUsingJSONImpl(jsonExpected, actual, JsonAssert.when(JsonUnitOption.IGNORING_ARRAY_ORDER))
-  }
-
-  private def assertEqualsUsingJSONImpl(jsonExpected: AnyRef, actual: AnyRef, configuration: Configuration): Unit = {
-    var strExpected: String = null // scalastyle:ignore
-    var strActual: String = null // scalastyle:ignore
-    try {
-      strExpected = tolerantMapper.writerWithDefaultPrettyPrinter().writeValueAsString(parseIfString(jsonExpected))
-      strActual = tolerantMapper.writerWithDefaultPrettyPrinter().writeValueAsString(parseIfString(actual))
-    } catch {
-      case ex: JsonProcessingException => throw new RuntimeException(ex)
-    }
-
-    scala.Option(configuration) match {
-      case Some(x:Configuration) => JsonAssert.assertJsonEquals(strExpected, strActual, x)
-      case None => JsonAssert.assertJsonEquals(strExpected, strActual)
-    }
-  }
-
-  private def parseIfString(raw: AnyRef): Object = {
-    raw match {
-      case str: String =>
-        try {
-          tolerantMapper.readValue(str, classOf[java.lang.Object])
-        } catch {
-          case ex: IOException => throw new RuntimeException(ex)
-        }
-      case _ => raw
-    }
   }
 }
 
