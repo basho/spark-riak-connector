@@ -2,13 +2,13 @@ package com.basho.riak.spark.examples.streaming
 
 import java.util.UUID
 
-import com.basho.riak.client.core.query.Namespace
-import com.basho.riak.spark.util.RiakObjectConversionUtil
 import kafka.serializer.StringDecoder
 import com.basho.riak.spark._
+import com.basho.riak.spark.streaming._
+import com.basho.riak.spark.util.RiakObjectConversionUtil
 import org.apache.spark.streaming.kafka.KafkaUtils
 import org.apache.spark.streaming.{Durations, StreamingContext}
-import org.apache.spark.{SparkContext, SparkConf}
+import org.apache.spark.{SparkConf, SparkContext}
 
 /**
   * Simple demo for Spark streaming job integration.
@@ -29,25 +29,18 @@ object StreamingKVExample {
 
     val sc = new SparkContext(sparkConf)
     val streamCtx = new StreamingContext(sc, Durations.seconds(15))
-    val sqlContext = new org.apache.spark.sql.SQLContext(sc)
-    import sqlContext.implicits._
-
-    val namespace = new Namespace("test-data")
 
     val kafkaProps = Map[String, String](
       "metadata.broker.list" -> sparkConf.get("kafka.broker"),
       "client.id" -> UUID.randomUUID().toString
     )
 
-    KafkaUtils
-      .createDirectStream[String, String, StringDecoder, StringDecoder](streamCtx, kafkaProps, Set[String]("streaming"))
-      .foreachRDD { rdd =>
-        val rows = sqlContext.read.json(rdd.values).map {
-          line => val obj = RiakObjectConversionUtil.to(line)
-            obj.setContentType("application/json")
-            obj
-        }.saveToRiak(namespace)
-      }
+    KafkaUtils.createDirectStream[String, String, StringDecoder, StringDecoder](streamCtx, kafkaProps, Set[String]("ingest-kv")
+    ) map { case (key, value) =>
+      val obj = RiakObjectConversionUtil.to(value)
+      obj.setContentType("application/json")
+      obj
+    } saveToRiak "test-data"
 
     streamCtx.start()
     println("Spark streaming context started. Spark UI could be found at http://SPARK_MASTER_HOST:4040")
