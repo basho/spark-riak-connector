@@ -9,8 +9,15 @@ dependency-reduced-pom.xml
 nbactions.xml
 nb-configuration.xml
 .DS_Store
+secrets.tgz
+*.gpg
+connector/python/build/
+connector/python/dist/
 connector/python/.cache/
+connector/python/.eggs
 connector/python/*.pyc
+connector/python/*.egg
 connector/python/pyspark_riak/*.pyc
+connector/python/pyspark_riak.egg-info/
 connector/python/tests/__pycache__/
 connector/python/tests/*.pyc
