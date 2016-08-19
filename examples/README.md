@@ -57,7 +57,7 @@ This Scala example demonstrates how to use Riak Spark connector to do range quer
 Before running, you will need to create and activate a TS table called `ts_weather_demo` if it does not already exist. You can find more information on creating and activating TS tables [here](http://docs.basho.com/riak/ts/latest/using/creating-activating/), or you can run the following:
 
 ```
-riak-admin bucket-type create ts_weather_demo '{"props":{"n_val":3, "table_def":"CREATE TABLE ts_weather_demo (weather varchar not null, family varchar not null, time timestamp not null, temperature double, humidity double, pressure double, PRIMARY KEY ((weather, family, quantum(time, 1, 'h')), weather, family, time))"}}'
+riak-admin bucket-type create ts_weather_demo '{"props":{"n_val":3, "table_def": "CREATE TABLE ts_weather_demo (weather VARCHAR NOT NULL, family VARCHAR NOT NULL, time TIMESTAMP NOT NULL, temperature DOUBLE, humidity DOUBLE, pressure DOUBLE, PRIMARY KEY ((weather, family, QUANTUM(time, 1, 'h')), weather, family, time))"}}'
 
 riak-admin bucket-type activate ts_weather_demo
 ```
@@ -90,7 +90,7 @@ This Scala example demonstrates how to use Spark Dataframes with Riak TS
 Before running, you will need to create and activate a TS table called `ts_weather_demo` if it does not already exist. You can find more information on creating and activating TS tables [here](http://docs.basho.com/riak/ts/latest/using/creating-activating/), or you can run the following:
 
 ```
-riak-admin bucket-type create ts_weather_demo '{"props":{"n_val":3, "table_def":"CREATE TABLE ts_weather_demo (weather varchar not null, family varchar not null, time timestamp not null, temperature double, humidity double, pressure double, PRIMARY KEY ((weather, family, quantum(time, 1, 'h')), weather, family, time))"}}'
+riak-admin bucket-type create ts_weather_demo '{"props":{"n_val":3, "table_def": "CREATE TABLE ts_weather_demo (weather VARCHAR NOT NULL, family VARCHAR NOT NULL, time TIMESTAMP NOT NULL, temperature DOUBLE, humidity DOUBLE, pressure DOUBLE, PRIMARY KEY ((weather, family, QUANTUM(time, 1, 'h')), weather, family, time))"}}'
 
 riak-admin bucket-type activate ts_weather_demo
 ```
@@ -126,7 +126,7 @@ This example creates test data in the Riak, pulls it back to Spark by utilizing 
 Before running, you will need to create and activate a TS table called `ts_weather_demo` if it does not already exist. You can find more information on creating and activating TS tables [here](http://docs.basho.com/riak/ts/latest/using/creating-activating/), or you can run the following:
 
 ```
-riak-admin bucket-type create ts_weather_demo '{"props":{"n_val":3, "table_def":"CREATE TABLE ts_weather_demo (weather varchar not null, family varchar not null, time timestamp not null, temperature double, humidity double, pressure double, PRIMARY KEY ((weather, family, quantum(time, 1, 'h')), weather, family, time))"}}'
+riak-admin bucket-type create ts_weather_demo '{"props":{"n_val":3, "table_def": "CREATE TABLE ts_weather_demo (weather VARCHAR NOT NULL, family VARCHAR NOT NULL, time TIMESTAMP NOT NULL, temperature DOUBLE, humidity DOUBLE, pressure DOUBLE, PRIMARY KEY ((weather, family, QUANTUM(time, 1, 'h')), weather, family, time))"}}'
 
 riak-admin bucket-type activate ts_weather_demo
 ```
@@ -177,7 +177,7 @@ Simple demo which illustrates how data can be extracted from Riak TS and saved a
 Before running, you will need to create and activate a TS table called `parquet_demo` if it does not already exist. You can find more information on creating and activating TS tables [here](http://docs.basho.com/riak/ts/latest/using/creating-activating/), or you can run the following:
 
 ```
-riak-admin bucket-type create parquet_demo '{"props":{"n_val":3, "table_def":"CREATE TABLE parquet_demo (site varchar not null, species varchar not null, measurementDate timestamp not null, latitude double, longitude double, value double, PRIMARY KEY ((site, species, quantum(measurementDate, 24, h)),site, species, measurementDate))"}}'
+riak-admin bucket-type create parquet_demo '{"props":{"n_val":3, "table_def":"CREATE TABLE parquet_demo (site VARCHAR NOT NULL, species VARCHAR NOT NULL, measurementDate TIMESTAMP NOT NULL, latitude DOUBLE, longitude DOUBLE, value DOUBLE, PRIMARY KEY ((site, species, QUANTUM(measurementDate, 24, h)),site, species, measurementDate))"}}'
 
 riak-admin bucket-type activate parquet_demo
 ```
@@ -235,7 +235,7 @@ Having seen how Spark Streaming works with KV buckets, let's now look at the TS 
 This example will start a stream from the Kafka topic `streaming` into the TS table `ts_weather_demo`. This stream will run until terminated. Whenever a message is produced for Kafka topic `streaming`, the Spark Streaming context will automatically stream the message from the topic into the TS table. To see this in action, we first need to create and activate the TS table. You can find more information on creating and activating TS tables [here](http://docs.basho.com/riak/ts/latest/using/creating-activating/). For this demo we will create and activate the table with the following:
 
 ```
-riak-admin bucket-type create ts_weather_demo '{"props":{"n_val":3, "table_def":"CREATE TABLE ts_weather_demo (weather varchar not null, family varchar not null, time timestamp not null, temperature double, humidity double, pressure double, PRIMARY KEY ((weather, family, quantum(time, 1, 'h')), weather, family, time))"}}'
+riak-admin bucket-type create ts_weather_demo '{"props":{"n_val":3, "table_def": "CREATE TABLE ts_weather_demo (weather VARCHAR NOT NULL, family VARCHAR NOT NULL, time TIMESTAMP NOT NULL, temperature DOUBLE, humidity DOUBLE, pressure DOUBLE, PRIMARY KEY ((weather, family, QUANTUM(time, 1, 'h')), weather, family, time))"}}'
 
 riak-admin bucket-type activate ts_weather_demo
 ```
