@@ -18,7 +18,7 @@ The Spark-Riak connector enables you to connect Spark applications to Riak KV an
 
 * Riak TS 1.3.1+
 * Apache Spark 1.6+
-* Scala 2.10
+* Scala 2.10 and 2.11
 * Java 8
 
 ## Coming Soon
