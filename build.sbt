@@ -16,6 +16,8 @@
   * under the License.
   */
 
+import java.nio.file.Paths
+
 import com.spotify.docker.client.DefaultDockerClient
 import sbt.ExclusionRule
 import sbt.Keys._
@@ -27,6 +29,7 @@ import scala.util.Properties
 lazy val namespace = "spark-riak-connector"
 
 lazy val pullDockerRiakImage = taskKey[Unit]("Pulls Riak image from Docker Hub")
+lazy val runPySparkTests = taskKey[Unit]("Runs PySpark tests")
 
 //scalastyle:off
 lazy val root = (project in file("."))
@@ -61,7 +64,26 @@ lazy val sparkRiakConnector = (project in file("connector"))
           case None => "basho/riak-ts:latest"
         })
     },
-    (test in Test) <<= (test in Test) dependsOn pullDockerRiakImage)
+    (test in Test) <<= (test in Test) dependsOn pullDockerRiakImage,
+    runPySparkTests := {
+      val home = Paths.get(System.getenv("HOME"))
+      val buildDir = Paths.get(System.getenv().getOrDefault("TRAVIS_BUILD_DIR", "")).toAbsolutePath
+      val riakHosts = System.getenv().getOrDefault("RIAK_HOSTS", "localhost:8087")
+
+      val cp = (fullClasspath in Test).value.files.map { f =>
+        f.toString.replace(buildDir.toString + "/", "").replace(home.toString, "/root")
+      }.filter(_.contains("test-utils")).mkString(":")
+      val uberJar = buildDir.relativize((assemblyOutputPath in assembly).value.toPath)
+
+      if(!scalaBinaryVersion.value.equals("2.11")) {
+        val rtnCode = s"connector/python/test.sh $uberJar:$cp" ! streams.value.log
+        //val rtnCode = s"docker build -t $namespace ." #&& s"docker run --rm -i -e RIAK_HOSTS=$riakHosts -e SPARK_CLASSPATH=$uberJar:$cp -v ${buildDir.toString}:/usr/src/$namespace -v ${home.toString}/.ivy2:/root/.ivy2 -v /var/run/docker.sock:/var/run/docker.sock -v /usr/bin/docker:/bin/docker -w /usr/src/$namespace $namespace ./connector/python/test.sh" ! streams.value.log
+        if (rtnCode != 0) {
+          sys.error("runPySparkTests failed!")
+        }
+      }
+    }
+  )
   .dependsOn(sparkRiakConnectorTestUtils)
   .enablePlugins(AssemblyPlugin)
 
@@ -210,13 +232,21 @@ addCommandAlias("runNonIntegrationTests", "testOnly -- --exclude-categories=com.
 
 lazy val publishSettings = Seq(
   publishTo := {
-    val artifactory = "https://basholabs.artifactoryonline.com/basholabs"
-    if (version.value.trim.endsWith("SNAPSHOT"))
-      Some("Artifactory Realm" at s"$artifactory/libs-snapshot-local")
+    val nexus = "https://oss.sonatype.org/"
+    if (isSnapshot.value)
+      Some("snapshots" at nexus + "content/repositories/snapshots")
     else
-      Some("Artifactory Realm" at s"$artifactory/libs-release-local")
+      Some("releases" at nexus + "service/local/staging/deploy/maven2")
   },
-  credentials := Seq(Credentials("Artifactory Realm", "basholabs.artifactoryonline.com",
-    Properties.envOrElse("ARTIFACTORY_USER", ""), Properties.envOrElse("ARTIFACTORY_PASS", ""))),
-  publishMavenStyle := true
+  publishMavenStyle := true,
+  pomIncludeRepository := { _ => false },
+  credentials := Seq(Credentials(
+    "Sonatype Nexus Repository Manager",
+    "oss.sonatype.org",
+    Properties.envOrElse("SONATYPE_USER", ""),
+    Properties.envOrElse("SONATYPE_PASS", "")
+  )),
+  pgpPassphrase := Some(Properties.envOrElse("PGP_PASSPHRASE", "").toCharArray),
+  pgpSecretRing := file("./secret.gpg"),
+  pgpPublicRing := file("./public.gpg")
 )

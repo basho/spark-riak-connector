@@ -27,3 +27,5 @@ addSbtPlugin("org.spark-packages" %% "sbt-spark-package" % "0.2.4")
 addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.8.2")
 
 addSbtPlugin("com.atlassian.labs" % "sbt-git-stamp" % "0.1.2")
+
+addSbtPlugin("com.jsuereth" % "sbt-pgp" % "1.0.0")

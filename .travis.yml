@@ -1,23 +1,44 @@
+sudo: required
+dist: trusty
+
 language: scala
 jdk: oraclejdk8
-sudo: required
-
-cache:
-  directories:
-    - $HOME/.ivy2
-    - $HOME/.sbt
 
 services:
   - docker
+
+cache:
+  directories:
+    - "$HOME/.m2"
+    - "$HOME/.ivy2"
+    - "$HOME/.sbt"
 
 scala:
   - 2.10.6
   - 2.11.7
 
 before_script:
-  - sbt update # update dependencies here in order to cache them and mount them later to docker container
-  - sbt assembly
+  - docker run --name $RIAK_FLAVOR -d -p 8087:8087 -p 8098:8098 basho/riak-ts
+  - curl -q -sSL http://d3kbcqa49mib13.cloudfront.net/spark-1.6.2-bin-hadoop2.6.tgz | tar -zxf - -C /opt
 
 script:
-  - docker run --rm -it -v $HOME/.ivy2:/root/.ivy2 -v $HOME/.sbt:/root/.sbt -v /var/run/docker.sock:/var/run/docker.sock -v $(which docker):/bin/docker -v $(pwd):/usr/src/riak-test-docker -w /usr/src/riak-test-docker asuprun/test-env sbt ++$TRAVIS_SCALA_VERSION test
-  - docker run --rm -it  -v $HOME/.ivy2/cache/com.basho.riak.test/riak-test-docker/jars/:/usr/src/riak-test-docker/ -v /var/run/docker.sock:/var/run/docker.sock -v $(which docker):/bin/docker -v $(pwd):/usr/src/spark-riak-connector -w /usr/src/spark-riak-connector -e SPARK_CLASSPATH="/usr/src/spark-riak-connector/connector/target/scala-`\sed 's/\(.*\)\..*/\1/' <<< \"$TRAVIS_SCALA_VERSION\"`/spark-riak-connector_`\sed 's/\(.*\)\..*/\1/' <<< \"$TRAVIS_SCALA_VERSION\"`-1.5.2-SNAPSHOT-uber.jar:/usr/src/riak-test-docker/riak-test-docker-1.1.jar" -e PYTHONPATH=/usr/src/spark-riak-connector/connector/python asuprun/test-env /bin/bash -c "py.test /usr/src/spark-riak-connector/connector/python/tests/test_pyspark_riak.py -s"
+  - ./travis/build.sh
+
+after_script:
+  - docker rm -f $RIAK_FLAVOR
+
+env:
+  matrix:
+    - RIAK_FLAVOR=riak-ts
+    - RIAK_FLAVOR=riak-kv
+  global:
+    - RIAK_HOSTS=localhost:8087
+    - SPARK_HOME=/opt/spark-1.6.2-bin-hadoop2.6
+    - secure: 2DtC5C8ETA50ByXqs3Y6h54VcXwNvBEH9lieCdR3q1QOUQeXi8TZ3TYVh8j5mddJExPmVdxbhbIzKje2eBb93Dp63c9pSPJnagvnGIzWUhaRQAAUicmpQ+XjGjlOeaXAlopBddS8ibA8r08gMn4jX9VCSCQosg7mpvWInFRfsOS97yfvmxRn3glh0rOkJegdwZdswG7i+PV20jnzbFJgT8otr0BNVKaZal7377OgX8dNy6/94lHyqXhH9lYHwzUaU/Aupyi5V3kAlLKVcv8xlz/PkLTpc8OAIrbCDxDeEQ1qG56rVhNJpnQMTs9VPzT9m8d6EECFcZ7cHi5VXiE9R09pHRMXH09XDXGK/6gHdxSZzP3s96uoTm2651O1r7oX74j35DhoIpyPayjW18jUruxtXChHt6snB5SlwHZ+7ysHmu1Xtk1GZN92pj0qY4GoJ/fOZKmm3uK2gyKbwL1rTc6haFe7YgBhA9P1CT4LwxRr9xF8gRaO3L0kQ+nDVE4H/REWJfn0BzFQ8bj8xRORqXGAIUvsLEdoKuV/47aFFgoAy8nb5ePBxpr0CpBKxn1V1LKHxHmpqWiAZEW7o3BQuPOFJU6yZ8vSulrCMcCv/JH9A64QbtFegorac54Zl2gcwMl/BOnUfcDkG1bpoRr/oWaQTQr73ytTZvtsWr7EYkE=
+    - secure: CLdXfY36G47yuSQJSUacX3ZHr+Ibzb5QcmR7v5/AViG/s0IMv5gnRpoa6CPIdQ2xhXyjXs30g8Towk6W2MDB3IE3R0z3lm4gPJ8TpqG3okftn3Rsk7FKSJGcoetT0KIZKtx63YAuhQ9n6xXrwvxJ2e+Or0b/L9rZrXsuyFA6pDeO1DG/BG0kaBsOSadLFOZym+9YzPNobMQBBjQ1WRd8H2FIXzUcqsSULK8JQNSB2F6t7CJ65b5jmcR3/vmGDMVXbjiagw17r83x27veTdzf5YM2+HmlMv4PQxfRCwdIKCWxtYe4FGFi3GFPn77ar5FlFU76KtrBLGC+5dri6L0UK35Uv8Ear8rlIiFOlPvF/O1FcMYWJb/DlpHv2Q+vsC1799bDuF9/XYvJfLfzurSTBjc1jPoim4ekbEkV98Vpy3ApLbffEYpdAImqRionqwwN5ai6yO/4h3OIN1L11d0F2ifFvJK8EEc/FbaThn5I0VOZMoEHpqIDvR+LaPO8lDxvRVEGHTpG6eDYpER4EJ6nMlRgW0X/AMH+Ac/PbQ7RHFsj/tJvwEUvpeqypwO6uYBGj6pNmtIMCp2zJ2pCY8DY9UV8KNB4fxsJOO3Ctj49W3GQd+q5DmqeRN6ieQL2JNqFM2tcBuUuJOeGe9QpnYlncKEE2KEDBGMnGmwxJJh83eg=
+    - secure: y0GBrBZL2ogQ2RcA9N9pxBsp6SXg0P2Y0krw7VouP9nuKOjdBgMEuX4lKWLcm1NBq6ofMAK3iTrYKW7Sl2bjZqsEJY8lxLkbTfcu7tsMiJ4IRQtIa2VGvnOKJibcHiU2ZmBFB9hS2xZ7Otpe5dbWfy2T0p/q5QfCivrxEWKM6lObRfzLx2KaAPqEF7udtGc7DECvggfHyiPpJVfP05rlh0A3VjwsWCtWxA+I1kHFRtFyTNcngFn4a5qjE5/5bt7h7kZlIcbZDw6PxBKQDdcFYjy+2x8u60R5zoNQffI7U5LVlZ6dRW2ru1UFMdlXVAQ10ls9BvYOeabQLF/di+KDl5Pp27lSJiFZwFKqZzeLE03rKUxZhNmHrIn5TkErLtBwHQqSDcEx4JnufLoWm8HXS5sCbEbZU+QKJclGiYNO8Pqnx/ufL+odB/esqcys4dS90k0vmW6OATwXrDncDHbCM+DiLxSLdXRYdxIZY3eBHuYzJLNz6mWaMYW8ZfXo8gjw/749Kpb01GtSTpfjcvRh/DpwRfGbvQp1eXThkv1Xm3kfKje8JArhqJE3Yi7Y6+ZIj9jciEVrWRvHbpAPlHE3N6XqyQ0UmIu2T0s4bWCBQNHVax8R5iS1nyE/JQ1YKPSI5GXLWSJzNp8jgfG0e7gNVugl1LrcESCTM3/j0+wNp4k=
+
+notifications:
+  slack:
+    rooms:
+      - secure: kcfEMrV5Iy0BXKTGnxwVJB8/2Qx9BZwRi4g7ub4UOHjhfcUGAboliwoa6as5v91HiERWMJfVo7Sbwx39ehvkB/ERG6y4aCn1W+831QoKvYqnmQvaSyMzQG/8O+eq4JZrxlKi7JOLhK3u5ZYePuWyD7RgrKDWN0xE0cvEzcGEBAuf4wnvliaqRh0DL9HU0ww4a/YW+P5jRQN9brISvh3hjxDdr9b+/SL6eGqpRzIL+3b5E6aNYL6eS3KOjfn5eZB7VcWaHljVYIf3uRc+pc8zyPyG2bnmK3n5ZexkFyiDNWQuGLcrDJLn1hAdPcCm9RZmeDM0UHefEIqez5yU91cWeklSJiJMCQp69Pu5YNdZ6xPBIEOyr4K49J76AOoF+w02C7OOpNtBrfjWBwVNLVP+T1gzjRXfWEiAnh2fxEWdoemSLzdDlUShSAUTwW314QFSwkhHZTNWi+oPNhS7UYU5lywTiW/zeECiVZRTAfpY6JdsJiHuNFgC6+4rTiajnA+e7ruv9o4kd56cTp/D/4gUcab+4HpnVY7N5FyvwvFyeBUbk48UuDgVwCNhrMlUdpMSBWjd0NwVbM0EM+lSnK+d4xdol6uHNcjL3r+8G4WIEV6Djd58S9yKkMZuEhnqdEdfL7z+UvpscM3Bj3lAIi+cDUfVKgh9SI696M4/dYvEpTM=
