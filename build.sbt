@@ -113,7 +113,7 @@ lazy val sparkRiakConnectorTestUtils = (project in file("test-utils"))
 
 lazy val commonSettings = Seq(
   organization := "com.basho.riak",
-  version := "1.5.2-SNAPSHOT",
+  version := "1.6.0-SNAPSHOT",
   scalaVersion := "2.10.6",
   crossPaths := true,
   spName := s"basho/$namespace",
