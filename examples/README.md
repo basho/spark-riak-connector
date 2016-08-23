@@ -205,7 +205,7 @@ We also assume Riak KV/TS is installed and there is a Riak KV/TS node running at
 
 Riak KV, Kafka and Spark master hostnames must be specified in [config.sh](./src/main/repl/conf/config.sh) prior to running the examples.
 
-**Important Note**: [config.sh](./src/main/repl/conf/config.sh) will attempt to gather your local scala version. This version number will be used in [run-example](./src/main/repl/bin/run-example) to pull the appropriate `spark-streaming-kafka` and `kafka` libraries from spark-packages.org. This can cause an error if your local Spark and the Spark-Riak-Connector were built for a different Scala version than your local Scala. For example, Spark 1.6.2 builds for Scala 2.10 even if you have Scala 2.11, and the Spark-Riak-Connector, by default, builds for Scala 2.10 as well. Therefore, in order for the streaming examples to work, the Scala version [config.sh](./src/main/repl/conf/config.sh) picks up must be the same as the Scala version that Spark and the Spark-Riak-Connector were built for. If you local Scala version is different than the version that Spark and the Spark-Riak-Connector were built for, you should change the Scala version in [this line](src/main/repl/conf/config.sh#L53) in [config.sh](./src/main/repl/conf/config.sh) to the version of Scala that Spark and the Spark-Riak-Connector were built for.
+**Important Note**: [config.sh](./src/main/repl/conf/config.sh) will attempt to gather your local scala version. This version number will be used in [run-example](./src/main/repl/bin/run-example) to pull the appropriate `spark-streaming-kafka` and `kafka` libraries from spark-packages.org. This can cause an error if your local Spark and the Spark-Riak-Connector were built with a different Scala version than your local Scala. For example, Spark 1.6.2 is built with Scala 2.10 by default. Therefore, in order for the streaming examples to work, the Scala version [config.sh](./src/main/repl/conf/config.sh) picks up must be the same as the Scala version that Spark and the Spark-Riak-Connector were built with. If your local Scala version is different than the version that Spark and the Spark-Riak-Connector were built with, you should change the Scala version in [this line](src/main/repl/conf/config.sh#L53) in [config.sh](./src/main/repl/conf/config.sh) to the version of Scala that Spark and the Spark-Riak-Connector were built with.
 
 
 ### Spark Streaming Riak KV Example
@@ -219,7 +219,7 @@ path/to/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replicat
 Then, start the example:
 
 ```
-/path/to/spark-riak-connector-examples/bin/run-example streaming.StreamingKVExample
+bin/run-example streaming.StreamingKVExample
 ```
 
 Next, we need to send a message to the Kafka topic `ingest-kv` with the Kafka console producer script, which can be found in the Kafka directory:
@@ -259,7 +259,7 @@ path/to/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replicat
 Now, we can run the `StreamingTSExample.scala` example with:
 
 ```
-/path/to/spark-riak-connector-examples/bin/run-example streaming.StreamingTSExample
+bin/run-example streaming.StreamingTSExample
 ```
 
 Now that the stream is up and running, we need to send data to the Kafka topic. Let's start the Kafka console producer. This will allow us to stream messages from the terminal into the Kafka `ingest-ts` topic.
