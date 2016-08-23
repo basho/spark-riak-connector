@@ -194,30 +194,38 @@ Sources [ScalaRiakParquetExample.scala](./src/main/scala/com/basho/riak/spark/ex
 
 The Spark-Riak Connector can be used with Spark Streaming. To demonstrate this usage, we will work through two small Scala examples, one for Riak KV and the other for Riak TS.
 
-These examples require the use of Kafka. Please install Kafka and setup a Kafka broker prior to running this example. We will assume that there is a Kafka broker running at `127.0.0.1:9092` with a topic called `streaming`. Instructions for setting up Kafka topics can be found in [this guide](https://kafka.apache.org/documentation.html#quickstart). You can create a broker and topic with the following:
+These examples require the use of Kafka. Please install Kafka and setup a Kafka broker prior to running this example. We will assume that there is a Kafka broker running at `127.0.0.1:9092`. Instructions for setting up Kafka topics can be found in [this guide](https://kafka.apache.org/documentation.html#quickstart). You can create a broker with the following:
 
 ```
 path/to/kafka/bin/zookeeper-server-start.sh config/zookeeper.properties
 path/to/kafka/bin/kafka-server-start.sh config/server.properties
-path/to/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic streaming
 ```
 
 We also assume Riak KV/TS is installed and there is a Riak KV/TS node running at `127.0.0.1:8087`. You can find instruction to do so [here](http://docs.basho.com/riak/ts/latest/installing/). 
 
 Riak KV, Kafka and Spark master hostnames must be specified in [config.sh](./src/main/repl/conf/config.sh) prior to running the examples.
 
+**Important Note**: [config.sh](./src/main/repl/conf/config.sh) will attempt to gather your local scala version. This version number will be used in [run-example](./src/main/repl/bin/run-example) to pull the appropriate `spark-streaming-kafka` and `kafka` libraries from spark-packages.org. This can cause an error if your local Spark and the Spark-Riak-Connector were built with a different Scala version than your local Scala. For example, Spark 1.6.2 is built with Scala 2.10 by default. Therefore, in order for the streaming examples to work, the Scala version [config.sh](./src/main/repl/conf/config.sh) picks up must be the same as the Scala version that Spark and the Spark-Riak-Connector were built with. If your local Scala version is different than the version that Spark and the Spark-Riak-Connector were built with, you should change the Scala version in [this line](src/main/repl/conf/config.sh#L53) in [config.sh](./src/main/repl/conf/config.sh) to the version of Scala that Spark and the Spark-Riak-Connector were built with.
+
+
 ### Spark Streaming Riak KV Example
 
-This example will start a stream from the Kafka topic `streaming` into the KV bucket `test-data`. This stream will run until terminated. Whenever a message is produced for Kafka topic `streaming`, the Spark Streaming context will automatically stream the message from the topic into the KV bucket. To see this in action, we first need to run the example:
+This example will start a stream from the Kafka topic `ingest-kv` into the KV bucket `test-data`. This stream will run until terminated. Whenever a message is produced for Kafka topic `ingest-kv`, the Spark Streaming context will automatically stream the message from the topic into the KV bucket. To see this in action, we first need create the `ingest-kv` topic:
 
 ```
-/path/to/spark-riak-connector-examples/bin/run-example streaming.StreamingKVExample
+path/to/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic ingest-kv
 ```
 
-Next, we need to send a message to the Kafka topic `streaming` with the Kafka console producer script, which can be found in the Kafka directory:
+Then, start the example:
 
 ```
-/path/to/kafka/bin/kafka-console-producer.sh --broker-list localhost:9092 --topic streaming
+bin/run-example streaming.StreamingKVExample
+```
+
+Next, we need to send a message to the Kafka topic `ingest-kv` with the Kafka console producer script, which can be found in the Kafka directory:
+
+```
+/path/to/kafka/bin/kafka-console-producer.sh --broker-list localhost:9092 --topic ingest-kv
 ```
  
 This script will read messages from the terminal and pass it to the topic. From the topic, the Spark Streaming context will write the message to Riak KV bucket `test-data`.  As an example put the following into the terminal:
@@ -228,11 +236,13 @@ This script will read messages from the terminal and pass it to the topic. From 
  
 You should now be able to see this data entry in the KV bucket `test-data`.
 
+Sources [StreamingKVExample.scala](./src/main/scala/com/basho/riak/spark/examples/streaming/StreamingKVExample.scala)
+
 ### Spark Streaming Riak TS Example
 
 Having seen how Spark Streaming works with KV buckets, let's now look at the TS table example.
 
-This example will start a stream from the Kafka topic `streaming` into the TS table `ts_weather_demo`. This stream will run until terminated. Whenever a message is produced for Kafka topic `streaming`, the Spark Streaming context will automatically stream the message from the topic into the TS table. To see this in action, we first need to create and activate the TS table. You can find more information on creating and activating TS tables [here](http://docs.basho.com/riak/ts/latest/using/creating-activating/). For this demo we will create and activate the table with the following:
+This example will start a stream from the Kafka topic `ingest-ts` into the TS table `ts_weather_demo`. This stream will run until terminated. Whenever a message is produced for Kafka topic `ingest-ts`, the Spark Streaming context will automatically stream the message from the topic into the TS table. To see this in action, we first need to create and activate the TS table. You can find more information on creating and activating TS tables [here](http://docs.basho.com/riak/ts/latest/using/creating-activating/). For this demo we will create and activate the table with the following:
 
 ```
 riak-admin bucket-type create ts_weather_demo '{"props":{"n_val":3, "table_def": "CREATE TABLE ts_weather_demo (weather VARCHAR NOT NULL, family VARCHAR NOT NULL, time TIMESTAMP NOT NULL, temperature DOUBLE, humidity DOUBLE, pressure DOUBLE, PRIMARY KEY ((weather, family, QUANTUM(time, 1, 'h')), weather, family, time))"}}'
@@ -240,16 +250,22 @@ riak-admin bucket-type create ts_weather_demo '{"props":{"n_val":3, "table_def":
 riak-admin bucket-type activate ts_weather_demo
 ```
 
-Now that we have created a TS table, you can run the `StreamingTSExample.scala` example with:
+Now that we have created a TS table, we need to create the `ingest-ts` topic:
 
 ```
-/path/to/spark-riak-connector-examples/bin/run-example streaming.StreamingTSExample
+path/to/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic ingest-ts
 ```
 
-Now that the stream is up and running, we need to send data to the Kafka topic. Let's start the Kafka console producer. This will allow us to stream messages from the terminal into the Kafka `streaming` topic.
+Now, we can run the `StreamingTSExample.scala` example with:
 
 ```
-/path/to/bin/kafka-console-producer.sh --broker-list localhost:9092 --topic streaming
+bin/run-example streaming.StreamingTSExample
+```
+
+Now that the stream is up and running, we need to send data to the Kafka topic. Let's start the Kafka console producer. This will allow us to stream messages from the terminal into the Kafka `ingest-ts` topic.
+
+```
+/path/to/bin/kafka-console-producer.sh --broker-list localhost:9092 --topic ingest-ts
 ```
  
 Now paste the following message into the terminal:
@@ -260,4 +276,4 @@ Now paste the following message into the terminal:
 
 You can check that this worked by doing a simple SQL query for the example data. 
 
-Sources [StreamingKVExample.scala](./src/main/scala/com/basho/riak/spark/examples/streaming/StreamingKVExample.scala)
+Sources [StreamingTSExample.scala](./src/main/scala/com/basho/riak/spark/examples/streaming/StreamingTSExample.scala)
