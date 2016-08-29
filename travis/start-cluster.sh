@@ -10,8 +10,8 @@ docker exec $COORDINATOR_CONTAINER riak-admin wait-for-service riak_kv
 CLUSTER_NODES=$COORDINATOR_CONTAINER
 CLUSTER_NODES+=" $(docker run --name riak-ts-2 -d -e COORDINATOR_NODE=$COORDINATOR_HOSTNAME -P basho/riak-ts)"
 CLUSTER_NODES+=" $(docker run --name riak-ts-3 -d -e COORDINATOR_NODE=$COORDINATOR_HOSTNAME -P basho/riak-ts)"
-CLUSTER_NODES+=" $(docker run --name riak-ts-4 -d -e COORDINATOR_NODE=$COORDINATOR_HOSTNAME -P basho/riak-ts)"
-CLUSTER_NODES+=" $(docker run --name riak-ts-5 -d -e COORDINATOR_NODE=$COORDINATOR_HOSTNAME -P basho/riak-ts)"
+#CLUSTER_NODES+=" $(docker run --name riak-ts-4 -d -e COORDINATOR_NODE=$COORDINATOR_HOSTNAME -P basho/riak-ts)"
+#CLUSTER_NODES+=" $(docker run --name riak-ts-5 -d -e COORDINATOR_NODE=$COORDINATOR_HOSTNAME -P basho/riak-ts)"
 
 echo $CLUSTER_NODES
 

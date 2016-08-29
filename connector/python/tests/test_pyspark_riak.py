@@ -250,6 +250,8 @@ def _test_connection(spark_context, riak_client, sql_context):
 
     riak_ts_table.query(create_sql)
 
+    time.sleep(5)
+
     ts_obj = setup_ts_obj(riak_ts_table, [['field1_val', 'field2_val', unix_time_millis(datetime.datetime(2015, 1, 1, 12, 0, 0)), 0]])
 
     ts_obj.store()
@@ -522,13 +524,13 @@ def test_ts_df_read_use_long_ts_quantum(spark_context, riak_client, sql_context)
 	_test_spark_df_ts_read_use_long_ts_quantum(10, 5, spark_context, riak_client, sql_context)
 
 def test_ts_df_range_query_input_split_count_use_timestamp(spark_context, riak_client, sql_context):
-	_test_spark_df_ts_range_query_input_split_count_use_timestamp(10, 50, 1, spark_context, riak_client, sql_context)
+	_test_spark_df_ts_range_query_input_split_count_use_timestamp(10, 5, 3, spark_context, riak_client, sql_context)
 
 def test_ts_df_range_query_input_split_count_use_long(spark_context, riak_client, sql_context):
-	_test_spark_df_ts_range_query_input_split_count_use_long(10, 50, 1, spark_context, riak_client, sql_context)
+	_test_spark_df_ts_range_query_input_split_count_use_long(10, 5, 3, spark_context, riak_client, sql_context)
 
 def test_ts_df_range_query_input_split_count_use_timestamp_ts_quantum(spark_context, riak_client, sql_context):
-	_test_spark_df_ts_range_query_input_split_count_use_timestamp_ts_quantum(10, 50, 1, spark_context, riak_client, sql_context)
+	_test_spark_df_ts_range_query_input_split_count_use_timestamp_ts_quantum(10, 5, 3, spark_context, riak_client, sql_context)
 
 def test_ts_df_range_query_input_split_count_use_long_ts_quantum(spark_context, riak_client, sql_context):
-	_test_spark_df_ts_range_query_input_split_count_use_long_ts_quantum(10, 50, 1, spark_context, riak_client, sql_context)
+	_test_spark_df_ts_range_query_input_split_count_use_long_ts_quantum(10, 5, 3, spark_context, riak_client, sql_context)
