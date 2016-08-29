@@ -18,7 +18,7 @@ scala:
   - 2.11.7
 
 before_script:
-  - docker run --name $RIAK_FLAVOR -d -p 8087:8087 -p 8098:8098 basho/riak-ts
+  - "./travis/start-cluster.sh"
   - curl -q -sSL http://d3kbcqa49mib13.cloudfront.net/spark-1.6.2-bin-hadoop2.6.tgz | tar -zxf - -C /opt
 
 script:
