@@ -31,7 +31,7 @@ def spark_context(request):
     conf.set('spark.driver.memory', '4g')
     conf.set('spark.executor.memory', '4g')
     spark_context = SparkContext(conf=conf)
-    spark_context.setLogLevel('ERROR')
+    spark_context.setLogLevel('DEBUG')
     pyspark_riak.riak_context(spark_context)
     request.addfinalizer(lambda: spark_context.stop())
     return spark_context
