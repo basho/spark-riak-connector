@@ -35,7 +35,7 @@ lazy val runPySparkTests = taskKey[Unit]("Runs PySpark tests")
 lazy val root = (project in file("."))
   .settings(commonSettings: _*)
   .settings(publish := {})
-  .aggregate(sparkRiakConnector,examples,sparkRiakConnectorTestUtils)
+  .aggregate(sparkRiakConnectorTestUtils, sparkRiakConnector, examples)
   .disablePlugins(sbtassembly.AssemblyPlugin)
 
 lazy val sparkRiakConnector = (project in file("connector"))
@@ -84,7 +84,9 @@ lazy val sparkRiakConnector = (project in file("connector"))
       }
     }
   )
-  .dependsOn(sparkRiakConnectorTestUtils)
+  .settings(
+    libraryDependencies ++= Seq(
+      "com.basho.riak"               %%  "spark-riak-connector-test-utils" % version.value % "test" exclude("com.basho.riak", "dataplatform-riak-client")))
   .enablePlugins(AssemblyPlugin)
 
 lazy val examples = (project in file("examples"))
@@ -113,7 +115,7 @@ lazy val sparkRiakConnectorTestUtils = (project in file("test-utils"))
 
 lazy val commonSettings = Seq(
   organization := "com.basho.riak",
-  version := "1.6.0-SNAPSHOT",
+  version := "1.6.0",
   scalaVersion := "2.10.6",
   crossPaths := true,
   spName := s"basho/$namespace",
@@ -124,19 +126,23 @@ lazy val commonSettings = Seq(
   testOptions += Tests.Argument(TestFrameworks.JUnit, "-q", "-v", "--exclude-categories=com.basho.riak.spark.rdd.RiakKVNotAvailableFeaturesTest"),
   scalacOptions in (Compile,doc) := Seq("-groups", "-implicits"),
   crossScalaVersions := Seq("2.10.6", "2.11.7"),
-  aggregate in doc := true
+  aggregate in doc := true,
+  homepage := Some(url("https://github.com/basho/spark-riak-connector")),
+  licenses := Seq("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0.txt"))
 )
 
 lazy val commonDependencies = Seq(
   libraryDependencies ++= Seq(
-      "com.basho.riak"               %  "dataplatform-riak-client"  % Versions.riakClient exclude("io.netty", "netty-all")
-                                                                                          exclude("org.slf4j","slf4j-api"),
+      "com.basho.riak"               %  "riak-client"               % Versions.riakClient exclude("io.netty", "netty-all")
+                                                                                          exclude("org.slf4j", "slf4j-api")
+                                                                                          exclude("com.fasterxml.jackson.datatype", "jackson-datatype-joda"),
       "org.apache.spark"             %% "spark-sql"                 % Versions.spark % "provided",
       "org.apache.spark"             %% "spark-streaming"           % Versions.spark % "provided",
       "com.google.guava"             %  "guava"                     % Versions.guava,
       "com.fasterxml.jackson.module" %% "jackson-module-scala"      % Versions.jacksonModule exclude("com.google.guava", "guava")
                                                                                              exclude("com.google.code.findbugs", "jsr305")
                                                                                              exclude("com.thoughtworks.paranamer", "paranamer"),
+      "com.fasterxml.jackson.datatype" % "jackson-datatype-joda"    % Versions.jacksonModule,
       "junit"                        %  "junit"                     % Versions.junit % "test",
       "org.hamcrest"                 %  "hamcrest-all"              % Versions.hamrest % "test",
       "org.mockito"                  %  "mockito-core"              % Versions.mockito % "test",
@@ -146,7 +152,7 @@ lazy val commonDependencies = Seq(
       "com.basho.riak.test"          %  "riak-test-docker"          % Versions.riakTestDocker % "test"
     ),
 
-  //Expected than connector will use exact jackson version which Spark uses and there is no needs to incorporate it into uber jar
+  // Connector will use same version of Jackson that Spark uses. No need to incorporate it into uber jar.
   libraryDependencies ~= { _.map( x => {
     if (x.configurations.isEmpty || (!x.configurations.get.equals("provided") && x.organization.contains("com.fasterxml.jackson.core"))) {
       x.excludeAll(ExclusionRule(organization = "com.fasterxml.jackson.core"))
@@ -154,14 +160,32 @@ lazy val commonDependencies = Seq(
   })},
 
   resolvers := {
-    val artifactory = "https://basholabs.artifactoryonline.com/basholabs"
     Seq(
-      "Local Maven Repo" at "file:///" + Path.userHome + "/.m2/repository",
-      "Basho Bintray Repo" at "https://dl.bintray.com/basho/data-platform",
-      "Artifactory Realm snapshot" at s"$artifactory/libs-snapshot-local",
-      "Artifactory Realm release" at s"$artifactory/libs-release-local"
+      "Local Maven Repo" at "file:///" + Path.userHome + "/.m2/repository"
     )
-  }
+  },
+
+  pomExtra := (<developers>
+                <developer>
+                  <name>Sergey Galkin</name>
+                  <email>sgalkin@basho.com</email>
+                  <organization>Basho Technologies, Inc</organization>
+                  <organizationUrl>http://www.basho.com</organizationUrl>
+                </developer>
+                <developer>
+                  <name>Oleg Rocklin</name>
+                  <email>orocklin@basho.com</email>
+                  <organization>Basho Technologies, Inc</organization>
+                  <organizationUrl>http://www.basho.com</organizationUrl>
+                </developer>
+              </developers>
+
+                <scm>
+                  <connection>scm:git:https://github.com/basho/spark-riak-connector.git</connection>
+                  <developerConnection>scm:git:ssh://github.com/basho/spark-riak-connector.git</developerConnection>
+                  <url>https://github.com/basho/spark-riak-connector</url>
+                  <tag>HEAD</tag>
+                </scm>)
 )
 
 lazy val customMergeStrategy = assemblyMergeStrategy in assembly := {
@@ -174,39 +198,6 @@ lazy val customMergeStrategy = assemblyMergeStrategy in assembly := {
     val oldStrategy = (assemblyMergeStrategy in assembly).value
     oldStrategy(x)
 }
-
-pomExtra := (
-  <url>https://github.com/basho/spark-riak-connector</url>
-  <licenses>
-    <license>
-      <name>The Apache Software License, Version 2.0</name>
-      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
-      <distribution>repo</distribution>
-      <comments>A business-friendly OSS license</comments>
-    </license>
-  </licenses>
-
-  <developers>
-    <developer>
-      <name>Sergey Galkin</name>
-      <email>sgalkin@basho.com</email>
-      <organization>Basho Technologies, Inc</organization>
-      <organizationUrl>http://www.basho.com</organizationUrl>
-    </developer>
-    <developer>
-      <name>Oleg Rocklin</name>
-      <email>orocklin@basho.com</email>
-      <organization>Basho Technologies, Inc</organization>
-      <organizationUrl>http://www.basho.com</organizationUrl>
-    </developer>
-  </developers>
-
-  <scm>
-    <connection>scm:git:https://github.com/basho/spark-riak-connector.git</connection>
-    <developerConnection>scm:git:ssh://github.com/basho/spark-riak-connector.git</developerConnection>
-    <url>https://github.com/basho/spark-riak-connector</url>
-    <tag>HEAD</tag>
-  </scm>)
 
 //workaround to prevent packaging empty jars for `root` project
 Keys.`package` := {

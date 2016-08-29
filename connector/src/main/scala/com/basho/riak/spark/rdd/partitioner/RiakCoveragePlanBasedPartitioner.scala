@@ -61,8 +61,8 @@ object RiakCoveragePlanBasedPartitioner {
 
     val hosts = coveragePlan.hosts
 
-    require(partitionsCount >= hosts.size)
-    require(partitionsCount <= coveragePlan.size)
+    require(partitionsCount >= hosts.size, s"Requires $partitionsCount partitions but only ${hosts.size()} hosts found")
+    require(partitionsCount <= coveragePlan.size, s"Coverage plan requires ${coveragePlan.size} partitions but only $partitionsCount partitions found")
 
     val evenDistributionBetweenHosts = distributeEvenly(partitionsCount, hosts.size)
     val numberOfEntriesInPartitionPerHost = hosts
