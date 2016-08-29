@@ -1,11 +1,11 @@
 #!/bin/bash
 
-SBT_CMD="sbt -Dcom.basho.riak.pbchost=$RIAK_HOSTS ++$TRAVIS_SCALA_VERSION"
-
 set -e
 
 export RIAK_HOSTS=$(docker inspect -f '{{.NetworkSettings.IPAddress}}' riak-ts):8087,$(docker inspect -f '{{.NetworkSettings.IPAddress}}' riak-ts-2):8087,$(docker inspect -f '{{.NetworkSettings.IPAddress}}' riak-ts-3):8087
 #,$(docker inspect -f '{{.NetworkSettings.IPAddress}}' riak-ts-4):8087,$(docker inspect -f '{{.NetworkSettings.IPAddress}}' riak-ts-5):8087
+
+SBT_CMD="sbt -Dcom.basho.riak.pbchost=$RIAK_HOSTS ++$TRAVIS_SCALA_VERSION"
 
 if [ "$RIAK_FLAVOR" == "riak-kv" ]; then
   $SBT_CMD runRiakKVTests
