@@ -23,11 +23,11 @@ object PartitioningUtils {
       yield if (i < rem) base + 1 else base
   }
 
-  def divide(size: Long, splitCount: Int): (Long, Long) = {
+  private def divide(size: Long, splitCount: Int): (Long, Long) = {
     (size / splitCount, size % splitCount)
   }
   
-  def divide(size: Int, splitCount: Int): (Int, Int) = {
+  private def divide(size: Int, splitCount: Int): (Int, Int) = {
     (size / splitCount, size % splitCount)
   }
 

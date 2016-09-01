@@ -17,25 +17,34 @@
   */
 package com.basho.riak.spark.query
 
-import java.sql.Timestamp
 import java.util.concurrent.ExecutionException
+
 import com.basho.riak.client.core.netty.RiakResponseException
 import com.basho.riak.client.core.operations.ts.QueryOperation
-import com.basho.riak.client.core.query.timeseries.{ Row, ColumnDescription }
-import com.basho.riak.client.core.util.BinaryValue
-import com.basho.riak.spark.rdd.connector.RiakSession
-import com.basho.riak.spark.rdd.{ BucketDef, ReadConf }
+import com.basho.riak.client.core.query.timeseries.{ColumnDescription, Row}
+
 import scala.collection.convert.decorateAsScala._
 import com.basho.riak.client.core.query.timeseries.CoverageEntry
 import com.basho.riak.spark.rdd.connector.RiakConnector
 import com.basho.riak.client.core.util.HostAndPort
+import com.basho.riak.spark.util.{Dumpable, DumpUtils}
 
 /**
   * @author Sergey Galkin <srggal at gmail dot com>
   * @since 1.1.0
   */
-case class TSQueryData(sql: String, coverageEntry: Option[CoverageEntry] = None) {
+case class TSQueryData(sql: String, coverageEntry: Option[CoverageEntry] = None) extends Dumpable {
     val primaryHost = coverageEntry.map(e => HostAndPort.fromParts(e.getHost, e.getPort))
+
+  override def dump(lineSep: String = "\n"): String = {
+    val optional = coverageEntry match {
+      case Some(ce) => lineSep + s"primary-host: ${primaryHost.get.getHost}:${primaryHost.get.getPort}" + lineSep +
+        "coverage-entry:" + DumpUtils.dump(ce, lineSep + "   ")
+      case None => ""
+    }
+
+    s"sql: {${sql.toLowerCase.replaceAll("\n", "")}}" + optional
+  }
 }
 
 /**
