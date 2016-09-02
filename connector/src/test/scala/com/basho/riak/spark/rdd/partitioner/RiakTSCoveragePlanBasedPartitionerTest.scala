@@ -1,14 +1,36 @@
+/**
+  * *****************************************************************************
+  * Copyright (c) 2016 IBM Corp.
+  *
+  * Created by Basho Technologies for IBM
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  *
+  * http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  * *****************************************************************************
+  */
 package com.basho.riak.spark.rdd.partitioner
+
 
 import com.basho.riak.JsonTestFunctions
 import com.basho.riak.client.api.commands.timeseries.CoveragePlan
 import com.basho.riak.client.core.query.timeseries.{CoverageEntry, CoveragePlanResult}
-import com.basho.riak.spark.rdd.{ReadConf, RegressionTests}
+import com.basho.riak.spark.rdd.{ReadConf, RegressionTests, RiakTSRDD}
 import com.basho.riak.spark.rdd.connector.{RiakConnector, RiakSession}
 import com.fasterxml.jackson.core.{JsonGenerator, Version}
 import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.databind.{JsonSerializer, ObjectMapper, SerializerProvider}
-import org.apache.spark.sql.sources.Filter
+import org.apache.spark.SparkContext
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.sources.{Filter, GreaterThanOrEqual, LessThan}
 import org.junit.{Before, Test}
 import org.junit.experimental.categories.Category
 import org.junit.runner.RunWith
@@ -19,6 +41,8 @@ import org.mockito.Mockito._
 import org.mockito.invocation.InvocationOnMock
 import org.mockito.stubbing.Answer
 
+import scala.collection.JavaConversions._
+
 @RunWith(classOf[MockitoJUnitRunner])
 class RiakTSCoveragePlanBasedPartitionerTest extends JsonTestFunctions {
 
@@ -28,9 +52,16 @@ class RiakTSCoveragePlanBasedPartitionerTest extends JsonTestFunctions {
   @Mock
   private val rs: RiakSession = null
 
+  @Mock
+  private val sc: SparkContext = null
+
   // To access protected constructor in CoveragePlanResult
   class SimpleCoveragePlanResult extends CoveragePlanResult {
   }
+
+  val filters: Array[Filter] = Array(
+    GreaterThanOrEqual("time", 0),
+    LessThan("time", 1000))
 
   private var coveragePlan: SimpleCoveragePlanResult = null
 
@@ -56,22 +87,22 @@ class RiakTSCoveragePlanBasedPartitionerTest extends JsonTestFunctions {
     coveragePlan = new SimpleCoveragePlanResult
   }
 
-    @Test
-    @Category(Array(classOf[RegressionTests]))
-    def checkPartitioningForIrregularData1(): Unit = {
+  @Test
+  @Category(Array(classOf[RegressionTests]))
+  def checkPartitioningForIrregularData1(): Unit = {
 
-      // host -> range(from->to)
-      makeCoveragePlan(
-        ("1", 1->2),
-        ("2", 3->4),
-        ("2", 5->6),
-        ("2", 7->8),
-        ("3", 9->10)
-      )
+    // host -> range(from->to)
+    makeCoveragePlan(
+      ("1", 1->2),
+      ("2", 3->4),
+      ("2", 5->6),
+      ("2", 7->8),
+      ("3", 9->10)
+    )
 
-      val partitioner = new RiakTSCoveragePlanBasedPartitioner(rc, "test", None, None, new Array[Filter](0), new ReadConf())
-      val partitions = partitioner.partitions()
-    }
+    val partitioner = new RiakTSCoveragePlanBasedPartitioner(rc, "test", None, None, new Array[Filter](0), new ReadConf())
+    val partitions = partitioner.partitions()
+  }
 
   @Test
   @Category(Array(classOf[RegressionTests]))
@@ -97,6 +128,62 @@ class RiakTSCoveragePlanBasedPartitionerTest extends JsonTestFunctions {
         | {index: 2, queryData: {primaryHost: '2:0', entry: '[5,6)@2'}},
         | {index: 3, queryData: {primaryHost: '3:0', entry: '[9,10)@3'}},
         | {index: 4, queryData: {primaryHost: '2:0', entry: '[7,8)@2'}}
+      ]""".stripMargin, partitions)
+  }
+
+  @Test
+  def coveragePlanBasedPartitioningLessThanSplitCount(): Unit = {
+    makeCoveragePlan(
+      ("h1", 1 -> 2),
+      ("h2", 3 -> 4),
+      ("h3", 5 -> 6)
+    )
+
+    val rdd = new RiakTSRDD[Row](sc, rc, "test", None, None, None, filters)
+    val partitions = rdd.partitions
+      assertEqualsUsingJSONIgnoreOrder(
+        """[
+          | {index: 0, queryData: {primaryHost: 'h3:0', entry: '[5,6)@h3'}},
+          | {index: 1, queryData: {primaryHost: 'h1:0', entry: '[1,2)@h1'}},
+          | {index: 2, queryData: {primaryHost: 'h2:0', entry: '[3,4)@h2'}}
+        ]""".stripMargin, partitions)
+  }
+
+  @Test
+  def coveragePlanBasedPartitioningGreaterThanSplitCount(): Unit = {
+    val requestedSplitCount = 3
+
+    makeCoveragePlan(
+      ("h1", 1 -> 2),
+      ("h1", 3 -> 4),
+      ("h1", 5 -> 6),
+      ("h2", 6 -> 7),
+      ("h2", 8 -> 9),
+      ("h2", 10 -> 11),
+      ("h2", 12 -> 13),
+      ("h3", 14 -> 15),
+      ("h3", 16 -> 17),
+      ("h3", 18 -> 19)
+    )
+    val rdd = new RiakTSRDD[Row](sc, rc, "test", None, None, None, filters, readConf = ReadConf(splitCount=requestedSplitCount))
+    val partitions = rdd.partitions
+
+    assertEqualsUsingJSONIgnoreOrder("""[
+      | {index:0, queryData:[
+      |     {primaryHost: 'h3:0', entry: '[14,15)@h3'},
+      |     {primaryHost: 'h3:0', entry: '[16,17)@h3'},
+      |     {primaryHost: 'h3:0', entry: '[18,19)@h3'}]},
+      |
+      | {index:1,queryData:[
+      |     {primaryHost: 'h2:0', entry: '[6,7)@h2'},
+      |     {primaryHost: 'h2:0', entry: '[8,9)@h2'},
+      |     {primaryHost: 'h2:0', entry: '[10,11)@h2'},
+      |     {primaryHost: 'h2:0', entry: '[12,13)@h2'}]},
+      |
+      | {index:2,queryData:[
+      |     {primaryHost: 'h1:0', entry: '[1,2)@h1'},
+      |     {primaryHost: 'h1:0', entry: '[3,4)@h1'},
+      |     {primaryHost: 'h1:0', entry: '[5,6)@h1'}]}
       ]""".stripMargin, partitions)
   }
 

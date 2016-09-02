@@ -20,28 +20,11 @@
 package com.basho.riak.spark.rdd.timeseries
 
 import java.sql.Timestamp
-import java.util
-
-import scala.collection.JavaConversions._
-import scala.collection.JavaConverters._
-import org.apache.spark.SparkConf
-import org.apache.spark.sql.Row
 import org.apache.spark.sql.sources.EqualTo
 import org.apache.spark.sql.sources.Filter
 import org.apache.spark.sql.sources.GreaterThanOrEqual
 import org.apache.spark.sql.sources.LessThan
 import org.junit.Test
-import org.mockito.Matchers._
-import org.mockito.Mockito._
-import org.mockito.invocation.InvocationOnMock
-import org.mockito.stubbing.Answer
-import com.basho.riak.client.api.commands.timeseries.CoveragePlan
-import com.basho.riak.client.core.query.timeseries.CoverageEntry
-import com.basho.riak.client.core.query.timeseries.CoveragePlanResult
-import com.basho.riak.client.core.util.HostAndPort
-import com.basho.riak.spark.rdd.RiakTSRDD
-import com.basho.riak.spark.rdd.connector.RiakConnector
-import com.basho.riak.spark.rdd.connector.RiakSession
 import com.basho.riak.spark.rdd.partitioner.RiakTSPartition
 import com.basho.riak.spark.toSparkContextFunctions
 import org.junit.Assert.assertEquals
@@ -249,71 +232,5 @@ class TimeSeriesPartitioningTest extends AbstractTimeSeriesTest(createTestData =
       .load(bucketName)
       .filter(s"user_id = 'user1'")
     val partitions = df.rdd.partitions
-  }
-
-  @Test
-  def coveragePlanBasedPartitioningLessThanSplitCount(): Unit = {
-
-    val connector = spy(RiakConnector(new SparkConf()))
-    val session = mock(classOf[RiakSession])
-    val coveragePlan = mock(classOf[CoveragePlanResult])
-    doReturn(session).when(connector).openSession(Some(Seq(any(classOf[HostAndPort]))))
-    when(session.execute(any(classOf[CoveragePlan]))).thenReturn(coveragePlan)
-
-    val mapCE = createCoverageEntry(3, 3)
-    mapCE.keys.foreach(h => when(coveragePlan.hostEntries(h)).thenAnswer(new Answer[util.List[CoverageEntry]] {
-      override def answer(invocation: InvocationOnMock): util.List[CoverageEntry] =
-        mapCE(h).asJava
-    }))
-    when(coveragePlan.iterator()).thenAnswer(new Answer[util.Iterator[_]] {
-      override def answer(invocation: InvocationOnMock): util.Iterator[_] = mapCE.values.flatten.iterator.asJava
-    })
-    when(coveragePlan.hosts()).thenReturn(setAsJavaSet(mapCE.keySet))
-    val rdd = new RiakTSRDD[Row](sc, connector, bucketName, Some(schema), None, None, filters)
-    val partitions = rdd.partitions
-
-    assertEquals(3, partitions.size)
-  }
-
-  @Test
-  def coveragePlanBasedPartitioningGreaterThanSplitCount(): Unit = {
-
-    val connector = spy(RiakConnector(new SparkConf()))
-    val session = mock(classOf[RiakSession])
-    val coveragePlan = mock(classOf[CoveragePlanResult])
-    doReturn(session).when(connector).openSession(Some(Seq(any(classOf[HostAndPort]))))
-    when(session.execute(any(classOf[CoveragePlan]))).thenReturn(coveragePlan)
-
-    val mapCE = createCoverageEntry(100, 3)
-    mapCE.keys.foreach(h => when(coveragePlan.hostEntries(h)).thenAnswer(new Answer[util.List[CoverageEntry]] {
-      override def answer(invocation: InvocationOnMock): util.List[CoverageEntry] =
-        mapCE(h).asJava
-    }))
-    when(coveragePlan.iterator()).thenAnswer(new Answer[util.Iterator[_]] {
-      override def answer(invocation: InvocationOnMock): util.Iterator[_] = mapCE.values.flatten.iterator.asJava
-    })
-
-    when(coveragePlan.hosts()).thenReturn(setAsJavaSet(mapCE.keySet))
-    val rdd = new RiakTSRDD[Row](sc, connector, bucketName, Some(schema), None, None, filters)
-    val partitions = rdd.partitions
-
-    assertEquals(10, partitions.size)
-  }
-
-  private def createCoverageEntry(numOfEntries: Int, numOfHosts: Int): Map[HostAndPort, IndexedSeq[CoverageEntry]] = {
-    val ces = (1 to numOfEntries).map { i =>
-      val ce = new CoverageEntry();
-      ce.setCoverageContext(Array.emptyByteArray);
-      ce.setFieldName("time");
-      ce.setLowerBound(i * 1000);
-      ce.setLowerBoundInclusive(true);
-      ce.setUpperBound(i * 2000);
-      ce.setUpperBoundInclusive(false);
-      ce.setDescription(s"${bucketName} / time >= ${i * 1000} time < ${i * 200}");
-      ce.setHost("localhost");
-      ce.setPort((8080 + i % numOfHosts).toInt);
-      ce
-    }
-    ces.groupBy(ce => HostAndPort.fromParts(ce.getHost, ce.getPort))
   }
 }
