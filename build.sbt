@@ -160,7 +160,10 @@ lazy val commonDependencies = Seq(
   })},
 
   resolvers := {
+    val artifactory = "https://basholabs.artifactoryonline.com/basholabs"
     Seq(
+      "Artifactory Realm snapshot" at s"$artifactory/libs-snapshot-local",
+      "Artifactory Realm release" at s"$artifactory/libs-release-local",
       "Local Maven Repo" at "file:///" + Path.userHome + "/.m2/repository"
     )
   },
