@@ -25,6 +25,7 @@ import com.fasterxml.jackson.databind.{JsonSerializer, ObjectMapper, SerializerP
 import net.javacrumbs.jsonunit.JsonAssert
 import net.javacrumbs.jsonunit.core.{Configuration, Option => JsonUnitOption}
 import com.basho.riak.client.core.query.timeseries.{Cell => RiakCell, Row => RiakRow}
+import com.basho.riak.client.core.util.HostAndPort
 import com.fasterxml.jackson.databind.module.SimpleModule
 
 import scala.collection.JavaConversions._
@@ -35,7 +36,8 @@ trait JsonTestFunctions extends JsonFunctions {
       .registerModule(
         new SimpleModule("RiakTs Module", new Version(1,0,0,null))
           .addSerializer(classOf[RiakCell], new RiakCellSerializer)
-          .addSerializer(classOf[RiakRow], new RiakRowSerializer))
+          .addSerializer(classOf[RiakRow], new RiakRowSerializer)
+          .addSerializer(classOf[HostAndPort], new HostAndPortSerializer))
 
 
   protected def assertEqualsUsingJSON(jsonExpected: AnyRef, actual: AnyRef): Unit = {
@@ -74,7 +76,7 @@ trait JsonTestFunctions extends JsonFunctions {
     }
   }
 
-  class RiakRowSerializer extends JsonSerializer[RiakRow] {
+  private class RiakRowSerializer extends JsonSerializer[RiakRow] {
     override def serialize(row: RiakRow, jgen: JsonGenerator, provider: SerializerProvider): Unit = {
       if (row == null) {
         jgen.writeNull()
@@ -86,7 +88,7 @@ trait JsonTestFunctions extends JsonFunctions {
     }
   }
 
-  class RiakCellSerializer extends JsonSerializer[RiakCell] {
+  private  class RiakCellSerializer extends JsonSerializer[RiakCell] {
     override def serialize(cell: RiakCell, jgen: JsonGenerator, provider: SerializerProvider): Unit = {
       if (cell == null) {
         jgen.writeNull()
@@ -108,5 +110,10 @@ trait JsonTestFunctions extends JsonFunctions {
         jgen.writeEndObject()
       }
     }
+  }
+
+  private class HostAndPortSerializer extends JsonSerializer[HostAndPort] {
+    override def serialize(value: HostAndPort, jgen: JsonGenerator, provider: SerializerProvider): Unit =
+      jgen.writeString(value.getHost + ":" + value.getPort)
   }
 }
