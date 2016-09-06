@@ -89,24 +89,36 @@ class RiakTSCoveragePlanBasedPartitionerTest extends JsonTestFunctions {
 
   @Test
   @Category(Array(classOf[RegressionTests]))
-  def checkPartitioningForIrregularData1(): Unit = {
+  def checkPartitioningForIrregularData(): Unit = {
 
     // host -> range(from->to)
     makeCoveragePlan(
-      ("1", 1->2),
-      ("2", 3->4),
-      ("2", 5->6),
-      ("2", 7->8),
-      ("3", 9->10)
+      ("h1", 1->2),
+      ("h2", 3->4),
+      ("h2", 5->6),
+      ("h2", 7->8),
+      ("h3", 11->12)
     )
 
     val partitioner = new RiakTSCoveragePlanBasedPartitioner(rc, "test", None, None, new Array[Filter](0), new ReadConf())
     val partitions = partitioner.partitions()
+    assertEqualsUsingJSONIgnoreOrder(
+      """[
+        | {index: 0, queryData: {primaryHost: 'h3:0', entry: '[11,12)@h3'}},
+        |
+        | {index: 1, queryData:[
+        |     {primaryHost: 'h2:0', entry: '[5,6)@h2'},
+        |     {primaryHost: 'h2:0', entry: '[7,8)@h2'}]},
+        |
+        | {index: 2, queryData: {primaryHost: 'h1:0', entry: '[1,2)@h1'}},
+        |
+        | {index: 3, queryData: {primaryHost: 'h2:0', entry: '[3,4)@h2'}}
+      ]""".stripMargin, partitions)
   }
 
   @Test
   @Category(Array(classOf[RegressionTests]))
-  def checkPartitioningForIrregularData2(): Unit = {
+  def checkPartitioningForRegullarData(): Unit = {
 
     // host -> range(from->to)
     makeCoveragePlan(

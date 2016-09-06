@@ -341,11 +341,10 @@ with Logging {
         "----------------------------------------\n")
     }
 
-    val evenDistributionBetweenHosts = distributeEvenly(partitionsCount, hosts.size)
+    val evenPartitionDistributionBetweenHosts = distributeEvenly(partitionsCount, hosts.size)
 
-    System.out.print(evenDistributionBetweenHosts)
     val numberOfEntriesInPartitionPerHost =
-      (hosts zip evenDistributionBetweenHosts) flatMap { case (h, num) => splitListEvenly(coveragePlan.hostEntries(h), num) map{(h, _)} }
+      (hosts zip evenPartitionDistributionBetweenHosts) flatMap { case (h, num) => splitListEvenly(coveragePlan.hostEntries(h), num) map{(h, _)} }
 
     val partitions = for {
       ((host, coverageEntries), partitionIdx) <- numberOfEntriesInPartitionPerHost.zipWithIndex
@@ -365,6 +364,10 @@ with Logging {
         s"$p\n" +
         "----------------------------------------\n")
     }
+
+    // Double check that all coverage entries were used
+    val numberOfUsedCoverageEntries = partitions.foldLeft(0){ (sum, p) => sum + p.queryData.size}
+    require( numberOfUsedCoverageEntries == coverageEntriesCount)
 
     result.asInstanceOf[Array[Partition]]
   }
