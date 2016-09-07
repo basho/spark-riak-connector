@@ -1,6 +1,6 @@
 # Quick Start Guide
 
-This guide will run you through a quick example that uses the Spark-Riak Connector to read and write data using Java, Scala, and Python. We will assume you are running this guide on Mac OSX. 
+This guide will run you through a quick example that uses the Spark-Riak Connector to read and write data using Java, Scala, and Python. We will assume you are running this guide on Mac OSX.
 
 ## Prerequisites
 
@@ -21,7 +21,7 @@ Scroll down or click below to find the desired quick start guide:
 
 In this quick start guide we will run you through some examples usages of the Spark-Riak Connector using the Spark Scala REPL.
 
-Start Spark Scala REPL with: 
+Start Spark Scala REPL with:
 
 ```
 path/to/spark-shell \
@@ -47,7 +47,7 @@ testRDD.saveToRiak(new Namespace("kv_bucket_a"))
 
 When saving RDD's to Riak that only have values (i.e not key-value pairs), keys will be automatically generated for each value in the RDD.
 
-Query Riak TS bucket and print results:
+Query Riak KV bucket and print results:
 
 ```scala
 val queryRDD = sc.riakBucket[String](new Namespace("kv_bucket_a")).queryAll()
@@ -189,7 +189,7 @@ And, finally, check that the table was successfully written into the Riak TS tab
 
 ```scala
 
-val test_query = "ts >= CAST('1980-1-1 10:00:00' AS TIMESTAMP) AND ts <= CAST('1980-1-1 10:30:00' AS TIMESTAMP) AND k = 1 AND family = 'f'" 
+val test_query = "ts >= CAST('1980-1-1 10:00:00' AS TIMESTAMP) AND ts <= CAST('1980-1-1 10:30:00' AS TIMESTAMP) AND k = 1 AND family = 'f'"
 
 val df2 = sqlContext.read.format("org.apache.spark.sql.riak").load(tableName).filter(test_query)
 
@@ -205,19 +205,71 @@ sc.stop()
 
 In this quick start guide we will run  through some examples usages of the Spark-Riak Connector using the Spark Python REPL, pyspark. Please note that Python currently only works with TS tables in Riak TS. We currently do not support Python with KV buckets in Riak KV or Riak TS.
 
-Start pyspark with: 
+Start pyspark with:
 
 ```
 /path/to/bin/pyspark \
 --conf spark.riak.connection.host=127.0.0.1:8087 \
---driver-class-path /path/to/spark-riak-connector-{{version}}-uber.jar 
+--driver-class-path /path/to/spark-riak-connector-{{version}}-uber.jar
 ```
 
-Make some imports:
+Make required imports:
 
 ```python
-import riak, datetime, time, random
+import pyspark
+import pyspark_riak
 ```
+
+Patch SparkContext instance to enable Riak APIs:
+
+```python
+pyspark_riak.riak_context(sc)
+```
+
+Create an RDD with some test data and save to Riak KV bucket:
+
+```python
+source_data = [{"key1":{"pr_key":"pr_val1"}}, {"key2":{"pr_key":"pr_val2"}}]
+source_rdd = sc.parallelize(source_data, 1)
+source_rdd.saveToRiak("test-python-bucket", "default")
+```
+
+Make a full bucket read query :
+
+```python
+rdd = sc.riakBucket("test-python-bucket", "default").queryAll()
+```
+
+This will return rdd of key-value pairs. Filter values and print
+
+```python
+data = rdd.collect()
+values = map(lambda x: x[1], data)
+for e in values:
+  print e
+```
+
+Query Riak KV bucket by keys:
+
+```python
+keyRDD = sc.riakBucket("test-python-bucket", "default").queryBucketKeys("key1", "key2")
+data = keyRdd.collect()
+values = map(lambda x: x[1], data)
+for e in values:
+  print e
+```
+
+If your data contains 2i secondary indices you can query by that too:
+
+```python
+rangeRDD = sc.riakBucket("test-python-bucket", "default").query2iRange("myIndex", 1L, 5000L)
+data = rangeRDD.collect()
+values = map(lambda x: x[1], data)
+for e in values:
+  print e
+```
+
+Now let's work with a Riak TS table.
 
 Set up Riak TS connection:
 
@@ -237,7 +289,7 @@ create_sql = """CREATE TABLE %(table_name)s (
 site varchar not null,
 species varchar not null,
 measurementDate timestamp not null,
-value double, 
+value double,
 PRIMARY KEY ((site, species, quantum(measurementDate, 24, h)),
     site, species, measurementDate))
 """ % ({'table_name': table_name})
@@ -272,7 +324,7 @@ for i in range(9):
     value = random.uniform(-20, 110)
     events.append([site, species, measurementDate, value])
 
-end_date = measurementDate 
+end_date = measurementDate
 
 for e in events:
     print e
@@ -331,7 +383,7 @@ df.write \
     .format('org.apache.spark.sql.riak') \
     .option('spark.riak.connection.host', hostAndPort) \
     .mode('Append') \
-    .save(table_name) 
+    .save(table_name)
 ```
 
 Lets check that the write was successful by reading the TS table into a new DataFrame:
@@ -389,12 +441,12 @@ You should see something like this:
 ```
 
 Register the DataFrame as a temp sql table and run a sql query to obtain the average of the "value" column:
- 
+
  ```python
 df2.registerTempTable("pyspark_tmp")
 sqlContext.sql("select avg(value) as average_value from pyspark_tmp").show()
  ```
- 
+
 You should see something similar to this:
 
 ```

@@ -1,0 +1,14 @@
+version: "2"
+services:
+  spark-riak-connector:
+    build: .
+    image: spark-riak-connector
+    privileged: true
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "$HOME/.sbt:/root/.sbt"
+      - "$HOME/.ivy2:/root/.ivy2"
+      - ".:/usr/src"
+    network_mode: bridge
+    working_dir: /usr/src
+    command: sbt test

@@ -19,6 +19,7 @@
 #
 
 FWDIR="$(cd "`dirname "$0"`"/..; pwd)"
+BASEDIR=$(echo "$(pwd)" | awk -F "/examples" '{print $1}')
 export EXAMPLES_HOME="$FWDIR"
 
 . "$FWDIR"/conf/config.sh
@@ -33,7 +34,6 @@ else
   exit 1
 fi
 
-
 if [[ ! $EXAMPLE_CLASS == com.basho.riak.spark.examples* ]]; then
   EXAMPLE_CLASS="com.basho.riak.spark.examples.$EXAMPLE_CLASS"
 fi
@@ -41,7 +41,9 @@ fi
 spark-submit --jars $SPARK_JARS \
     --class $EXAMPLE_CLASS \
     --master $MASTER_URL \
+    --packages org.apache.spark:spark-streaming-kafka_$SCALA_VERSION:$SPARK_VERSION,org.apache.kafka:kafka_$SCALA_VERSION:$KAFKA_VERSION \
     --conf spark.riak.connection.host=$RIAK_HOST:$RIAK_PORT \
+    --conf kafka.broker=$KAFKA_BROKER \
     --driver-memory $DRIVER_MEM \
     --executor-memory $EXECUTOR_MEM \
     $@ \

@@ -144,12 +144,10 @@ object Query {
       case None =>
         // Full Bucket Read
         require(queryData.index.isDefined)
-        require(queryData.coverageEntries.isDefined)
+        require(ce.isDefined)
+        require(ce.get.nonEmpty)
 
-        val ce = queryData.coverageEntries.get
-        require(ce.nonEmpty)
-
-        new QueryFullBucket(bucket, readConf, connector, ce, queryData.index)
+        new QueryFullBucket(bucket, readConf, connector, ce.get, queryData.index)
     }
   }
 }

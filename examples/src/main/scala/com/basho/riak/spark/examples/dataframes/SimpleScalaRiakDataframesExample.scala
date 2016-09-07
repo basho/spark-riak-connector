@@ -41,6 +41,15 @@ object SimpleScalaRiakDataframesExample {
 
   case class UserData(user_id: String, name: String, age: Int, category: String)
 
+  val testData = Seq(
+    UserData("u1", "Ben", 23, "CategoryA"),
+    UserData("u2", "Clair", 19, "CategoryB"),
+    UserData("u3", "John", 21, null),
+    UserData("u4", "Chris", 50, "Categoryc"),
+    UserData("u5", "Mary", 15, "CategoryB"),
+    UserData("u6", "George", 31, "CategoryC")
+  )
+
   def main(args: Array[String]) {
     val sparkConf = new SparkConf().setAppName("Riak Spark Dataframes Example")
 
@@ -56,8 +65,10 @@ object SimpleScalaRiakDataframesExample {
     // To enable toDF()
     import sqlContext.implicits._
 
+    println(s" Saving data to Riak: \n ${println(testData)}")
+
     // Save test data from json file to riak bucket
-    val inputRDD = sqlContext.read.json("src/main/resources/test_data.json").toJSON.map {
+    val inputRDD = sc.parallelize(testData).map {
       line =>
         val obj = RiakObjectConversionUtil.to(line)
         // RiakObjectConversionUtil.to() sets content type to text/plain if String is passed
@@ -69,6 +80,9 @@ object SimpleScalaRiakDataframesExample {
 
     // Read from Riak with UDT to enable schema inference using reflection
     val df = sc.riakBucket[UserData](namespace).queryAll.toDF
+
+    println(s"Dataframe from Riak query: \n ${df.show()}")
+
     df.registerTempTable("users")
 
     println("count by category")

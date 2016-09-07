@@ -2,10 +2,9 @@
 
 This document will walk you through setting up your application for development with the Spark-Riak connector.
 
-**Note: Currently, if you are using Python, only Riak TS tables, Spark DataFrames and Spark SQL are supported. Reading and writing to Riak KV buckets is not supported yet with Python.**
-
 Scroll down or click below for the desired information:
 - [Configuration of Spark Context](./using-connector.md#configuration-of-spark-context)
+- [Failover Handling](./using-connector.md#failover-handling)
 - [Reading Data From KV Bucket](./using-connector.md#reading-data-from-kv-bucket)
 - [Writing Data To KV Bucket](./using-connector.md#writing-data-to-kv-bucket)
 - [Writing Data To KV Bucket With 2i Indices](./using-connector.md#writing-data-to-kv-bucket-with-2i-indices)
@@ -17,7 +16,8 @@ Scroll down or click below for the desired information:
 - [Working With TS Dates](./using-connector.md#working-with-ts-dates)
 - [TS Table Range Query Partitioning](./using-connector.md#ts-table-range-query-partitioning)
 - [TS Bulk Write](./using-connector.md#ts-bulk-write)
-- [Spark Streaming Example](./using-connector.md#spark-streaming-example)
+- [Using Jupyter Notebook](./using-connector.md#using-jupyter-notebook)
+- [Spark Streaming](./using-connector.md#spark-streaming)
 - [Using Java With The Connector](./using-connector.md#using-java-with-the-connector)
 
 
@@ -36,6 +36,7 @@ import com.basho.riak.spark._
 **Python**
 ```python
 import pyspark
+import pyspark_riak
 ```
 You can control how your Spark application interacts with Riak by configuring different options for your `SparkContext` or `SQLContext`. You can set these options within the $SPARK_HOME/conf/spark-default.conf.  If you don't set an option, it will be automatically set to the default values listed below.
 
@@ -53,6 +54,7 @@ spark.riak.connections.inactivity.timeout      | Time to keep connection to Riak
 spark.riakts.bindings.timestamp                | To treat/convert Riak TS timestamp columns either as a Long (UNIX milliseconds) or as a Timestamps during the automatic schema discovery. Valid values are: <ul><li>useLong</li><li>useTimestamp</li><ul> | useTimestamp | TS
 spark.riak.partitioning.ts-range-field-name    | Name of quantized field for range query       | 1                  | TS
 spark.riakts.write.bulk-size                   | Bulk size for parallel TS table writes            | 100                | TS
+spark.riak.partitioning.ts-quantum             | Size of the quantum for range field E.g.: "100s"  | N/A                | TS
 
 Example:
 
@@ -74,44 +76,87 @@ conf.set("spark.riak.connection.host", "127.0.0.1:8087")
 conf.set("spark.riak.connections.min", "20")
 conf.set("spark.riak.connections.max", "50")
 sc = pyspark.SparkContext("spark://127.0.0.1:7077", "test", conf)
+
+pyspark_riak.riak_context(sc)
 ```
+
+
+## Failover Handling
+
+When reading data from a Riak KV bucket, the Spark-Riak connector will run a full bucket query. This query first obtains metadata, called a coverage plan, from Riak about
+where the data is located in the cluster. This coverage plan will have a list of nodes were the data lives. After the Spark-Riak connector recieves the coverage plan, a node may fail and the reads going to the node will also
+fail. In this event, the Spark-Riak connector will request and alternative coverage plan from Riak for the data that failed to be read from Riak. This alternative
+coverage plan will return the next node that holds the data that we are attempting to read. Then the Spark-Riak connector will attempt to read the missing data
+from the nodes in the alternative coverage plan. This will continue until the missing data is successfully read or the list of alternative nodes has been
+exhausted.
 
 ## Reading Data From KV Bucket
 
 Once a SparkContext is created, we can load data stored in Riak KV buckets into Spark as RDDs. To specify which bucket to use:
 
+**Scala**
 ```scala
 val kv_bucket_name = new Namespace("test-data")
 ```
 
 Let's do a simple but very powerful full bucket read. We're going to read the content of entire Riak KV bucket in one command, and it will happen in an efficient partitioned parallel way and get values as Strings:
 
+**Scala**
 ```scala
- val data = sc.riakBucket[String](kv_bucket_name).queryAll()
+val data = sc.riakBucket[String](kv_bucket_name).queryAll()
+```
+
+**Python**
+```python
+data = sc.riakBucket(bucket_name, bucket_type).queryAll()
 ```
 
 When you know your keys by name, you can pass them in directly:
 
+**Scala**
 ```scala
 val rdd = sc.riakBucket[String](kv_bucket_name).queryBucketKeys("Alice", "Bob", "Charlie")
 ```
 
+**Python**
+```python
+rdd = sc.riakBucket(bucket_name, bucket_type).queryBucketKeys("Alice", "Bob", "Charlie")
+```
+
 You can also specifiy a range of values (say, from 1 to 5000) defined by a numeric 2i index in Riak if your index is `myIndex`:
 
+**Scala**
 ```scala
 val rdd = sc.riakBucket[String](kv_bucket_name).query2iRange("myIndex", 1L, 5000L)
 ```
 
+**Python**
+```python
+rdd = sc.riakBucket(bucket_name, bucket_type).query2iRange("myIndex", 1L, 5000L)
+```
+
 You can also specify a set of numeric 2i range values to query by:
 
+**Scala**
 ```scala
 val rdd = sc.riakBucket[String](kv_bucket_name).partitionBy2iRanges("myIndex", 1->3, 4->6, 7->12)
 ```
 
+**Python**
+```python
+rdd = sc.riakBucket(bucket_name, bucket_type).partitionBy2iRanges("myIndex", (1, 3), (4, 6), (7, 12))
+```
+
 You can also query by a 2i string tag or set of 2i string tags:
 
+**Scala**
 ```scala
-val rdd = sc.riakBucket[String](kv_bucket_name).query2iKeys("mon_data", "wed_data", "fri_data")
+val rdd = sc.riakBucket[String](kv_bucket_name).query2iKeys("dailyDataIndx", "mon_data", "wed_data", "fri_data")
+```
+
+**Python**
+```python
+rdd = sc.riakBucket(bucket_name, bucket_type).query2iKeys("dailyDataIndx", "mon_data", "wed_data", "fri_data")
 ```
 
 ## Writing Data To KV Bucket
@@ -124,9 +169,15 @@ import com.basho.riak.spark.writer.{WriteDataMapper, WriteDataMapperFactory}
 
 Define the output bucket and issue `saveToRiak` method on an RDD:
 
+**Scala**
 ```scala
 val output_kv_bucket = new Namespace("test-bucket")
 rdd.saveToRiak(output_kv_bucket)
+```
+
+**Python**
+```python
+rdd.saveToRiak(bucket_name, bucket_type)
 ```
 
 ## Writing Data To KV Bucket With 2i Indices
@@ -146,8 +197,8 @@ case class ORMDomainObject(
   
   
     val data = List(
-    ORMDomainObject("u1", 100, "user 1"), 
-    ORMDomainObject("u2", 200, "user 2"), 
+    ORMDomainObject("u1", 100, "user 1"),
+    ORMDomainObject("u2", 200, "user 2"),
     ORMDomainObject("u3", 100, "user 3")
     )
     val rdd:RDD[ORMDomainObject] = sc.parallelize(data, 1)
@@ -171,8 +222,8 @@ case class DomainObject(
   
   
   val data = List(
-    DomainObject("u1", 100, "user 1"), 
-    DomainObject("u2", 200,"user 2"), 
+    DomainObject("u1", 100, "user 1"),
+    DomainObject("u2", 200,"user 2"),
     DomainObject("u3", 100, "user 3")
     )
     val rdd:RDD[DomainObject] = sc.parallelize(data, 1)
@@ -300,7 +351,7 @@ Setting content type to `application/json` will allow automatic conversion to us
 
 ## Spark Dataframes With TS Table
 
-To enable DataFrames functionality, first steps are 
+To enable DataFrames functionality, first steps are
 
 **Scala**
 ```scala
@@ -316,7 +367,7 @@ sqlContext = pyspark.SQLContext(sc)
 ts_table_name = "test_table"
 ```
 
-To read data from existing TS table `test-table` standard SQLContext means can be used by providing a special `“org.apache.spark.sql.riak”` data format and using a Riak TS range query: 
+To read data from existing TS table `test-table` standard SQLContext means can be used by providing a special `“org.apache.spark.sql.riak”` data format and using a Riak TS range query:
 
 **Scala**
 ```scala
@@ -345,7 +396,7 @@ val riakSqlContext = new RiakSQLContext(sc, ts_table_name)
 val alternativeDf = riakSqlContext.sql(s"SELECT time, col1 from $ts_table_name WHERE time >= CAST($from AS TIMESTAMP) AND time <= CAST($to AS TIMESTAMP) AND  col1= $value1")
 ```
 
-A DataFrame, `inputDF`, that has the same schema as an existing TS table (column order and types) can be saved to Riak TS as follows: 
+A DataFrame, `inputDF`, that has the same schema as an existing TS table (column order and types) can be saved to Riak TS as follows:
 
 **Scala**
 ```scala
@@ -373,9 +424,26 @@ Any of the Spark Connector options can be provided in `.option()` or `.options()
 ### Key Based Partitioning
 Querying with the following methods with result in a RDD with single partition:
 
-* query2iRange(index, from, to)
 * query2iKeys(index, keys*)
 * queryBucketKeys(keys*)
+
+If 2i is an Int, Long or BigInt, range query will be automatically split into a number of subranges defined by the **spark.riak.input.split.count** option, creating a partition for each subrange.  
+* query2iRange(index, from, to)
+
+If 2i is of the other types, a single partition will be created.
+
+For example,
+```scala
+val conf = new SparkConf()
+        .setAppName("My Spark Riak App")
+        .set("spark.riak.input.split.count", "10")
+
+val sc = new SparkContext(conf)
+...
+sc.riakBucket[UserTS](DEFAULT_NAMESPACE)
+    .query2iRange(CREATION_INDEX, 100L, 200L)
+```
+Initial range of [100, 200] will be split into 10 subranges: [100,110], [111,121], [122,132], [133,143], [144,154], [155,165], [166,176], [177,187], [188,198], [199,200].
 
 The following methods will split the RDD into multiple partitions:
 * partitionBy2iRanges(index, ranges*) will create a partition for each of the  input ranges
@@ -446,9 +514,21 @@ val df = sqlContext.read
 In the previous example, the query times, `CAST('$from' AS TIMESTAMP)` and `CAST('$to' AS TIMESTAMP)`, are Timestamps which are cast from a Long integer since the datetime values in `df` are stored as Timestamps.
 
 
-## TS Table Range Query Partitioning
+## Partitioning for Riak TS Table Queries
 
-Riak TS range queries are limited to a maximum of 5 quanta (see http://docs.basho.com/riakts/latest/using/querying/). To work around this limitation or simply achieve higher read performance, large ranges can be split into smaller sub-ranges at partitioning time.
+For native Riak TS range queries (without Dataframes) single partition will be created. For Dataframe reads there are two options.
+
+### Coverage Plan Based Partitioning
+
+By default all Dataframe reads will use coverage plan based partitioner.
+It will split initial range query into subranges each containing period of 1 quantum. All the data from the subrange is stored on the same Riak node. Subranges are then grouped by host and split into a number of partitons(spark.riak.input.split.count) such that each partition queries single Riak node.
+This guaranties that queries will not exceed the maximum quanta limit of 5.
+
+NOTE: All data from each subrange will be loaded at once. Paginated reads are not yet implemented.
+
+### Range Query Partitioning
+
+Large ranges can be automatically split into smaller sub-ranges at partitioning time without taking into account data location by simply dividing the initial range into a number of partitions.
 
 To use this functionality it's required to provide the following options:
 * `spark.riak.partitioning.ts-range-field-name` to identify quantized field
@@ -464,7 +544,7 @@ For example:
       .format("org.apache.spark.sql.riak")
       .schema(schema)
       .load(ts_table_name)
-      .filter(s"time >= CAST(111111 AS TIMESTAMP) AND time <= CAST(555555 AS TIMESTAMP) AND col1 = 'val1'")
+      .filter(s"time >= CAST(10000 AS TIMESTAMP) AND time < CAST(210000 AS TIMESTAMP) AND col1 = 'val1'")
 ```
 **Python**
 ```python
@@ -474,18 +554,52 @@ df = sqlContext.read \
       .format("org.apache.spark.sql.riak") \
       .schema(schema) \
       .load(ts_table_name) \
-      .filter(s"time >= CAST(111111 AS TIMESTAMP) AND time <= CAST(555555 AS TIMESTAMP) AND col1 = 'val1'")
+      .filter(s"time >= CAST(10000 AS TIMESTAMP) AND time < CAST(210000 AS TIMESTAMP) AND col1 = 'val1'")
 
 ```
 
 The initial range query will be split into 5 subqueries (one per each partition) as follows:
-* ```time >= CAST(111111 AS TIMESTAMP) AND time < CAST(222222 AS TIMESTAMP) AND col1 = 'val1'```
-* ```time >= CAST(222222 AS TIMESTAMP) AND time < CAST(333333 AS TIMESTAMP) AND col1 = 'val1'```
-* ```time >= CAST(333333 AS TIMESTAMP) AND time < CAST(444444 AS TIMESTAMP) AND col1 = 'val1'```
-* ```time >= CAST(444444 AS TIMESTAMP) AND time < CAST(555555 AS TIMESTAMP) AND col1 = 'val1'```
-* ```time >= CAST(555555 AS TIMESTAMP) AND time < CAST(555556 AS TIMESTAMP) AND col1 = 'val1'```
+* ```time >= CAST(10000 AS TIMESTAMP) AND time < CAST(50000 AS TIMESTAMP) AND col1 = 'val1'```
+* ```time >= CAST(50000 AS TIMESTAMP) AND time < CAST(90000 AS TIMESTAMP) AND col1 = 'val1'```
+* ```time >= CAST(90000 AS TIMESTAMP) AND time < CAST(130000 AS TIMESTAMP) AND col1 = 'val1'```
+* ```time >= CAST(130000 AS TIMESTAMP) AND time < CAST(170000 AS TIMESTAMP) AND col1 = 'val1'```
+* ```time >= CAST(170000 AS TIMESTAMP) AND time < CAST(210000 AS TIMESTAMP) AND col1 = 'val1'```
+
+An additional option spark.riak.partitioning.ts-quantum can be passed to notify the Spark-Riak Connector of the quantum size. If the automatically created subranges break the 5 quanta limitation, the initial range will be split into ~4 quantum subranges and the resulting subranges will then be grouped to form the required number of partitions.
+**Scala**
+```scala
+   val df = sqlContext.read
+      .option("spark.riak.input.split.count", "5")
+      .option("spark.riak.partitioning.ts-range-field-name", tsRangeFieldName)
+      .option("spark.riak.partitioning.ts-quantum", "5s")
+      .format("org.apache.spark.sql.riak")
+      .schema(schema)
+      .load(ts_table_name)
+      .filter(s"time >= CAST(10000 AS TIMESTAMP) AND time < CAST(210000 AS TIMESTAMP) AND col1 = 'val1'")
+```
+**Python**
+```python
+df = sqlContext.read \
+      .option("spark.riak.input.split.count", "5") \
+      .option("spark.riak.partitioning.ts-range-field-name", tsRangeFieldName) \
+      .option("spark.riak.partitioning.ts-quantum", "5s") \
+      .format("org.apache.spark.sql.riak")
+      .schema(schema) \
+      .load(ts_table_name) \
+      .filter(s"time >= CAST(10000 AS TIMESTAMP) AND time < CAST(210000 AS TIMESTAMP) AND col1 = 'val1'")
+
+```
+Splitting [10000, 210000) into 5 partitions will give a period of 40000ms per partition, which will hit the quanta limitation when querying Riak TS.
+In this case, the initial range will be spit into 5 sets of 2 subranges:
+* ```[(time >= 10000 AND time < 30000), (time >= 30000 AND time < 50000)]```
+* ```[(time >= 50000 AND time < 70000), (time >= 70000 AND time < 90000)]```
+* ```[(time >= 90000 AND time < 110000), (time >= 110000 AND time < 130000)]```
+* ```[(time >= 130000 AND time < 150000), (time >= 150000 AND time < 170000)]```
+* ```[(time >= 170000 AND time < 190000), (time >= 190000 AND time < 210000)]```
 
 Not providing the `spark.riak.partitioning.ts-range-field-name` property will default to having a single partition with initial query.
+
+NOTE: All data from each subrange will be loaded at once. Paginated reads are not yet implemented.
 
 ## TS Bulk Write
 
@@ -534,167 +648,124 @@ conf.set("spark.riakts.write.bulk-size", "500")
 conf.set("spark.riak.connections.min", "50")
 ```
 
-## Spark Streaming Example
+## Using Jupyter Notebook
 
-The Spark-Riak Connector can be used with Spark Streaming. To demonstrate this usage, we will work through two small Scala examples. These examples are located in the [examples folder](../examples/src/main/scala/com/basho/riak/spark/examples) of the Spark-Riak Connector repo.
+To use the Spark-Riak connector with Jupyter notebook you install Jupyter Notebook(you can follow [these](http://jupyter.readthedocs.io/en/latest/install.html) instructions or use the official Docker image [image](https://hub.docker.com/r/jupyter/pyspark-notebook/)). Once installed, start Jupyter with `jupyter notebook`. Then execute the following code to initialize a Spark context:
 
-These examples require the use of Kafka. Please install Kafka and setup a Kafka broker prior to running this example. We will assume that there is a Kafka broker running at `127.0.0.1:9092` with a topic called `streaming`. Instructions on setting up Kafka topics can be found in [this guide](https://kafka.apache.org/documentation.html#quickstart). You can create a broker and topic with the following:
+```python
+import findspark
+findspark.init()
+import pyspark
+import os
 
+os.environ['PYSPARK_SUBMIT_ARGS'] = "--packages com.basho.riak:spark-riak-connector:1.5.1 --repositories https://dl.bintray.com/basho/data-platform pyspark-shell"
+conf = pyspark.SparkConf().setAppName("My Spark Riak App")
+conf.set("spark.riak.connection.host", "127.0.0.1:8087")
+sc = pyspark.SparkContext(conf)
 ```
-path/to/kafka/bin/zookeeper-server-start.sh config/zookeeper.properties
-path/to/kafka/bin/kafka-server-start.sh config/server.properties
-path/to/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic streaming
-```
 
-We also assume Riak TS is installed and there is a Riak TS node running at `127.0.0.1:8087`. You can find instruction to do so [here](http://docs.basho.com/riak/ts/1.2.0/installing/mac-osx/). You will need to build the examples as well. Please follow the instructions on [building the examples](../examples#building-and-running-examplesdemos). After setting up, there are two examples to run: a KV bucket example and a TS table example.
+Now you have a Spark context that is ready to use with Riak and running inside a Jupyter notebook.
 
-###Spark Streaming KV Buckets Example
+## Spark Streaming
 
-Now that we are set up, let's look at the KV bucket example [here](../examples/src/main/scala/com/basho/riak/spark/examples/streaming/StreamingKVExample.scala). 
+As stated in the [official Spark Streaming documentation](http://spark.apache.org/docs/latest/streaming-programming-guide.html), "Spark Streaming is an extension of the core Spark API that enables scalable, high-throughput, fault-tolerant stream processing of live data streams. Data can be ingested from many sources like Kafka, Flume, Kinesis, or TCP sockets, and can be processed using complex algorithms expressed with high-level functions like map, reduce, join and window."
 
-In the first chunk of code in the main method, we are just setting up our local Spark Streaming context and setting the name for the KV bucket to `test-data`:
+### The Basic Idea
+
+#### Spark Streaming
+
+Here is a basic Spark Streaming sample which writes to the console with `errorlines.print()`:
+
+Create a StreamingContext with a SparkConf configuration:
 
 ```scala
-val sparkConf = new SparkConf(true)
-      .setAppName("Simple Spark Streaming to Riak KV Demo")
-setSparkOpt(sparkConf, "spark.master", "local")
-setSparkOpt(sparkConf, "spark.riak.connection.host", "127.0.0.1:8087")
-
-val sc = new SparkContext(sparkConf)
-val streamCtx = new StreamingContext(sc, Durations.seconds(15))
-val sqlContext = new org.apache.spark.sql.SQLContext(sc)
-import sqlContext.implicits._
-val namespace = new Namespace("test-data")
+    val ssc = new StreamingContext(sparkConf, Seconds(1))
 ```
 
-Next we are setting up Kafka properties:
+Create a DStream that will connect to serverIP:serverPort:
 
 ```scala
-val kafkaProps = Map[String, String](
-      "metadata.broker.list" -> "127.0.0.1:9092",
-      "client.id" -> UUID.randomUUID().toString
-    )
+    val lines = ssc.socketTextStream(serverIP, serverPort)
 ```
 
-Then, we are using `KafkaUtils` to create a stream from the Kafka topic `streaming` into our KV bucket `test-data`:
+Count all lines with 'ERROR' in each batch:
 
 ```scala
-    KafkaUtils
-      .createDirectStream[String, String, StringDecoder, StringDecoder](streamCtx, kafkaProps, Set[String]("streaming"))
-      .foreachRDD { rdd =>
-        val rows = sqlContext.read.json(rdd.values).map {
-          line => val obj = RiakObjectConversionUtil.to(line)
-            obj.setContentType("application/json")
-            obj
-        }.saveToRiak(namespace)
-      }
+    val errorlines = lines.filter(lines => lines contains "ERROR")
+    val errorcount = errorlines.count()
+    println(errorcount)
 ```
- And finally, we are starting the stream:
- 
- ```scala
- streamCtx.start()
- streamCtx.awaitTermination()
- ```
 
- Now that we understand the code, we can run the `StreamingKVExample.scala` example with:
- 
- ```
- /path/to/spark-riak-connector-examples/bin/run-example streaming.StreamingKVExample
- ```
- 
- This will start a stream from the Kafka topic `streaming` into the KV bucket `test-data` that we just created. This stream will run until terminated. Whenever a message is produced for Kafka topic `streaming`, the Spark Streaming context that the example creates will automatically stream the message from the topic into the KV bucket. To see this in action, we need to send a message to the Kafka topic `streaming` with the Kafka console producer script, which can be found in the Kafka directory.
- 
- ```
- /path/to/kafka/bin/kafka-console-producer.sh --broker-list localhost:9092 --topic streaming
- ```
- 
- This script will read messages from the terminal and pass it to the topic. From the topic, the Spark Streaming context will write the message to Riak KV bucket `test-data`.  As an example put the following into the terminal:
- 
- ```
- {"time": "2016-01-01 08:30:00.000", "weather": "sunny", "temperature": 25.0, "humidity": 67.0, "pressure": 30.20, "family": "f"}
- ```
- 
-You should now be able to see this data entry in the KV bucket `test-data`.
+Print a few of the error lines to the console and start the stream:
+```scala
+    errorlines.print()
+    ssc.start()  
+    ssc.awaitTermination() // Wait for the computation to terminate
+```
 
-###Spark Streaming TS Table Example
+#### Spark Streaming With Riak
 
-Having seen how Spark Streaming works with KV buckets, let's now look at the TS table example [here](../examples/src/main/scala/com/basho/riak/spark/examples/streaming/StreamingTSExample.scala). 
-
-The code is somewhat similar to the KV bucket example, but with crucial differences. Let's have a look:
+To add Riak related features to the `StreamingContext` and `RDD` it is required to add some packages into the scope:
 
 ```scala
- val schema = StructType(List(
-      StructField(name = "weather", dataType = StringType),
-      StructField(name = "family", dataType = StringType),
-      StructField(name = "time", dataType = TimestampType),
-      StructField(name = "temperature", dataType = DoubleType),
-      StructField(name = "humidity", dataType = DoubleType),
-      StructField(name = "pressure", dataType = DoubleType)))
-
-    val sparkConf = new SparkConf(true)
-      .setAppName("Simple Spark Streaming to Riak TS Demo")
-
-    setSparkOpt(sparkConf, "spark.master", "local")
-    setSparkOpt(sparkConf, "spark.riak.connection.host", "127.0.0.1:8087")
-    setSparkOpt(sparkConf, "kafka.broker", "127.0.0.1:9092")
-
-    val sc = new SparkContext(sparkConf)
-    val streamCtx = new StreamingContext(sc, Durations.seconds(15))
-    val sqlContext = new org.apache.spark.sql.SQLContext(sc)
-    import sqlContext.implicits._
-
-    val kafkaProps = Map[String, String](
-      "metadata.broker.list" -> sparkConf.get("kafka.broker"),
-      "client.id" -> UUID.randomUUID().toString
-    )
+    import com.basho.riak.spark.streaming._
 ```
 
-This first section of code just sets up the table schema, a Spark Streaming context, a Spark SQL context, and Kafka properties. Note that we need to set up a TS table that reflect the schema in the previous section of code. We can create this TS table with:
-
+And after that we can simply replace the print statement with a `saveToRiak` call:
+```scala
+    errorlines.saveToRiak("test-bucket-4store")
 ```
-curl -v -XPUT -H 'Content-Type: application/json' "http://$RIAK_HTTP/admin/explore/clusters/default/bucket_types/ts_weather_demo" -d '{"props":{"n_val":3, "table_def":"CREATE TABLE ts_weather_demo (weather varchar not null,family varchar not null,time timestamp not null,temperature  double,humidity double,pressure double,PRIMARY KEY ((weather, family, quantum(time, 1, 'h')), weather, family, time))"}}'
-```
 
-Be sure to substitute the Riak node's IP address and HTTP port in for `$RIAK_HTTP`.
+### Setting up Streaming
 
-The next section of the code is:
+#### Create A 'StreamingContext'
+
+The streaming context has only two parameters which are required for minimal configuration. The first one is `sparkConf`. Please see [how to create and use `SparkConf`](using-connector.md#configuration-of-spark-context) for more information. The second required parameter is the `batchDuration` which sets the interval in which streaming data will be divided into batches: Note the Spark API provides a Milliseconds, Seconds, Minutes, all of which are accepted as a `Duration`. This `Duration` is not to be confused with the [scala.concurrent.duration.Duration](http://www.scala-lang.org/api/current/index.html#scala.concurrent.duration.Duration)
 
 ```scala
-    KafkaUtils
-      .createDirectStream[String, String, StringDecoder, StringDecoder](streamCtx, kafkaProps,
-      Set[String]("streaming"))
-      .foreachRDD { rdd => rdd.map(println)
-        val rows = sqlContext.read.schema(schema).json(rdd.values)
-          .withColumn("time", 'time.cast("Timestamp"))
-          .select("weather", "family", "time", "temperature", "humidity", "pressure")
-
-        rows.write
-          .format("org.apache.spark.sql.riak")
-          .mode(SaveMode.Append)
-          .save("ts_weather_demo")
-      }
+    val ssc = new StreamingContext(conf, Seconds(n))
 ```
-In this section of code, we are setting up a stream from Kafka topic `streaming` into TS table `ts_weather_demo`. Here we are using our Spark SQL context to read each RDD streamed from the Kafka topic and then write into the TS table.
 
-Now that we have seen the code let's run the example (see [here](../examples#building-and-running-examplesdemos) if you need to build the example). You can run the `StreamingTSExample.scala` example, after building, with:
+#### Creating A Stream
 
- ```
- /path/to/spark-riak-connector-examples/bin/run-example streaming.StreamingTSExample
- ```
+You can create any of the available Spark streams or customize your own streams. Please see [this section](http://spark.apache.org/docs/latest/streaming-programming-guide.html#basic-sources) from the Spark documentation for more details.
 
-Now that the stream is up and running, we need to actually send data to the Kafka topic. Let's start the Kafka console producer. This will allow us to stream messages from the terminal into the Kafka `streaming` topic.
+#### Enable Spark Streaming With Riak
 
- ```
- /path/to/bin/kafka-console-producer.sh --broker-list localhost:9092 --topic streaming
- ```
- 
-Now paste the following message into the terminal:
+The following enables Riak-related functions on the `StreamingContext`, `DStream` and `RDD`:
 
- ```
- {"time": "2016-01-01 08:30:00.000", "weather": "sunny", "temperature": 25.0, "humidity": 67.0, "pressure": 30.20, "family": "f"}
- ```
+```scala
+    import com.basho.riak.spark.streaming._
+```
 
-You can check that this worked by doing a simple SQL query for the example data. 
+#### Writing to Riak From A Stream
+
+The data can be stored either to KV or TS storage.
+
+Saving data to KV:
+```scala
+    stream.saveToRiak(DEFAULT_NAMESPACE_4STORE.getBucketNameAsString)
+    ssc.start() // start computation
+```
+
+The difference between writing to KV and TS is really small. To meet the requirements of TS, it is necessary to convert data into Spark Row object.
+Saving data to TS:
+```scala
+    stream
+        .map(data => Row(...)
+        .saveToRiak(DEFAULT_NAMESPACE_4STORE.getBucketNameAsString)
+    ssc.start() // start computation
+```
+
+#### Reading From Riak From The `StreamingContext`
+
+Since Riak-specific `StreamingContext` extends usual Riak-specific `SparkContext`, it is possible to read data from Riak using `StreamingContext`:
+```scala
+    var rdd = ssc.riakBucket(DEFAULT_NAMESPACE_4STORE).queryAll()
+```
+
+### Find out more
+http://spark.apache.org/docs/latest/streaming-programming-guide.html
 
 ## Using Java With The Connector
 
@@ -727,7 +798,7 @@ Load data for a list of index values - returns only data that have index value i
 ```java
 SparkJavaUtil.javaFunctions(jsc).riakBucket(NAMESPACE, String.class).query2iKeys(INDEX_NAME, iValue1, iValue2, ...);
 ```
-    
+
 Load data by keys - return only data for listed keys:
 
 ```java
@@ -736,7 +807,7 @@ SparkJavaUtil.javaFunctions(jsc).riakBucket(NAMESPACE, String.class).queryBucket
 
 ### Write To KV Bucket
 
-An existing JavaRDD<{UserDefinedType}>, `rdd`, can be saved to KV bucket as follows 
+An existing JavaRDD<{UserDefinedType}>, `rdd`, can be saved to KV bucket as follows
 
 ```java
 SparkJavaUtil.javaFunctions(rdd).saveToRiak(NAMESPACE);

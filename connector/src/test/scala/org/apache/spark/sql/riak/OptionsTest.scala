@@ -33,7 +33,7 @@ class OptionsTest {
 
   private val source = new DefaultSource
 
-  private var sqlContext: SQLContext = null
+  private var sqlContext: SQLContext = _
   private val initialHost = "default:1111"
   private val initialConnectionsMin = 111
   private val initialConnectionsMax = 999
@@ -54,8 +54,8 @@ class OptionsTest {
     .set("spark.riak.input.fetch-size", initialFetchSize.toString)
     .set("spark.riak.input.split.count", initialSplitCount.toString)
 
-  private val dummySchema = StructType(List(StructField("dummy", StringType, true)))
-  private var df: DataFrame = null
+  private val dummySchema = StructType(List(StructField("dummy", StringType, nullable = true)))
+  private var df: DataFrame = _
 
   @Before
   def initializeDF(): Unit = {
@@ -68,9 +68,7 @@ class OptionsTest {
 
   @After
   def destroySparkContext(): Unit = {
-    if (sqlContext != null) {
-      sqlContext.sparkContext.stop()
-    }
+    Option(sqlContext).foreach(sqlc => sqlc.sparkContext.stop())
   }
 
   @Test

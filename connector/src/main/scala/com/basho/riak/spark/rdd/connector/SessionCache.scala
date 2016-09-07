@@ -18,15 +18,23 @@
 package com.basho.riak.spark.rdd.connector
 
 import java.io.IOException
-import java.lang.reflect.{ InvocationTargetException, Method, InvocationHandler, Proxy }
+import java.lang.reflect.{InvocationHandler, InvocationTargetException, Method, Proxy}
 import java.util.concurrent.atomic.AtomicLong
-import com.basho.riak.client.api.{ RiakCommand, RiakClient }
-import com.basho.riak.client.core.{ RiakFuture, FutureOperation, RiakCluster, RiakNode }
+
+import com.basho.riak.client.api.{RiakClient, RiakCommand}
+import com.basho.riak.client.core.{FutureOperation, RiakCluster, RiakFuture, RiakNode}
 import com.basho.riak.client.core.util.HostAndPort
 import com.google.common.cache._
 import org.apache.spark.Logging
+
 import scala.collection.JavaConverters._
-import java.util.concurrent.{ ThreadFactory, Executors, TimeUnit }
+import java.util.concurrent.{Executors, ScheduledThreadPoolExecutor, ThreadFactory, TimeUnit}
+
+import io.netty.bootstrap.Bootstrap
+import io.netty.channel.nio.NioEventLoopGroup
+import io.netty.channel.socket.nio.NioSocketChannel
+import io.netty.util.concurrent.DefaultThreadFactory
+
 import scala.collection.concurrent.TrieMap
 
 /**
@@ -109,7 +117,20 @@ class SessionCache(val cacheSize: Int) extends Logging {
       }
 
       val ns = nodes.toBuffer
-      val cluster = RiakCluster.builder(ns.asJava).build()
+
+      // To prevent 'stuck on exit' all the Java Client threads should be a non daemon/background
+      val cluster = RiakCluster.builder(ns.asJava)
+          .withBootstrap(new Bootstrap()
+            .group(new NioEventLoopGroup(0, new DefaultThreadFactory(classOf[NioEventLoopGroup], true)))
+            .channel(classOf[NioSocketChannel]))
+          .withExecutor(new ScheduledThreadPoolExecutor(2, new ThreadFactory() {
+            override def newThread(r: Runnable): Thread = {
+              val t: Thread = Executors.defaultThreadFactory.newThread(r)
+              t.setDaemon(true)
+              t
+            }
+          }))
+        .build()
       cluster.start()
 
       new RiakClient(cluster)
@@ -163,11 +184,11 @@ class SessionCache(val cacheSize: Int) extends Logging {
               }
             }
           }
-          Thread.sleep(checkRate);
+          Thread.sleep(checkRate)
         }
       } catch {
         case e: InterruptedException => {
-          logWarning(s"Session Cleaner was interrunpted", e)
+          logTrace(s"Session Cleaner was interrupted", e)
         }
       }
       logDebug(s"Checking for expired sessions stopped")

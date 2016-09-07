@@ -48,7 +48,7 @@ case class ORMDomainObject(
     login: String)
 
 @Category(Array(classOf[RiakCommonTests]))
-class RDDStoreTest  extends AbstractRDDTest {
+class RDDStoreTest extends AbstractRiakSparkTest {
 
   val _expectedException: ExpectedException = ExpectedException.none()
 

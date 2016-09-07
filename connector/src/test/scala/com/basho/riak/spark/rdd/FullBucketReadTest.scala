@@ -17,15 +17,17 @@
  */
 package com.basho.riak.spark.rdd
 
-import org.apache.spark.SparkConf
+import java.{lang => jl, util => ju}
+
 import com.basho.riak.spark._
+import com.basho.riak.test.rule.annotations.OverrideRiakClusterConfig
+import org.apache.spark.SparkConf
 import org.junit.Assert._
+import org.junit.Test
+import org.junit.experimental.categories.Category
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 import org.junit.runners.Parameterized.Parameters
-import java.{util => ju, lang => jl}
-import org.junit.Test
-import org.junit.experimental.categories.Category
 
 object FullBucketReadTest {
 
@@ -42,17 +44,18 @@ object FullBucketReadTest {
 
 @RunWith(value = classOf[Parameterized])
 @Category(Array(classOf[RiakTSTests]))
-class FullBucketReadTest(splitSize: Int) extends AbstractRDDTest {
+@OverrideRiakClusterConfig(nodes = 3, timeout = 5)
+class FullBucketReadTest(splitSize: Int) extends AbstractRiakSparkTest {
   private val NUMBER_OF_TEST_VALUES = 1000
 
-  protected override def jsonData(): String = {
+  protected override val jsonData = Some({
     val data = for {
-        i <- 1 to NUMBER_OF_TEST_VALUES
-        data = Map("key"->s"k$i","value"->s"v$i", "indexes"->Map("creationNo"->i))
+      i <- 1 to NUMBER_OF_TEST_VALUES
+      data = Map("key" -> s"k$i", "value" -> s"v$i", "indexes" -> Map("creationNo" -> i))
     } yield data
 
     asStrictJSON(data)
-  }
+  })
 
   override protected def initSparkConf(): SparkConf = {
     val conf = super.initSparkConf()
@@ -62,7 +65,7 @@ class FullBucketReadTest(splitSize: Int) extends AbstractRDDTest {
   /*
      * map RDD[K] to RDD[(partitionIdx,K)]
      */
-  val funcReMapWithPartitionIdx = new Function2[Int,Iterator[String], Iterator[(Int,String)]] with Serializable{
+  val funcReMapWithPartitionIdx = new ((Int, Iterator[String]) => Iterator[(Int, String)]) with Serializable {
     override def apply(partitionIdx: Int, iter: Iterator[String]): Iterator[(Int, String)] = {
       iter.toList.map(x => partitionIdx -> x).iterator
     }

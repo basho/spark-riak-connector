@@ -6,7 +6,7 @@ The Spark-Riak connector enables you to connect Spark applications to Riak KV an
 
 * Construct a Spark RDD from a Riak KV bucket with a set of keys
 * Construct a Spark RDD from a Riak KV bucket by using a 2i string index or a set of indexes
-* Construct a Spark RDD from a Riak KV bucket by using a 2i range query or a set of ranges 
+* Construct a Spark RDD from a Riak KV bucket by using a 2i range query or a set of ranges
 * Map JSON formatted data from Riak KV to user defined types
 * Save a Spark RDD into a Riak KV bucket and apply 2i indexes to the contents
 * Construct a Spark Dataframe from a Riak TS table using range queries and schema discovery
@@ -16,18 +16,18 @@ The Spark-Riak connector enables you to connect Spark applications to Riak KV an
 
 ## Compatibility
 
-* Riak TS 1.2+
+* Riak TS 1.3.1+
 * Apache Spark 1.6+
-* Scala 2.10
+* Scala 2.10 and 2.11
 * Java 8
 
 ## Coming Soon
 
-* Support for Riak KV 2.2 and later
+* Support for Riak KV 2.3 and later
 
 ## Prerequisites
 
-In order to use the Spark-Riak connector, you must have the following installed: 
+In order to use the Spark-Riak connector, you must have the following installed:
 
 * [Java OpenJDK 8](http://openjdk.java.net/install/) or [Oracle JDK 8](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html)
 * [Apache Spark](http://spark.apache.org/docs/latest/#downloading)
@@ -47,6 +47,7 @@ In order to use the Spark-Riak connector, you must have the following installed:
 
 - [Using the Spark-Riak Connector](./docs/using-connector.md#using-the-spark-riak-connector)
   - [Configuration of Spark Context](./docs/using-connector.md#configuration-of-spark-context)
+  - [Failover Handling](./docs/using-connector.md#failover-handling)
   - [Reading Data From KV Bucket](./docs/using-connector.md#reading-data-from-kv-bucket)
   - [Writing Data To KV Bucket](./docs/using-connector.md#writing-data-to-kv-bucket)
   - [Writing Data To KV Bucket With 2i Indices](./docs/using-connector.md#writing-data-to-kv-bucket-with-2i-indices)
@@ -58,11 +59,12 @@ In order to use the Spark-Riak connector, you must have the following installed:
   - [Working With TS Dates](./docs/using-connector.md#working-with-ts-dates)
   - [TS Table Range Query Partitioning](./docs/using-connector.md#ts-table-range-query-partitioning)
   - [TS Bulk Write](./docs/using-connector.md#ts-bulk-write)
-  - [Spark Streaming Example](./docs/using-connector.md#spark-streaming-example)
+  - [Using Jupyter Notebook](./docs/using-connector.md#using-jupyter-notebook)
+  - [Spark Streaming](./docs/using-connector.md#spark-streaming)
   - [Using Java With The Connector](./docs/using-connector.md#using-java-with-the-connector)
-  
+
 - [Spark-Riak Connector Example Apps](./examples/README.md#examples-and-interactive-scala-shell-repl)
-  
+
 ## Mailing List
 
 The [Riak Users Mailing List](http://lists.basho.com/mailman/listinfo/riak-users_lists.basho.com) is highly trafficked and a great resource for technical discussions, Riak issues and questions, and community events and announcements.

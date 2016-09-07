@@ -49,12 +49,15 @@ object SimpleScalaRiakExample {
     //setSparkOpt(sparkConf, "spark.riak.connection.host", "127.0.0.1:10017")
 
 
+    println(s"Writing test data to Riak: \n $TEST_DATA")
+
     createTestData(sparkConf)
     val sc = new SparkContext(sparkConf)
     val rdd = sc.riakBucket(SOURCE_DATA)
       .queryAll()
 
-    println(s"Execution result: ${rdd.count()}")
+    println(s"Riak query result: \n ${rdd.foreach(println)}")
+    println(s"Records in query result: ${rdd.count()}")
   }
 
   private def createTestData(sparkConf: SparkConf): Unit = {

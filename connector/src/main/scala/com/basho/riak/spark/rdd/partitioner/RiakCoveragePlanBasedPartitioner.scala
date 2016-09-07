@@ -17,89 +17,64 @@
  */
 package com.basho.riak.spark.rdd.partitioner
 
-import java.util.concurrent.ExecutionException
-
-import com.basho.riak.client.api.commands.kv.CoveragePlan
 import com.basho.riak.client.api.commands.kv.CoveragePlan.Builder
 import com.basho.riak.client.core.netty.RiakResponseException
 import com.basho.riak.client.core.util.HostAndPort
 import com.basho.riak.spark.query.QueryData
 import com.basho.riak.spark.rdd.connector.RiakConnector
+import com.basho.riak.spark.rdd.partitioner.PartitioningUtils._
 import com.basho.riak.spark.rdd.{BucketDef, ReadConf, RiakPartition}
 import org.apache.spark.Partition
 
 import scala.collection.JavaConversions._
+import scala.util.control.Exception._
 
-case class RiakLocalCoveragePartition[K] (
-    index: Int,
-    endpoints: Set[HostAndPort],
-    primaryHost: HostAndPort,
-    queryData: QueryData[K]
-) extends RiakPartition
+case class RiakLocalCoveragePartition[K](
+  index: Int,
+  endpoints: Set[HostAndPort],
+  primaryHost: HostAndPort,
+  queryData: QueryData[K]) extends RiakPartition
 
 /**
  * Obtains Coverage Plan and creates a separate partition for each Coverage Entry
  */
+
 object RiakCoveragePlanBasedPartitioner {
   def partitions[K](connector: RiakConnector, bucket: BucketDef, readConf: ReadConf, queryData: QueryData[K]): Array[Partition] = {
 
-
-    def splitListEvenly[A](list: Seq[A], splitCount: Int) = {
-    val (base, rem) =  divide(list.size, splitCount)
-      val (smaller, bigger) = list.splitAt(list.size - rem * (base + 1))
-      smaller.grouped(base) ++ bigger.grouped(base + 1)
-    }
-
-    // e.g. split 64 coverage entries into 10 partitions: (6,6,6,6,6,6,7,7,7,7) coverage entries in partitions respectively
-    def distributeEvenly(size: Int, splitCount: Int): Seq[Int] = {
-      val (base, rem) =  divide(size, splitCount)
-      for(i <- 0 until splitCount)
-         yield if(i < rem) base + 1 else base
-    }
-
-    def divide(size: Int, splitCount: Int) = {
-      (size / splitCount, size % splitCount)
-    }
-
-    connector.withSessionDo(session =>{
-      val partitionsCount = readConf.splitCount
+    val partitionsCount = readConf.splitCount
+    val coveragePlan = connector.withSessionDo { session =>
 
       val cmd = new Builder(bucket.asNamespace())
         .withMinPartitions(partitionsCount)
         .build()
 
-      var coveragePlan: CoveragePlan.Response = null
-      try {
-        coveragePlan = session.execute(cmd)
-      } catch {
-        case e: ExecutionException =>
-          if (e.getCause.isInstanceOf[RiakResponseException] && e.getCause.getMessage.equals("Unknown message code: 70")) {
-            throw new IllegalStateException("Full bucket read is not supported on your version of Riak", e.getCause)
-          } else throw e
+      allCatch either session.execute(cmd) match {
+        case Right(cp) => cp
+        case Left(ex) if ex.getCause.isInstanceOf[RiakResponseException] && ex.getCause.getMessage.equals("Unknown message code: 70") =>
+          throw new IllegalStateException("Full bucket read is not supported on your version of Riak", ex.getCause)
+        case Left(ex) => throw ex
+      }
+    }
+
+    // TODO: add proper Coverage Plan logging
+
+    val hosts = coveragePlan.hosts
+
+    require(partitionsCount >= hosts.size, s"Requires $partitionsCount partitions but ${hosts.size()} hosts found")
+    require(partitionsCount <= coveragePlan.size, s"Requires $partitionsCount partitions but coverage plan contains ${coveragePlan.size} partitions")
+
+    val evenDistributionBetweenHosts = distributeEvenly(partitionsCount, hosts.size)
+    val numberOfEntriesInPartitionPerHost = hosts
+      .zip(evenDistributionBetweenHosts)
+      .flatMap {
+        case (h, num) => splitListEvenly(coveragePlan.hostEntries(h), num).map((h, _))
       }
 
-      // TODO: add proper Coverage Plan logging
-
-      val hosts = coveragePlan.hosts
-
-      require(partitionsCount >= hosts.size)
-      require(partitionsCount <= coveragePlan.size)
-
-      val coverageEntriesCount = coveragePlan.size
-
-      val evenDistributionBetweenHosts = distributeEvenly(partitionsCount, hosts.size)
-      evenDistributionBetweenHosts.foreach(println(_))
-      val numberOfEntriesInPartitionPerHost =
-        (hosts zip evenDistributionBetweenHosts).flatMap { case (h, num) => splitListEvenly(coveragePlan.hostEntries(h), num).map((h, _)) }
-
-      val partitions = for {
-        ((host, coverageEntries), partitionIdx) <- numberOfEntriesInPartitionPerHost.zipWithIndex
-        partition = new RiakLocalCoveragePartition(partitionIdx,
-          hosts.toSet, host,
-          queryData.copy(coverageEntries = Some(coverageEntries)))
-      } yield partition
-
-      partitions.toArray
-    })
+    val partitions = numberOfEntriesInPartitionPerHost.zipWithIndex.map {
+      case ((host, coverageEntries), partitionIdx) => new RiakLocalCoveragePartition(
+        partitionIdx, hosts.toSet, host, queryData.copy(coverageEntries = Some(coverageEntries)))
+    }
+    partitions.toArray
   }
 }

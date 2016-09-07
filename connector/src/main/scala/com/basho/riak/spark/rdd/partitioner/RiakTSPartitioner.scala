@@ -18,12 +18,22 @@
 package com.basho.riak.spark.rdd.partitioner
 
 import java.sql.Timestamp
-import org.apache.spark.Partition
+
+import org.apache.spark.{Logging, Partition}
 import org.apache.spark.sql.sources._
-import org.apache.spark.sql.types.{ StructType, TimestampType }
+import org.apache.spark.sql.types.StructType
 import com.basho.riak.client.core.util.HostAndPort
 import com.basho.riak.spark.query.TSQueryData
-import com.basho.riak.spark.rdd.{ ReadConf, RiakPartition }
+import com.basho.riak.spark.rdd.{ReadConf, RiakPartition}
+import com.basho.riak.client.core.netty.RiakResponseException
+import com.basho.riak.client.api.commands.timeseries.CoveragePlan
+import com.basho.riak.spark.rdd.partitioner.PartitioningUtils._
+import com.basho.riak.spark.rdd.connector.RiakConnector
+
+import scala.collection.JavaConversions._
+import scala.util.control.Exception._
+import com.basho.riak.client.core.query.timeseries.CoverageEntry
+import com.basho.riak.spark.util.DumpUtils
 
 /**
  * @author Sergey Galkin <srggal at gmail dot com>
@@ -31,9 +41,49 @@ import com.basho.riak.spark.rdd.{ ReadConf, RiakPartition }
 case class RiakTSPartition(
   index: Int,
   endpoints: Iterable[HostAndPort],
-  queryData: TSQueryData) extends RiakPartition
+  queryData: Seq[TSQueryData]) extends RiakPartition {
+
+  override def dump(lineSep: String = "\n"): String =
+    s"[$index] eps: " + endpoints.foldLeft(new StringBuilder) {
+      (sb, h) => {
+        if (!sb.isEmpty) {
+          sb.append(',').append(' ')
+        }
+
+        sb append h.getHost append (':') append (h.getPort)
+      }
+    }.append('\n')
+      .append(s"   queryData (${queryData.size}):\n")
+      .append(queryData.foldLeft(new StringBuilder) { (sb, qd) => sb.append("      ").append(qd.dump("\n      ")).append("\n\n") })
+      .toString()
+}
 
 trait RiakTSPartitioner {
+
+  protected def interpolateValues(sql: String, values: Seq[Any]): String = {
+    val regex = "\\?".r
+
+    def recursiveInterpolateFirst(input: String, iterator: Iterator[Any]): String = iterator.isEmpty match {
+      case true =>
+        input
+
+      case _ =>
+        val rv = iterator.next()
+
+        val v = rv match {
+          case ts: Timestamp =>
+            ts.getTime.toString
+
+          case s: String =>
+            "'" + s + "'"
+
+          case x: Any =>
+            x.toString
+        }
+        recursiveInterpolateFirst(regex.replaceFirstIn(input, v), iterator)
+    }
+    recursiveInterpolateFirst(sql, values.iterator)
+  }
 
   protected def toSql(columnNames: Option[Seq[String]], tableName: String, schema: Option[StructType], whereConstraints: (String, Seq[Any])): (String, Seq[Any]) = {
     var values: Seq[Any] = Seq.empty[Nothing]
@@ -59,8 +109,7 @@ trait RiakTSPartitioner {
           })
     (sql, values)
   }
-  
-  
+
   /** Construct Sql clause */
   protected def filterToSqlAndValue(filter: Any): (String, Any) = {
     val (attribute, sqlOperator, value) = filter match {
@@ -89,25 +138,28 @@ trait RiakTSPartitioner {
 /** Returns single partition with initial query */
 object SinglePartitionRiakTSPartitioner extends RiakTSPartitioner {
   def partitions(endpoints: Iterable[HostAndPort], tableName: String, schema: Option[StructType],
-                    columnNames: Option[Seq[String]], query: Option[String], whereConstraints: Option[(String, Seq[Any])], filters: Array[Filter]): Array[Partition] = {
+                 columnNames: Option[Seq[String]], query: Option[String], whereConstraints: Option[(String, Seq[Any])]): Array[Partition] = {
     val (sql, values) = query match {
       case Some(q) => (q, Seq.empty[Nothing])
-      case None    => {
-       val where = whereConstraints match {
+      case None => {
+        val where = whereConstraints match {
           case Some(w) => w
-          case None    => whereClause(filters)
-       }
-       toSql(columnNames, tableName, schema, where) 
+          case None    => ("", Seq())
+        }
+        toSql(columnNames, tableName, schema, where)
       }
     }
-    Array(new RiakTSPartition(0, endpoints, TSQueryData(sql, values)))
+    val queryString = interpolateValues(sql, values)
+    Array(new RiakTSPartition(0, endpoints, Seq(TSQueryData(queryString))))
   }
 }
 
-/** Splits initial range query into readConf.splitCount number of sub-ranges, each in a separate partition */
-object RangedRiakTSPartitioner extends RiakTSPartitioner {
+abstract class RangedRiakTSPartitioner(tableName: String, schema: Option[StructType],
+                                       columnNames: Option[Seq[String]], filters: Array[Filter], readConf: ReadConf) extends RiakTSPartitioner {
 
-  private def getFilterAttribute(filter: Filter) = filter match {
+  protected val splitCount = readConf.splitCount
+
+  protected def getFilterAttribute(filter: Filter) = filter match {
     case EqualTo(a, v)            => a
     case GreaterThan(a, v)        => a
     case LessThan(a, v)           => a
@@ -115,6 +167,56 @@ object RangedRiakTSPartitioner extends RiakTSPartitioner {
     case LessThanOrEqual(a, v)    => a
     case _                        => null
   }
+
+  protected def tsRangeFieldName: String
+
+  protected lazy val filtersByAttr = {
+    filters
+      .map(f => (getFilterAttribute(f), f))
+      .filter(f => f._1 != null)
+      .groupBy(attrFilter => attrFilter._1)
+      .mapValues(a => a.map(p => p._2))
+  }
+
+  protected lazy val rangeFilters: Array[Filter] = {
+    filtersByAttr.get(tsRangeFieldName) match {
+      case Some(f) => f
+      case None    => throw new IllegalArgumentException(s"No filers found for tsRangeFieldName $tsRangeFieldName")
+    }
+  }
+
+  protected lazy val otherFilters = filtersByAttr.filter { case (k, v) => k != tsRangeFieldName }.values.flatten.toArray
+
+  protected def toTSQueryData(from: Long, lowerInclusive: Boolean, to: Long, upperInclusive: Boolean, coverageEntry: Option[CoverageEntry] = None): TSQueryData = {
+    val fromFilter = if (lowerInclusive) GreaterThanOrEqual(tsRangeFieldName, from) else GreaterThan(tsRangeFieldName, from)
+    val toFilter = if (upperInclusive) LessThanOrEqual(tsRangeFieldName, to) else LessThan(tsRangeFieldName, to)
+    val partitionFilters = fromFilter +: toFilter +: otherFilters
+    val where = whereClause(partitionFilters)
+    val (sql, values) = toSql(columnNames, tableName, schema, where)
+    val queryString = interpolateValues(sql, values)
+    TSQueryData(queryString, coverageEntry)
+  }
+
+  def partitions(): Array[Partition]
+}
+
+object RangedRiakTSPartitioner {
+  def apply(connector: RiakConnector, tableName: String, schema: Option[StructType],
+            columnNames: Option[Seq[String]], filters: Array[Filter], readConf: ReadConf, 
+            tsRangeFieldName: String, quantum: Option[Long]): RangedRiakTSPartitioner = {
+    new AutomaticRangedRiakTSPartitioner(connector, tableName, schema, columnNames, filters, readConf, tsRangeFieldName, quantum)
+  }
+
+  def apply(connector: RiakConnector, tableName: String, schema: Option[StructType],
+            columnNames: Option[Seq[String]], filters: Array[Filter], readConf: ReadConf): RangedRiakTSPartitioner = {
+    new RiakTSCoveragePlanBasedPartitioner(connector, tableName, schema, columnNames, filters, readConf)
+  }
+}
+
+/** Splits initial range query into readConf.splitCount number of sub-ranges, each in a separate partition */
+class AutomaticRangedRiakTSPartitioner(connector: RiakConnector, tableName: String, schema: Option[StructType],
+                                       columnNames: Option[Seq[String]], filters: Array[Filter], readConf: ReadConf, 
+                                       val tsRangeFieldName: String, quantum: Option[Long]) extends RangedRiakTSPartitioner(tableName, schema, columnNames, filters, readConf) {
 
   private def getMin(filters: Array[Filter]): Option[Long] = {
     filters.flatMap {
@@ -136,24 +238,7 @@ object RangedRiakTSPartitioner extends RiakTSPartitioner {
     }.headOption
   }
 
-  def partitions(endpoints: Iterable[HostAndPort], tableName: String, schema: Option[StructType],
-                 columnNames: Option[Seq[String]], filters: Array[Filter], tsRangeFieldName: String, readConf: ReadConf): Array[Partition] = {
-    val splitCount = readConf.splitCount
-
-    val filtersByAttr = {
-      filters
-        .map(f => (getFilterAttribute(f), f))
-        .filter(f => f._1 != null)
-        .groupBy(attrFilter => attrFilter._1)
-        .mapValues(a => a.map(p => p._2))
-    }
-
-    val rangeFilters = filtersByAttr.get(tsRangeFieldName) match {
-      case Some(f) => f
-      case None    => throw new IllegalArgumentException(s"No filers found for tsRangeFieldName $tsRangeFieldName")
-    }
-    val otherFilters = filtersByAttr.filter { case (k, v) => k != tsRangeFieldName }.values.flatten.toArray
-
+  lazy val timeRanges: Seq[Seq[(Long, Long)]] = {
     val rangeStart = getMin(rangeFilters) match {
       case Some(minVal) => minVal
       case None         => throw new IllegalArgumentException(s"No GreaterThanOrEqual or GreaterThan filers found for tsRangeFieldName $tsRangeFieldName")
@@ -164,17 +249,126 @@ object RangedRiakTSPartitioner extends RiakTSPartitioner {
       case None         => throw new IllegalArgumentException(s"No LessThanOrEqual or LessThan filers found for tsRangeFieldName $tsRangeFieldName")
     }
 
-    val timeDiff = (rangeEnd - rangeStart) / (splitCount - 1)
-    val partitionsCount = if (timeDiff == 0) 1 else splitCount
-    val timePoints = (0 to (partitionsCount - 1)).map(x => rangeStart + x * timeDiff) :+ rangeEnd
-    val timeRanges = timePoints zip timePoints.tail
-
+    val initialRangePeriod = rangeEnd - rangeStart
+    require(initialRangePeriod > 0, "Invalid range query")
+    val timeDiff = (initialRangePeriod) / splitCount
+    val numberOfPartitions = if (timeDiff == 0) 1 else splitCount 
+    
+    val numberOfRanges = quantum match {
+      case Some(q) if (timeDiff > quantaLimit * q) => Math.ceil(initialRangePeriod.toDouble / (quantaLimit * q).toDouble).toInt
+      case _ => if (timeDiff == 0) 1 else splitCount // last partition with rangeEnd will be included later
+    }
+    
+    val evenDistributionOfRange = distributeEvenly(initialRangePeriod, numberOfRanges).toList
+    val timeRanges = createRanges(rangeStart, evenDistributionOfRange)
+    
+    // group ranges to create numberOfpartitions partitions so that a partition has Sequence of ranges
+    val evenDistributionBetweenPartitions = distributeEvenly(timeRanges.size, numberOfPartitions).toList
+    val rangesInPartition = splitListIntoGroupes(timeRanges, evenDistributionBetweenPartitions)
+    
+    rangesInPartition
+  }
+  
+  private def createRanges(start: Long, distrList: List[Long]): Seq[(Long, Long)] = {
+    distrList match {
+      case Nil => Nil
+      case x :: xs => {
+       val end = (start + x) 
+       (start, end) +: createRanges(end, xs)
+      }
+    }
+  }
+  
+  override def partitions(): Array[Partition] = {
     timeRanges.zipWithIndex.map {
-      case (r, indx) =>
-        val partitionFilters = GreaterThanOrEqual(tsRangeFieldName, r._1) +: LessThan(tsRangeFieldName, r._2) +: otherFilters
-        val where = whereClause(partitionFilters)
-        val (sql, values) = toSql(columnNames, tableName, schema, where)
-        RiakTSPartition(indx, endpoints, TSQueryData(sql, values))
+      case (ranges, indx) => val queryData = ranges.map(range => buildQuery(range._1, range._2)) 
+        RiakTSPartition(indx, connector.hosts, queryData).asInstanceOf[Partition]
     }.toArray
+  }
+
+  private def buildQuery(from: Long, to: Long) = {
+    val rangeFieldFilter: Array[Filter] = if (from == to)
+      Array(GreaterThanOrEqual(tsRangeFieldName, from), LessThanOrEqual(tsRangeFieldName, to))
+    else
+      Array(GreaterThanOrEqual(tsRangeFieldName, from), LessThan(tsRangeFieldName, to))
+    val partitionFilters = rangeFieldFilter ++ otherFilters
+    val where = whereClause(partitionFilters)
+    val (sql, values) = toSql(columnNames, tableName, schema, where)
+    val queryString = interpolateValues(sql, values)
+    TSQueryData(queryString)
+  }
+}
+
+class RiakTSCoveragePlanBasedPartitioner(connector: RiakConnector, tableName: String, schema: Option[StructType],
+                                         columnNames: Option[Seq[String]], filters: Array[Filter], readConf: ReadConf) extends RangedRiakTSPartitioner(tableName, schema, columnNames, filters, readConf)
+with Logging {
+
+  val where = whereClause(filters)
+  val (queryRaw, vals) = toSql(columnNames, tableName, schema, where)
+  val query = interpolateValues(queryRaw, vals)
+
+  lazy val coveragePlan = connector.withSessionDo(session => {
+
+    val cmd = new CoveragePlan.Builder(tableName, query).build()
+
+    allCatch either session.execute(cmd) match {
+      case Right(cp) => cp
+      case Left(ex) => {
+        if (ex.getCause.isInstanceOf[RiakResponseException] && ex.getCause.getMessage.equals("Unknown message code: 70")) {
+          throw new IllegalStateException("Full bucket read is not supported on your version of Riak", ex.getCause)
+        } else throw ex
+      }
+    }
+  })
+
+  override lazy val tsRangeFieldName = coveragePlan.head.getFieldName
+
+  override def partitions(): Array[Partition] = {
+    val hosts = coveragePlan.hosts
+
+    require(splitCount >= hosts.size)
+    val coverageEntriesCount = coveragePlan.size
+    val partitionsCount = if (splitCount <= coverageEntriesCount) splitCount else coverageEntriesCount
+
+    if (log.isTraceEnabled()) {
+      val cp = coveragePlan.foldLeft(new StringBuilder) { (sb, ce) => sb.append( DumpUtils.dump(ce, "\n      ")).append("\n\n") }
+
+      logTrace("\n----------------------------------------\n" +
+        s" [Auto TS Partitioner]  Requested: split up to $splitCount partitions\n" +
+        s"                        Actually: the only $partitionsCount partitions might be created\n" +
+        "--\n" +
+        s"Coverage plan ($coverageEntriesCount coverage entries):\n$cp\n" +
+        "----------------------------------------\n")
+    }
+
+    val evenPartitionDistributionBetweenHosts = distributeEvenly(partitionsCount, hosts.size)
+
+    val numberOfEntriesInPartitionPerHost =
+      (hosts zip evenPartitionDistributionBetweenHosts) flatMap { case (h, num) => splitListEvenly(coveragePlan.hostEntries(h), num) map{(h, _)} }
+
+    val partitions = for {
+      ((host, coverageEntries), partitionIdx) <- numberOfEntriesInPartitionPerHost.zipWithIndex
+      tsQueryData = coverageEntries.map(ce => toTSQueryData(ce.getLowerBound, ce.isLowerBoundInclusive, ce.getUpperBound, ce.isUpperBoundInclusive, Some(ce)))
+      partition = RiakTSPartition(partitionIdx, hosts.toSet, tsQueryData)
+    } yield partition
+
+    val result = partitions.toArray
+
+    if (log.isDebugEnabled()) {
+      val p = result.foldLeft(new StringBuilder) { (sb, r) => sb.append(r.dump()).append("\n") }.toString()
+
+      logInfo("\n----------------------------------------\n" +
+        s" [Auto TS Partitioner]  Requested: split up to $splitCount partitions\n" +
+        s"                        Actually: the created partitions are:\n" +
+        "--\n" +
+        s"$p\n" +
+        "----------------------------------------\n")
+    }
+
+    // Double check that all coverage entries were used
+    val numberOfUsedCoverageEntries = partitions.foldLeft(0){ (sum, p) => sum + p.queryData.size}
+    require( numberOfUsedCoverageEntries == coverageEntriesCount)
+
+    result.asInstanceOf[Array[Partition]]
   }
 }

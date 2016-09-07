@@ -1,45 +1,24 @@
-/**
- * Copyright (c) 2015 Basho Technologies, Inc.
- *
- * This file is provided to you under the Apache License,
- * Version 2.0 (the "License"); you may not use this file
- * except in compliance with the License.  You may obtain
- * a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
 package com.basho.riak.spark.examples;
 
-import static com.basho.riak.spark.japi.SparkJavaUtil.javaFunctions;
+import com.basho.riak.client.api.annotations.RiakIndex;
+import com.basho.riak.client.api.annotations.RiakKey;
+import com.basho.riak.client.core.query.Namespace;
+import com.basho.riak.spark.japi.SparkJavaUtil;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import org.apache.spark.SparkConf;
+import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.JavaSparkContext;
 
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.List;
 import java.util.NoSuchElementException;
 
-import org.apache.spark.SparkConf;
-import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.JavaSparkContext;
-
-import com.basho.riak.client.api.annotations.RiakIndex;
-import com.basho.riak.client.api.annotations.RiakKey;
-import com.basho.riak.client.core.query.Namespace;
-import com.basho.riak.spark.japi.SparkJavaUtil;
-import com.basho.riak.spark.writer.mapper.DefaultWriteDataMapper;
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
+import static com.basho.riak.spark.japi.SparkJavaUtil.javaFunctions;
 
 /**
  * Really simple demo program which calculates the number of records loaded from the Riak bucket
@@ -53,15 +32,15 @@ public class SimpleJavaRiakExample implements Serializable {
       + ", {key: 'key-5', creationNo: 5, value: 'value5'}"
       + ", {key: 'key-6', creationNo: 6, value: 'value6'}" 
       + "]";
-  
-  private static final ObjectMapper tolerantMapper = new ObjectMapper()
-  .configure(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES, true)
-  .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true)
-  .configure(JsonParser.Feature.ALLOW_SINGLE_QUOTES, true)
-  .configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true)
-  .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
 
-  public static void main(String[] args) throws JsonParseException, JsonMappingException, IOException {
+  private static final ObjectMapper tolerantMapper = new ObjectMapper()
+          .configure(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES, true)
+          .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true)
+          .configure(JsonParser.Feature.ALLOW_SINGLE_QUOTES, true)
+          .configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true)
+          .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+
+  public static void main(String[] args) throws IOException {
     SparkConf sparkConf = new SparkConf().setAppName("Simple Java Riak Demo");
 
     setSparkOpt(sparkConf, "spark.master", "local");
@@ -73,26 +52,33 @@ public class SimpleJavaRiakExample implements Serializable {
 
     final List<String> allValues = SparkJavaUtil.javaFunctions(jsc).riakBucket(SOURCE_DATA, String.class).queryAll().collect();
     System.out.println("All values:");
-    allValues.forEach(x -> System.out.println(x));
+    allValues.forEach(System.out::println);
+    System.out.println("\n");
 
     final List<String> filteredBy2iRangeLocal = SparkJavaUtil.javaFunctions(jsc).riakBucket(SOURCE_DATA, String.class).query2iRangeLocal("creationNo", 2L, 5L).collect();
     System.out.println("Values filtered by secondary index range local:");
-    filteredBy2iRangeLocal.forEach(x -> System.out.println(x));
+    filteredBy2iRangeLocal.forEach(System.out::println);
+    System.out.println("\n");
 
     final List<String> filteredBy2iRange = SparkJavaUtil.javaFunctions(jsc).riakBucket(SOURCE_DATA, String.class).query2iRange("creationNo", 2L, 5L).collect();
     System.out.println("Values filtered by secondary index range:");
-    filteredBy2iRange.forEach(x -> System.out.println(x));
+    filteredBy2iRange.forEach(System.out::println);
+    System.out.println("\n");
 
     final List<String> filteredByKeys = SparkJavaUtil.javaFunctions(jsc).riakBucket(SOURCE_DATA, String.class).queryBucketKeys("key-1", "key-3", "key-6").collect();
     System.out.println("Values filtered by keys:");
-    filteredByKeys.forEach(x -> System.out.println(x));
+    filteredByKeys.forEach(System.out::println);
+    System.out.println("\n");
 
     final List<String> filteredBy2iKeys = SparkJavaUtil.javaFunctions(jsc).riakBucket(SOURCE_DATA, String.class).query2iKeys("creationNo", 1L, 3L, 6L).collect();
     System.out.println("Values filtered by 2i keys:");
-    filteredBy2iKeys.forEach(x -> System.out.println(x));
+    filteredBy2iKeys.forEach(System.out::println);
+    System.out.println("\n");
   }
 
-  protected static void createDemoData(JavaSparkContext jsc) throws JsonParseException, JsonMappingException, IOException {
+
+
+  private static void createDemoData(JavaSparkContext jsc) throws IOException {
     List<Demo> vals = tolerantMapper.readValue(TEST_DATA, new TypeReference<List<Demo>>() {});
     JavaRDD<Demo> rdd = jsc.parallelize(vals);
     javaFunctions(rdd).saveToRiak(SOURCE_DATA);

@@ -123,7 +123,7 @@ class RiakTSWriter[T](connector: RiakConnector,
       logDebug(s"Writing bulk-${idx + 1} started")
       val rows = rowDefs.map(_.row)
       val builder = new StoreOperation.Builder(ns.getBucketNameAsString).withRows(rows)
-      rowDefs.headOption.map(_.columnDescription).flatten.foreach(descr => builder.withColumns(descr.toList))
+      rowDefs.headOption.map(_.columnDescription).flatten.foreach(descr => builder.withColumnDescriptions(descr.toList))
       val future = session.execute(builder.build())
       future.addListener(new RiakFutureListener[Void, String]() {
         @Override

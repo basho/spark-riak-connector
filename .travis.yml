@@ -1,9 +1,43 @@
-language: java
+sudo: required
+dist: trusty
+
+language: scala
 jdk: oraclejdk8
-sudo: false
 
 services:
-  - riak
+  - docker
+
+cache:
+  directories:
+    - "$HOME/.m2"
+    - "$HOME/.ivy2"
+    - "$HOME/.sbt"
+
+scala:
+  - 2.10.6
+  - 2.11.7
+
+before_script:
+  - "./travis/start-cluster.sh"
+  - curl -q -sSL http://d3kbcqa49mib13.cloudfront.net/spark-1.6.2-bin-hadoop2.6.tgz | tar -zxf - -C /opt
 
 script:
-  - mvn deploy -Dkv -Dcom.basho.riak.pbchost=127.0.0.1:8087
+  - "./travis/build.sh"
+
+after_script:
+  - docker rm -f $RIAK_FLAVOR
+
+env:
+  matrix:
+    - RIAK_FLAVOR=riak-ts
+    - RIAK_FLAVOR=riak-kv
+  global:
+    - SPARK_HOME=/opt/spark-1.6.2-bin-hadoop2.6
+    - secure: r9cf5Jdfxsr0MngcKwyvmlKvA0NQF2GnKCDekbsmnQONnW5WUHJjzD5k1LbqiQHdZqqxb72RnOpIEXfJhasteseofsGbZMU5ROAFiohl8WhxHnFb65pMWrXzKg/iqdKhcKZg5akP2fCIDwMz4xVFz0JrG3CtHotjQQ0/6HQ7uDCG2On7h9QB6pt50IarFGRBKd4wBTCkhR+6QKfE4S13mI8gGvq/R7ly7tfqY7i/vFg3z0KN0Vb/+KLwYv/b2aBTBZUli0L/tfBZUQbt9J5Ty9k6lnw+2vlFV9nhKRXMoQjuFi4VDskO1n59eu9pJZ9bhIYngdpnUlrrTpLzRbnXfqSXDufShA4PFOa0EQX/9meFdd1O54y2dnR2K1Gd80Id+NtC66eMa5FND03vGtqNrjjOW1yHkR9FxUhfCMpPWGWXbyBruk/M2Qou+pWp9F7BEvYOeVAkvA2mZ3AGriuBi1iSbJhpDH0plZsQAk2pnXn4CEbXVtpX759KPiA3YyHaMcSpC4QSdXaDqoYGyqazgZL1/MHCKuG8crCn4xe4/4ZbBNLldILtGC6KINas/YhgBctwkY7Sq7VDfxHaMCrSFBDkB0nHRAfG8H3ap5XfaLQkGArPsh0QsjVS92wcbnulIXK3Huf8HLPQTcy+aNyvgTE4O0lMuoHZUA9Tja84kok=
+    - secure: n3+vykdc/JiFBGXgUCt3O1sfWGexlWStERslgeTCxQJXQOv7UbpH/c7tH9wnsndA6Hd1vWLk6MUXu0cH/BrI97LejoCQ+uGm1CHSlOFJ6hSEuC2wxOKGOjbH9HzFQd5EaNIa5XhFisRRjK+anPXicV1zwsda5NFpspVwGcVs+ai7pnh6ysvPOiXKU19uaFPPvv3z9oO1qo7+99fJAR4ty21VGoJmH+hgK5DJ4QLOWdaKgsdclA49Ek9Fwd1Ni+lZW98imnVhHQdtpUqScfYHZcXQTRs6E/daN34Z6cwZ0v8UrX+Y3yatRhUTBy4zE8Nq+OVi02u7kaIAw7rtb5echFfUTW4nMgBSvGnnV3t0MY66JZoEpBzxWaWvhqMdmwbmPpDPdBG/NtPvshtFE6Dle6eBzzGJdu3lpK/QRgeJrdHkDpKt5aX2lAmnGJo0EwQQ6G5U1dQ7ScIZTJndSObyGB7IJtbsc3HFLA4YU5SAdMjQxHREvg+XzXuaL/mMbyJ3ZWA5M5acH43N5UkVKMpqfggdICb6rKdnRKQZRsVtv+oiBGawD1ue5gnsTziwD2xneJ9MSOJ4PQOPfoUHs8q39n8gvsxHpnkPwxgsF7Ed0vXzN7kt5OF/nR1rJc97ZSjSn6oNMYqWfdVRjZHhEVo6EcgdV0xN++3LTVgR4SR+NSs=
+    - secure: eigM8++nPdZRaIq4AM6VFef/X2R+SlCdvh+HICdCz2A+eBiulDNSMH5AzFwriCbUBljffDaWeqHcdmq8R4st9XcVZEk/mtIGs6j24H76ypjb0C6pH9tvze6yzFoCmc2cXa3x+NUcAwgXnM5rzmJYVk8P4ZwwxGsQ/IF7Gr4WgcFaBpg2DVYgKML4DsS+xHEOnN3WOGHg14qTDd+lu4kv99JCRTVYDtqmw3fZO658qQxzat0c2+pRwvRlGFfp2U7U0zDaAhU39CXMGi7nzBEAaWjw5ObVtCa7MQZd6Fh7l8KPV4goA4ngnKBpnJPTvsSrnm3VoP+coT9F6nU+IQCnJW+7N6R8szY1wGteWqrw8I+XA+ts1lo4A2+fnkykzO8TqhS2K5xCCp4EOu4wGRWfHKRQnvdnXKO85FtOIjxdrdsaaA+EG6v3YHvs8rg3VxAsjo1x/cHNFchac5/AUrz3QfJoKWbjybwPMl/sFm01JQMvQLGjPARSLFuUJG9OQQMCmHwxzUGuQXG11Ls4zZWHiJxUub1dhDKV94mc7jJfcyIQd9jyodcgDAB5/Sin7Q9r4Gye/z3R0i4iwx0SNKYNxG15XLFeAk0YxW+h90U3K3t4SjVYW54rtbn156CnImhVIRmRCAJ8IlJJ55+9ObTtTFsNEKS0OaXlSfdGxZOinXQ=
+
+notifications:
+  slack:
+    rooms:
+      - secure: ksXGdWGADjDn1JVd12Rg5Q1gpkxWhGsx3wpDkfCEP4ji+gsZ9z+aCFcGKC6nDDR/uv/1wdfEWv4Nd1G1DYakUqhyaVppRas7PQE5IZffOLwWu0DI/xTyBfEea9VY32aPkBSw/46fZIv8kCID825qBpmXYBfIJigRssZ/Zy5s8mppj0WAuJYcrQEVXbZmgJWbPL1Sixd3rQjoctPlLiYF9tWeQsZEdUw7fNRY/9DImc2HJxo20l6y9gHumqcgq133905I7A8Jq+xEEfPOc/gvOqSESwG2izsxmql5LF6pknCOzYAEccY4DtgFY/aooXe5nglpc4zx2X050u8h17Uy5LfTrogQCQXetBDe6gZJlZXybZKg68Rs71J9N8fy+jzmekkvRtEuzj1qW66tBzgDvh4pJFGzApM9FpuBH24WKEevnuhTgzWY4IlGQwI5IRENYIefd3FE0Zl1fIwtQEMc+1DYlSagIu32fZd/rVcXcWiP9hp42BUARl+LfBOAHoWicWF81AJDA56Ro8O54xZCQE0CF2zbnye9AFje9hq88V4QjQBsYsibydgfox83Nt8Tajd8D9oGaXj9wGkt0KDJt+pYKmv1robifbWrDHfluxKw2cxOTQUIRnG7MMEJvAyDfY00ur2Yf48GelFdfvjfSLF6DyXRSbFRo6yASjFECUs=
