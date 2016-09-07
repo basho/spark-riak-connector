@@ -18,9 +18,10 @@
 package com.basho.riak.spark.rdd
 
 import com.basho.riak.client.core.util.HostAndPort
+import com.basho.riak.spark.util.Dumpable
 import org.apache.spark.Partition
 
-trait RiakPartition extends Partition{
+trait RiakPartition extends Partition with Dumpable {
   def endpoints: Iterable[HostAndPort]
 }
 

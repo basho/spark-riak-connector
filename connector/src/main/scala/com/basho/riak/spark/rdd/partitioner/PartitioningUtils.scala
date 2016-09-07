@@ -7,7 +7,12 @@ object PartitioningUtils {
   def splitListEvenly[A](list: Seq[A], splitCount: Int): Iterator[Seq[A]] = {
     val (base, rem) = divide(list.size, splitCount)
     val (smaller, bigger) = list.splitAt(list.size - rem * (base + 1))
-    smaller.grouped(base) ++ bigger.grouped(base + 1)
+
+    if (smaller.isEmpty) {
+      bigger.grouped(base + 1)
+    } else {
+      smaller.grouped(base) ++ bigger.grouped(base + 1)
+    }
   }
 
   // e.g. split 64 coverage entries into 10 partitions: (6,6,6,6,6,6,7,7,7,7) coverage entries in partitions respectively
@@ -23,11 +28,11 @@ object PartitioningUtils {
       yield if (i < rem) base + 1 else base
   }
 
-  def divide(size: Long, splitCount: Int): (Long, Long) = {
+  private def divide(size: Long, splitCount: Int): (Long, Long) = {
     (size / splitCount, size % splitCount)
   }
   
-  def divide(size: Int, splitCount: Int): (Int, Int) = {
+  private def divide(size: Int, splitCount: Int): (Int, Int) = {
     (size / splitCount, size % splitCount)
   }
 

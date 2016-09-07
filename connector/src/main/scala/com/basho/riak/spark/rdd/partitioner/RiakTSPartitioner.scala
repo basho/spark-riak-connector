@@ -18,19 +18,22 @@
 package com.basho.riak.spark.rdd.partitioner
 
 import java.sql.Timestamp
-import org.apache.spark.Partition
+
+import org.apache.spark.{Logging, Partition}
 import org.apache.spark.sql.sources._
-import org.apache.spark.sql.types.{ StructType, TimestampType }
+import org.apache.spark.sql.types.StructType
 import com.basho.riak.client.core.util.HostAndPort
 import com.basho.riak.spark.query.TSQueryData
-import com.basho.riak.spark.rdd.{ ReadConf, RiakPartition }
+import com.basho.riak.spark.rdd.{ReadConf, RiakPartition}
 import com.basho.riak.client.core.netty.RiakResponseException
 import com.basho.riak.client.api.commands.timeseries.CoveragePlan
 import com.basho.riak.spark.rdd.partitioner.PartitioningUtils._
 import com.basho.riak.spark.rdd.connector.RiakConnector
+
 import scala.collection.JavaConversions._
 import scala.util.control.Exception._
 import com.basho.riak.client.core.query.timeseries.CoverageEntry
+import com.basho.riak.spark.util.DumpUtils
 
 /**
  * @author Sergey Galkin <srggal at gmail dot com>
@@ -38,7 +41,22 @@ import com.basho.riak.client.core.query.timeseries.CoverageEntry
 case class RiakTSPartition(
   index: Int,
   endpoints: Iterable[HostAndPort],
-  queryData: Seq[TSQueryData]) extends RiakPartition
+  queryData: Seq[TSQueryData]) extends RiakPartition {
+
+  override def dump(lineSep: String = "\n"): String =
+    s"[$index] eps: " + endpoints.foldLeft(new StringBuilder) {
+      (sb, h) => {
+        if (!sb.isEmpty) {
+          sb.append(',').append(' ')
+        }
+
+        sb append h.getHost append (':') append (h.getPort)
+      }
+    }.append('\n')
+      .append(s"   queryData (${queryData.size}):\n")
+      .append(queryData.foldLeft(new StringBuilder) { (sb, qd) => sb.append("      ").append(qd.dump("\n      ")).append("\n\n") })
+      .toString()
+}
 
 trait RiakTSPartitioner {
 
@@ -193,7 +211,6 @@ object RangedRiakTSPartitioner {
             columnNames: Option[Seq[String]], filters: Array[Filter], readConf: ReadConf): RangedRiakTSPartitioner = {
     new RiakTSCoveragePlanBasedPartitioner(connector, tableName, schema, columnNames, filters, readConf)
   }
-
 }
 
 /** Splits initial range query into readConf.splitCount number of sub-ranges, each in a separate partition */
@@ -283,7 +300,8 @@ class AutomaticRangedRiakTSPartitioner(connector: RiakConnector, tableName: Stri
 }
 
 class RiakTSCoveragePlanBasedPartitioner(connector: RiakConnector, tableName: String, schema: Option[StructType],
-                                         columnNames: Option[Seq[String]], filters: Array[Filter], readConf: ReadConf) extends RangedRiakTSPartitioner(tableName, schema, columnNames, filters, readConf) {
+                                         columnNames: Option[Seq[String]], filters: Array[Filter], readConf: ReadConf) extends RangedRiakTSPartitioner(tableName, schema, columnNames, filters, readConf)
+with Logging {
 
   val where = whereClause(filters)
   val (queryRaw, vals) = toSql(columnNames, tableName, schema, where)
@@ -306,16 +324,27 @@ class RiakTSCoveragePlanBasedPartitioner(connector: RiakConnector, tableName: St
   override lazy val tsRangeFieldName = coveragePlan.head.getFieldName
 
   override def partitions(): Array[Partition] = {
-
     val hosts = coveragePlan.hosts
 
     require(splitCount >= hosts.size)
     val coverageEntriesCount = coveragePlan.size
     val partitionsCount = if (splitCount <= coverageEntriesCount) splitCount else coverageEntriesCount
 
-    val evenDistributionBetweenHosts = distributeEvenly(partitionsCount, hosts.size)
+    if (log.isTraceEnabled()) {
+      val cp = coveragePlan.foldLeft(new StringBuilder) { (sb, ce) => sb.append( DumpUtils.dump(ce, "\n      ")).append("\n\n") }
+
+      logTrace("\n----------------------------------------\n" +
+        s" [Auto TS Partitioner]  Requested: split up to $splitCount partitions\n" +
+        s"                        Actually: the only $partitionsCount partitions might be created\n" +
+        "--\n" +
+        s"Coverage plan ($coverageEntriesCount coverage entries):\n$cp\n" +
+        "----------------------------------------\n")
+    }
+
+    val evenPartitionDistributionBetweenHosts = distributeEvenly(partitionsCount, hosts.size)
+
     val numberOfEntriesInPartitionPerHost =
-      (hosts zip evenDistributionBetweenHosts).flatMap { case (h, num) => splitListEvenly(coveragePlan.hostEntries(h), num).map((h, _)) }
+      (hosts zip evenPartitionDistributionBetweenHosts) flatMap { case (h, num) => splitListEvenly(coveragePlan.hostEntries(h), num) map{(h, _)} }
 
     val partitions = for {
       ((host, coverageEntries), partitionIdx) <- numberOfEntriesInPartitionPerHost.zipWithIndex
@@ -323,6 +352,23 @@ class RiakTSCoveragePlanBasedPartitioner(connector: RiakConnector, tableName: St
       partition = RiakTSPartition(partitionIdx, hosts.toSet, tsQueryData)
     } yield partition
 
-    partitions.toArray
+    val result = partitions.toArray
+
+    if (log.isDebugEnabled()) {
+      val p = result.foldLeft(new StringBuilder) { (sb, r) => sb.append(r.dump()).append("\n") }.toString()
+
+      logInfo("\n----------------------------------------\n" +
+        s" [Auto TS Partitioner]  Requested: split up to $splitCount partitions\n" +
+        s"                        Actually: the created partitions are:\n" +
+        "--\n" +
+        s"$p\n" +
+        "----------------------------------------\n")
+    }
+
+    // Double check that all coverage entries were used
+    val numberOfUsedCoverageEntries = partitions.foldLeft(0){ (sum, p) => sum + p.queryData.size}
+    require( numberOfUsedCoverageEntries == coverageEntriesCount)
+
+    result.asInstanceOf[Array[Partition]]
   }
 }
