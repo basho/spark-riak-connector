@@ -7,13 +7,14 @@ export RIAK_HOSTS=$(docker inspect -f '{{.NetworkSettings.IPAddress}}' riak-ts):
 
 SBT_CMD="sbt -Dcom.basho.riak.pbchost=$RIAK_HOSTS ++$TRAVIS_SCALA_VERSION"
 
+$SBT_CMD sparkRiakConnectorTestUtils/publishLocal clean package assembly spPackage
+
 if [ "$RIAK_FLAVOR" == "riak-kv" ]; then
   $SBT_CMD runRiakKVTests
 else
   python -m ensurepip
   pip install --upgrade pip setuptools pytest findspark riak timeout_decorator tzlocal
-  $SBT_CMD sparkRiakConnectorTestUtils/publishLocal
-  $SBT_CMD clean package assembly spPackage test runPySparkTests
+  $SBT_CMD test runPySparkTests
 
 	if [[ $TRAVIS_BRANCH =~ release-.* || "develop" == "$TRAVIS_BRANCH" ]] && [ "false" == "$TRAVIS_PULL_REQUEST" ]; then
 		openssl aes-256-cbc -K $encrypted_d60a16d52fe8_key -iv $encrypted_d60a16d52fe8_iv -in secrets.tgz.enc -out secrets.tgz -d && tar -zxf secrets.tgz
