@@ -84,9 +84,7 @@ lazy val sparkRiakConnector = (project in file("connector"))
       }
     }
   )
-  .settings(
-    libraryDependencies ++= Seq(
-      "com.basho.riak"               %%  "spark-riak-connector-test-utils" % version.value % "test" exclude("com.basho.riak", "dataplatform-riak-client")))
+  .dependsOn(sparkRiakConnectorTestUtils % "test->compile")
   .enablePlugins(AssemblyPlugin)
 
 lazy val examples = (project in file("examples"))
