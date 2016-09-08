@@ -7,7 +7,7 @@ export RIAK_HOSTS=$(docker inspect -f '{{.NetworkSettings.IPAddress}}' riak-ts):
 
 SBT_CMD="sbt -Dcom.basho.riak.pbchost=$RIAK_HOSTS ++$TRAVIS_SCALA_VERSION"
 
-$SBT_CMD sparkRiakConnectorTestUtils/publishLocal clean package assembly spPackage
+$SBT_CMD package assembly spPackage
 
 if [ "$RIAK_FLAVOR" == "riak-kv" ]; then
   $SBT_CMD runRiakKVTests
