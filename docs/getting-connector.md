@@ -41,8 +41,7 @@ You can download the Spark-Riak Connector library by going to https://github.com
 Here's another way to download and install it in your home directory:
 
 ```
-curl http://repo1.maven.org/maven2/com/basho/riak/spark-riak-connector_{{scala-version}}/{{connector-version}}/spark-riak-connector_{{scala-version}}-{{connector-version}}-uber.jar \
-                    -o ~/spark-riak-connector_{{scala-version}}-{{connector-version}}-uber.jar
+curl -sS -O http://repo1.maven.org/maven2/com/basho/riak/spark-riak-connector_{{scala-version}}/{{connector-version}}/spark-riak-connector_{{scala-version}}-{{connector-version}}-uber.jar 
 ```
 You will need to replace `{{connector-version}}` with the latest version or the Spark-Riak Connector. You will also need to replace `{{scala-version}}` with `2.10` or `2.11` depending on your version of scala. Once you've downloaded the connector, you can add it to the driver classpath when submitting your Python app to Spark, like this:
 
