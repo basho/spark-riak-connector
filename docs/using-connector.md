@@ -658,10 +658,10 @@ findspark.init()
 import pyspark
 import os
 
-os.environ['PYSPARK_SUBMIT_ARGS'] = "--packages com.basho.riak:spark-riak-connector:1.5.1 --repositories https://dl.bintray.com/basho/data-platform pyspark-shell"
+os.environ['PYSPARK_SUBMIT_ARGS'] = "--packages com.basho.riak:spark-riak-connector:1.6.0 pyspark-shell"
 conf = pyspark.SparkConf().setAppName("My Spark Riak App")
 conf.set("spark.riak.connection.host", "127.0.0.1:8087")
-sc = pyspark.SparkContext(conf)
+sc = pyspark.SparkContext(conf=conf)
 ```
 
 Now you have a Spark context that is ready to use with Riak and running inside a Jupyter notebook.

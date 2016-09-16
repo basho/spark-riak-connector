@@ -13,9 +13,7 @@ An alternative way to get the Spark-Riak Connector library for Scala, Java, and 
 To add the Spark-Riak Connector to your Scala project, add the following to your `build.sbt` file:
 
 ```
-resolvers += "Basho Bintray Repo" at "https://dl.bintray.com/basho/data-platform"
-
-libraryDependencies +=  "com.basho.riak" % "spark-riak-connector" % "$version" classifier "uber"
+libraryDependencies +=  "com.basho.riak" %% "spark-riak-connector" % "$version"
           exclude("org.apache.spark", "spark-core")
           exclude("org.apache.spark", "spark-sql")
 ```
@@ -30,14 +28,8 @@ To add the Spark-Riak Connector to your Java project, add the following to your 
         <groupId>com.basho.riak</groupId>
         <artifactId>spark-riak-connector</artifactId>
         <version>$version</version>
-        <classifier>uber</classifier>
     </dependency>
 </dependencies>
-
-<repository>
-    <id>bintray</id>
-    <url>https://dl.bintray.com/basho/data-platform</url>
-</repository>
 ```
 
 ## Python
@@ -49,15 +41,15 @@ You can download the Spark-Riak Connector library by going to https://github.com
 Here's another way to download and install it in your home directory:
 
 ```
-curl https://bintray.com/artifact/download/basho/data-platform/com/basho/riak/spark-riak-connector/{{version}}/spark-riak-connector-{{version}}-uber.jar \
-                    -o ~/spark-riak-connector-{{version}}-uber.jar
+curl http://repo1.maven.org/maven2/com/basho/riak/spark-riak-connector_{{scala-version}}/{{connector-version}}/spark-riak-connector_{{scala-version}}-{{connector-version}}-uber.jar \
+                    -o ~/spark-riak-connector_{{scala-version}}-{{connector-version}}-uber.jar
 ```
-You will need to replace `{{version}}` with the latest version. Once you've downloaded the connector, you can add it to the driver classpath when submitting your Python app to Spark, like this:
+You will need to replace `{{connector-version}}` with the latest version or the Spark-Riak Connector. You will also need to replace `{{scala-version}}` with `2.10` or `2.11` depending on your version of scala. Once you've downloaded the connector, you can add it to the driver classpath when submitting your Python app to Spark, like this:
 
 ```
 /path/to/spark-submit \
     --master "local[*]" \
-    --driver-class-path /path/to/spark-riak-connector-{{version}}-uber.jar \
+    --driver-class-path /path/to/spark-riak-connector_{{scala-version}}-{{connector-version}}-uber.jar \
     /path/to/your-python-script.py
 ```
 
@@ -65,23 +57,19 @@ You will need to replace `{{version}}` with the latest version. Once you've down
 
 As an alternative, you can add the Spark-Riak Connector library in the packages option when submitting the app to Spark. The Spark-Riak Connector can be found on spark-packages.org. You can either download it and supply spark with its local address or have spark automatically download it when starting up the spark shell as show by the following.
 
-**Scala, Python, Java**
 ```
 $SPARK_HOME/bin/spark-submit \
---repositories https://dl.bintray.com/basho/data-platform \
---packages com.basho.riak:spark-riak-connector:{{version}}
+--packages com.basho.riak:spark-riak-connector_{{scala-version}}:{{connector-version}}
 ```
 
 **Scala**
 ```
 $SPARK_HOME/bin/spark-shell \
---repositories https://dl.bintray.com/basho/data-platform \
---packages com.basho.riak:spark-riak-connector:{{version}}
+--packages com.basho.riak:spark-riak-connector_{{scala-version}}:{{connector-version}}
 ```
 
 **Python**
 ```
 $SPARK_HOME/bin/pyspark \
---repositories https://dl.bintray.com/basho/data-platform \
---packages com.basho.riak:spark-riak-connector:{{version}}
+--packages com.basho.riak:spark-riak-connector_{{scala-version}}:{{connector-version}}
 ```
