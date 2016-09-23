@@ -8,7 +8,6 @@ This guide will run you through a quick example that uses the Spark-Riak Connect
 - Install Riak TS OSX build. Instruction can be found [here](http://docs.basho.com/riak/ts/1.2.0/installing/mac-osx/)
 - Set open file limits for Riak by following the guide [here](http://docs.basho.com/riak/latest/ops/tuning/open-files-limit/#Mac-OS-X).
 - Install Spark with `brew install apache-spark`.
-- Download the Spark-Riak Connector uber jar (containing all dependencies) from here: https://github.com/basho/spark-riak-connector/releases/latest.
 
 Start Riak TS with `riak start`.
 
@@ -26,8 +25,9 @@ Start Spark Scala REPL with:
 ```
 path/to/spark-shell \
 --conf spark.riak.connection.host=127.0.0.1:8087 \
---driver-class-path /path/to/spark-riak-connector-{{version}}-uber.jar
+--packages com.basho.riak:spark-riak-connector_{{scala-version}}:{{connector-version}}
 ```
+**Note: you will need to change {{scala-version}} and {{connector-version}} as described in [getting the connector](./getting-connector.md)**
 
 Import the following:
 
@@ -210,8 +210,9 @@ Start pyspark with:
 ```
 /path/to/bin/pyspark \
 --conf spark.riak.connection.host=127.0.0.1:8087 \
---driver-class-path /path/to/spark-riak-connector-{{version}}-uber.jar
+--packages com.basho.riak:spark-riak-connector_{{scala-version}}:{{connector-version}}
 ```
+**Note: you will need to change {{scala-version}} and {{connector-version}} as described in [getting the connector](./getting-connector.md)**
 
 Make required imports:
 
