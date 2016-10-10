@@ -412,7 +412,7 @@ def _test_spark_rdd_kv_read_query_all(N, spark_context, riak_client, sql_context
 
 	source_rdd.saveToRiak(test_bucket_name, "default")
 
-	result = spark_context.riakBucket(test_bucket_name, "default").queryAll()
+	result = spark_context.riakBucket(test_bucket_name).queryAll()
 
 	assert sorted(result.collect(), key=lambda x: x[0]) == sorted(test_data, key=lambda x: x[0])
 
@@ -422,13 +422,13 @@ def _test_spark_rdd_kv_read_query_bucket_keys(N, spark_context, riak_client, sql
 
 	source_rdd, source_data, test_data, keys, bad_keys = make_kv_data(N, spark_context)
 
-	source_rdd.saveToRiak(test_bucket_name, "default")
+	source_rdd.saveToRiak(test_bucket_name)
 
-	result = spark_context.riakBucket(test_bucket_name, "default").queryBucketKeys(*keys)
+	result = spark_context.riakBucket(test_bucket_name).queryBucketKeys(*keys)
 
 	assert sorted(result.collect(), key=lambda x: x[0]) == sorted(test_data, key=lambda x: x[0])
 
-	result = spark_context.riakBucket(test_bucket_name, "default").queryBucketKeys(*bad_keys)
+	result = spark_context.riakBucket(test_bucket_name).queryBucketKeys(*bad_keys)
 
 	assert sorted(result.collect(), key=lambda x: x[0]) == sorted([], key=lambda x: x[0])
 
@@ -438,11 +438,11 @@ def _test_spark_rdd_kv_read_query_2i_keys(N, spark_context, riak_client, sql_con
 
 	test_data, string2i, integer2i, partitions, bad_partitions = make_kv_data_2i(N, test_bucket_name, riak_client)
 
-	result = spark_context.riakBucket(test_bucket_name, "default").query2iKeys('string_index', *string2i)
+	result = spark_context.riakBucket(test_bucket_name).query2iKeys('string_index', *string2i)
 
 	assert sorted(result.collect(), key=lambda x: x[0]) == sorted(test_data, key=lambda x: x[0])
 
-	result = spark_context.riakBucket(test_bucket_name, "default").query2iKeys('integer_index', *integer2i)
+	result = spark_context.riakBucket(test_bucket_name).query2iKeys('integer_index', *integer2i)
 
 	assert sorted(result.collect(), key=lambda x: x[0]) == sorted(test_data, key=lambda x: x[0])
 
@@ -452,11 +452,11 @@ def _test_spark_rdd_kv_read_query2iRange(N, spark_context, riak_client, sql_cont
 
 	test_data, string2i, integer2i, partitions, bad_partitions = make_kv_data_2i(N, test_bucket_name, riak_client)
 
-	result = spark_context.riakBucket(test_bucket_name, "default").query2iRange('integer_index', integer2i[0], integer2i[-1])
+	result = spark_context.riakBucket(test_bucket_name).query2iRange('integer_index', integer2i[0], integer2i[-1])
 
 	assert sorted(result.collect(), key=lambda x: x[0]) == sorted(test_data, key=lambda x: x[0])
 
-	result = spark_context.riakBucket(test_bucket_name, "default").query2iRange('integer_index', N, 2*N)
+	result = spark_context.riakBucket(test_bucket_name).query2iRange('integer_index', N, 2*N)
 
 	assert sorted(result.collect(), key=lambda x: x[0]) == sorted([], key=lambda x: x[0])
 
@@ -466,13 +466,13 @@ def _test_spark_rdd_kv_read_partition_by_2i_range(N, spark_context, riak_client,
 
 	test_data, string2i, integer2i, partitions, bad_partitions = make_kv_data_2i(N, test_bucket_name, riak_client)
 
-	result = spark_context.riakBucket(test_bucket_name, "default").partitionBy2iRanges('integer_index', *partitions)
+	result = spark_context.riakBucket(test_bucket_name).partitionBy2iRanges('integer_index', *partitions)
 
 	assert sorted(result.collect(), key=lambda x: x[0]), sorted(test_data, key=lambda x: x[0])
 
 	assert result.getNumPartitions() == N
 
-	result = spark_context.riakBucket(test_bucket_name, "default").partitionBy2iRanges('integer_index', *bad_partitions)
+	result = spark_context.riakBucket(test_bucket_name).partitionBy2iRanges('integer_index', *bad_partitions)
 
 	assert sorted(result.collect(), key=lambda x: x[0]) == sorted([], key=lambda x: x[0])
 
