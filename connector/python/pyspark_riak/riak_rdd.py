@@ -17,10 +17,10 @@ from .riak_helper import helper
 import pyspark
 from pyspark.rdd import RDD
 
-def riakBucket(self, bucket_name, bucket_type):
+def riakBucket(self, bucket_name, bucket_type = "default"):
     return RiakKVRDD(self, bucket_name, bucket_type)
 
-def saveToRiak(self, bucket_name, bucket_type):
+def saveToRiak(self, bucket_name, bucket_type = "default"):
     return helper(self.ctx).saveToRiak(self._jrdd, bucket_name, bucket_type)
 
 class RiakKVRDD(RDD):
