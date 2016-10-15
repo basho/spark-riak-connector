@@ -18,7 +18,10 @@
 package com.basho.riak.spark.rdd.connector
 
 import com.basho.riak.client.api.{RiakClient, RiakCommand}
-import com.basho.riak.client.core.{RiakFuture, FutureOperation}
+import com.basho.riak.client.core.query.timeseries.TableDefinition
+import com.basho.riak.client.core.{FutureOperation, RiakFuture}
+import com.basho.riak.spark.rdd.TsTimestampBindingType
+import org.apache.spark.sql.types.StructType
 
 /**
   * @author Sergey Galkin <srggal at gmail dot com>
@@ -28,6 +31,8 @@ trait RiakSession extends AutoCloseable {
   def execute[T, S](command: RiakCommand[T, S]): T
 
   def execute[V, S](operation: FutureOperation[V, _, S]): RiakFuture[V, S]
+
+  def getTableDefinition(name: String, bindingType: TsTimestampBindingType): StructType
 
   def isClosed: Boolean
 

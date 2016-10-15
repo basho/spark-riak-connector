@@ -17,22 +17,24 @@
   */
 package com.basho.riak.spark.util
 
-import com.basho.riak.client.core.query.timeseries.{ Cell, Row => RiakRow, ColumnDescription }
-import com.basho.riak.spark.rdd.{ UseTimestamp, UseLong, TsTimestampBindingType }
+import com.basho.riak.client.core.query.timeseries.{Cell, ColumnDescription, Row => RiakRow}
+import com.basho.riak.spark.rdd.{TsTimestampBindingType, UseLong, UseTimestamp}
 import com.fasterxml.jackson.core.`type`.TypeReference
 import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
 import org.apache.spark.sql.types._
+
 import scala.collection.convert.decorateAll._
 import java.sql.Timestamp
-import org.apache.spark.sql.{ Row => SparkRow }
+
+import org.apache.spark.sql.{Row => SparkRow}
+
 import scala.reflect.ClassTag
 import com.basho.riak.client.core.query.timeseries.ColumnDescription.ColumnType
 import java.util.Calendar
-import java.sql.Date
+
 import scala.util.Try
-import com.basho.riak.client.core.query.timeseries.FullColumnDescription
-import com.basho.riak.client.core.query.timeseries.TableDefinition
-import scala.collection.JavaConversions._
+import org.apache.spark.riak.types.RiakStructType
+
 import scala.util.Success
 import scala.util.Failure
 
@@ -43,7 +45,8 @@ import scala.util.Failure
 object TSConversionUtil {
   val partitionKeyOrdinalProp = "riak.partitionKeyOrdinal"
   val localKeyOrdinalProp = "riak.localKeyOrdinal"
-  val isTSFieldProp = "riak.isTSField"
+  val quantum = "riakTS.quantum"
+  val quantizedField = "riakTS.quantizedField"
   
   private val STRING_TYPE_REFERENCE = new TypeReference[String] {}
 
@@ -74,7 +77,7 @@ object TSConversionUtil {
     } else null
   }
 
-  def asDataType(columnType: ColumnType, tsTimestampBinding: TsTimestampBindingType): DataType =
+  def asDataType(columnType: ColumnType, tsTimestampBinding: TsTimestampBindingType): DataType = {
     columnType match {
       case ColumnType.BOOLEAN => BooleanType
       case ColumnType.DOUBLE  => DoubleType
@@ -86,6 +89,7 @@ object TSConversionUtil {
       case ColumnType.VARCHAR => StringType
       case _                  => throw new IllegalStateException(s"Unsupported column type $columnType")
     }
+  }
 
   def asColumnType(dataType: DataType) = {
     dataType match {
@@ -95,28 +99,6 @@ object TSConversionUtil {
       case FloatType | DoubleType => ColumnType.DOUBLE
       case DateType | TimestampType => ColumnType.TIMESTAMP
       case _ => throw new IllegalStateException(s"$dataType is not supported")
-    }
-  }
-
-  private def asStructField(columnDescription: ColumnDescription, tsTimestampBinding: TsTimestampBindingType): StructField = {
-    val ft = asDataType(columnDescription.getType, tsTimestampBinding)
-    if (columnDescription.isInstanceOf[FullColumnDescription]) {
-      val fullColumnDescription = columnDescription.asInstanceOf[FullColumnDescription]
-      val isNullable = fullColumnDescription.isNullable()
-      val partitionKeyOrdinal = fullColumnDescription.getPartitionKeyOrdinal
-      val localKeyOrdinal = fullColumnDescription.getLocalKeyOrdinal
-//      val isTSField = fullColumnDescription.getType == ColumnType.TIMESTAMP && fullColumnDescription.isPartitionKeyMember
-      val metadataBuilder = new MetadataBuilder()
-      if(localKeyOrdinal != null)
-        metadataBuilder.putLong(localKeyOrdinalProp, localKeyOrdinal.toLong)
-      if(partitionKeyOrdinal != null)
-        metadataBuilder.putLong(partitionKeyOrdinalProp, partitionKeyOrdinal.toLong)
-//      if(isTSField)
-//        metadataBuilder.putBoolean(isTSFieldProp, isTSField)
-       val metadata = metadataBuilder.build()
-      StructField(columnDescription.getName, ft, isNullable, metadata)
-    } else {
-      StructField(columnDescription.getName, ft)
     }
   }
 
@@ -130,17 +112,15 @@ object TSConversionUtil {
     new GenericRowWithSchema(values.toArray, schema)
   }
 
-  def asSparkSchema(columns: Seq[ColumnDescription], tsTimestampBinding: TsTimestampBindingType): StructType =
-    StructType(columns.map(c => asStructField(c, tsTimestampBinding)))
-
   private val classOfSparkRow = classOf[SparkRow]
 
-  def from[T: ClassTag](columns: Seq[ColumnDescription], row: RiakRow)(implicit schema: Option[StructType] = None, tsTimestampBinding: TsTimestampBindingType): T = {
+  def from[T: ClassTag](columns: Seq[ColumnDescription], row: RiakRow)
+                       (implicit schema: Option[StructType] = None, tsTimestampBinding: TsTimestampBindingType): T = {
     val ct = implicitly[ClassTag[T]]
 
     val (st, cs) = schema match {
-      case Some(structType) => (structType, Some(columns))
-      case None             => (asSparkSchema(columns, tsTimestampBinding), None)
+      case Some(structType) => (new RiakStructType(structType.fields), Some(columns))
+      case None             => (RiakStructType(columns, tsTimestampBinding), None)
     }
     asSparkRow(st, row, cs).asInstanceOf[T]
   }
@@ -227,25 +207,5 @@ object TSConversionUtil {
       asCell(row(i))
     }
     new RiakRow(cells: _*)
-  }
-
-  def asTableDef(name: String, schema: StructType): TableDefinition = {
-    val columns = schema.map(asColumnDef)
-    new TableDefinition(name, columns)
-  }
-  
-  private def getIntegerFromMetadata(metadata: Metadata, name: String): Integer = {
-    Try(metadata.getLong(name)) match{
-      case Success(long) => long.toInt
-      case Failure(_) => null
-    }
-  }
-  
-  def asColumnDef(field: StructField): FullColumnDescription = {
-    val dataType = asColumnType(field.dataType)
-    val metadata = field.metadata
-    val partitionKeyOrdinal = getIntegerFromMetadata(metadata, partitionKeyOrdinalProp)
-    val localKeyOrdinal = getIntegerFromMetadata(metadata, localKeyOrdinalProp)
-    new FullColumnDescription(field.name, dataType, field.nullable, partitionKeyOrdinal, localKeyOrdinal)
   }
 }
