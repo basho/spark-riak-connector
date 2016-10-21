@@ -20,7 +20,7 @@ $SPARK_HOME/bin/pyspark \
 --packages com.basho.riak:spark-riak-connector_{{scala-version}}:{{connector-version}}
 ```
 
-## '--driver-class-path' option
+## `--driver-class-path` option
 
 To use the `--driver-class-path` option you will first to get the Spark-Riak connector jar on your local machine. This can be accomplished in the following ways:
 
@@ -46,7 +46,7 @@ $SPARK_HOME/bin/pyspark \
 
 If you are using Scala or Java, you can use the Spark-Riak connector with your project by having SBT or Maven download the library at build time. This can be done by including the coordinates of the Spark-Riak Connector library in the your `build.sbt` or `pom.xml` file. You can also manually download the Spark-Riak Connector library before build time and include it in a local repository.
 
-## #Scala
+###Scala
 
 To add the Spark-Riak Connector to your Scala project, add the following to your `build.sbt` file:
 
