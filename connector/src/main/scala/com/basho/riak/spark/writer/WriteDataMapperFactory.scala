@@ -20,13 +20,14 @@ package com.basho.riak.spark.writer
 import com.basho.riak.client.core.query.timeseries.{Row => RiakRow}
 import com.basho.riak.spark._
 import com.basho.riak.spark.rdd.BucketDef
+import com.basho.riak.spark.util.DataMapper
 import com.basho.riak.spark.writer.mapper.{DefaultWriteDataMapper, SqlDataMapper, TupleWriteDataMapper}
 import com.basho.riak.spark.writer.ts.RowDef
 import org.apache.spark.sql.{Row => SparkRow}
 
 import scala.reflect.runtime.universe._
 
-trait WriteDataMapper[T, U] extends Serializable {
+trait WriteDataMapper[T, U] extends DataMapper {
   def mapValue(value: T): U
 }
 

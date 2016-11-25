@@ -28,7 +28,7 @@ import com.basho.riak.client.core.query.{Location, Namespace}
 import com.basho.riak.spark._
 import com.basho.riak.spark.rdd.BucketDef
 import com.basho.riak.spark.rdd.connector.{RiakConnector, RiakSession}
-import com.basho.riak.spark.util.CountingIterator
+import com.basho.riak.spark.util.{CountingIterator, DataMapper}
 import com.basho.riak.spark.writer.ts.RowDef
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import org.apache.spark.riak.RiakWriterTaskCompletionListener
@@ -58,6 +58,15 @@ abstract class RiakWriter[T, U](
 
   /** Main entry point */
   def write(taskContext: TaskContext, data: Iterator[T]): Unit = {
+
+    /**
+      * Method write() will be executed on a Spark worker, and it is very possible that the RiakWriter instance
+      * as well as a corresponding WriteDataMapper instance will be deserialized instead of created.
+      *
+      * Therefore it is required to ensure that DataMapper will be initialized on this particular Spark Worker worker.
+      */
+    DataMapper.ensureInitialized()
+
     connector.withSessionDo { session =>
       val rowIterator = CountingIterator(data)
       val startTime = System.currentTimeMillis()
@@ -100,7 +109,7 @@ class RiakKVWriter[T](connector: RiakConnector,
       }
       val r = session.execute(builder.build())
       val theRealKey = if (r.hasGeneratedKey) r.getGeneratedKey else key
-      logDebug(s"Value was written: '$ns' with key: '$theRealKey': $value")
+      logDebug(s"Value was written: '${r.getLocation}': $value")
     }
   }
 }
