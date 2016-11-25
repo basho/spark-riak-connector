@@ -38,17 +38,6 @@ object RiakObjectConversionUtil {
     mapper.get
   }
 
-  def from[T](location: Location, ro: RiakObject)(implicit ct: ClassTag[T]): T = (ct.runtimeClass match {
-    // It's necessary to identify cases when parameter type is not specified (when T is Any)
-    case x: Class[_] if x == classOf[Any] => parseContentTypeAndCharset(ro.getContentType) match {
-      case ("text/plain", _) => ConverterFactory.getInstance.getConverter(classOf[String])
-      case ("application/json", _) => ConverterFactory.getInstance.getConverter(classOf[Map[String, _]])
-      case _ => throw new IllegalStateException("Data type cannot be inferred by RiakObject content type.")
-    }
-    case x: Class[_] => ConverterFactory.getInstance.getConverter(x)
-  }).toDomain(ro, location)
-
-
   def to[T](value: T): RiakObject = {
     // TODO: we need to think about smarter approach to handle primitive types such as int, long, etc.
     value match {
@@ -65,10 +54,4 @@ object RiakObjectConversionUtil {
           .setValue(BinaryValue.create(v))
     }
   }
-
-  private def parseContentTypeAndCharset(contentType: String): (String, String) =
-    contentType.split(";").map(x => x.trim.toLowerCase).toList match {
-      case ct :: others => ct -> others.find(x => x.startsWith("charset")).getOrElse("UTF-8")
-      case Nil => throw new IllegalArgumentException(s"Content type value '$contentType' cannot be parsed")
-    }
 }
