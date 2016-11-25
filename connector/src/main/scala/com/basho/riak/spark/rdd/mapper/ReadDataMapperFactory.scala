@@ -2,12 +2,12 @@ package com.basho.riak.spark.rdd.mapper
 
 import com.basho.riak.client.core.query.{Location, RiakObject}
 import com.basho.riak.spark.rdd.BucketDef
-import com.basho.riak.spark.util.RiakObjectConversionUtil
+import com.basho.riak.spark.util.{DataMapper, RiakObjectConversionUtil}
 
 import scala.language.implicitConversions
 import scala.reflect.ClassTag
 
-trait ReadDataMapper[T] extends Serializable {
+trait ReadDataMapper[T] extends DataMapper {
   def mapValue(location: Location, riakObject: RiakObject)(implicit ct: ClassTag[T]): T
 }
 

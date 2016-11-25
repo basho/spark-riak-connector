@@ -27,8 +27,7 @@ import scala.reflect.ClassTag
 
 object RiakObjectConversionUtil {
 
-  //  Need to register Scala module for proper processing of Scala classes
-  JSONConverter.registerJacksonModule(DefaultScalaModule)
+  DataMapper.ensureInitialized()
 
   private var mapper: Option[ObjectMapper] = None
 
