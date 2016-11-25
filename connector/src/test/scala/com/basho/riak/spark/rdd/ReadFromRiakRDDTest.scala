@@ -27,8 +27,7 @@ import com.basho.riak.client.api.convert.{Converter, ConverterFactory}
 import com.basho.riak.client.core.query.{Location, RiakObject}
 import com.basho.riak.client.core.util.BinaryValue
 import com.basho.riak.spark._
-import com.basho.riak.spark.rdd.mapper.{ReadDataMapper, ReadDataMapperAsFactory}
-import com.basho.riak.spark.util.RiakObjectConversionUtil
+import com.basho.riak.spark.rdd.mapper.{ReadDataMapper, ReadDataMapperAsFactory, ReadValueDataMapper}
 import org.junit.Assert._
 import org.junit.experimental.categories.Category
 import org.junit.rules.ExpectedException
@@ -366,7 +365,7 @@ object CustomMapper extends ReadDataMapper[(String, Timestamp)] with ReadDataMap
                         riakObject: RiakObject
                        )(implicit
                          ct: ClassTag[(String, Timestamp)]
-                       ): (String, Timestamp) = RiakObjectConversionUtil.from(location, riakObject)(ct)
+                       ): (String, Timestamp) = ReadValueDataMapper.mapValue(location, riakObject)(ct)
 
   override def targetClass: Class[(String, Timestamp)] = classOf[(String, Timestamp)]
 }
