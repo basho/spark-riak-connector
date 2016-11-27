@@ -20,12 +20,13 @@ package com.basho.riak.spark.util.python
 import java.io.NotSerializableException
 import java.io.OutputStream
 import java.util.Collection
-import java.util.{ HashMap, Map => JMap }
+import java.util.{ HashMap => JHashMap, Map => JMap }
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable.Buffer
 import scala.collection.immutable.HashSet.{HashSet1, HashTrieSet}
 import scala.collection.immutable.Map.{ Map1, Map2, Map3, Map4, WithDefault }
+import scala.collection.immutable.HashMap. { HashMap1, HashTrieMap }
 
 import org.apache.spark.rdd.RDD
 
@@ -84,7 +85,9 @@ class PicklingUtils extends Serializable {
     Pickler.registerCustomPickler(classOf[Map2[_, _]], MapPickler)
     Pickler.registerCustomPickler(classOf[Map3[_, _]], MapPickler)
     Pickler.registerCustomPickler(classOf[Map4[_, _]], MapPickler)
-    Pickler.registerCustomPickler(classOf[HashMap[_, _]], MapPickler)
+    Pickler.registerCustomPickler(classOf[HashMap1[_, _]], MapPickler)
+    Pickler.registerCustomPickler(classOf[HashTrieMap[_, _]], MapPickler)
+    Pickler.registerCustomPickler(classOf[JHashMap[_, _]], MapPickler)
     Pickler.registerCustomPickler(classOf[JMapWrapper[_, _]], MapPickler)
   }
 }
