@@ -19,7 +19,7 @@ package com.basho.riak.spark.rdd.timeseries;
 
 import com.basho.riak.spark.rdd.RiakTSTests;
 import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.sql.DataFrame;
+import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SQLContext;
 import org.apache.spark.sql.api.java.UDF1;
@@ -70,7 +70,7 @@ public class TimeSeriesJavaReadTest extends AbstractJavaTimeSeriesTest {
                 .sql(String.format("SELECT time, user_id, temperature_k FROM %s %s", bucketName(), sqlWhereClause()))
                 .map(r -> new TimeSeriesDataBean(r.getTimestamp(0).getTime(), r.getString(1), r.getDouble(2)));
 
-        DataFrame df = sqlContext.createDataFrame(rows, TimeSeriesDataBean.class);
+        Dataset<Row> df = sqlContext.createDataFrame(rows, TimeSeriesDataBean.class);
         df.registerTempTable("test");
 
         // Explicit cast due to compilation error "Object cannot be converted to java.lang.String[]"
@@ -98,7 +98,7 @@ public class TimeSeriesJavaReadTest extends AbstractJavaTimeSeriesTest {
                 .sql(String.format("SELECT time, user_id, temperature_k FROM %s %s", bucketName(), sqlWhereClause()))
                 .map(r -> new TimeSeriesDataBean(r.getLong(0), r.getString(1), r.getDouble(2)));
 
-        DataFrame df = sqlContext.createDataFrame(rows, TimeSeriesDataBean.class);
+        Dataset<Row> df = sqlContext.createDataFrame(rows, TimeSeriesDataBean.class);
         df.registerTempTable("test");
 
         // Explicit cast due to compilation error "Object cannot be converted to java.lang.String[]"
@@ -118,7 +118,7 @@ public class TimeSeriesJavaReadTest extends AbstractJavaTimeSeriesTest {
 
         sqlContext.udf().register("getMillis", (UDF1<Timestamp, Object>) Timestamp::getTime, DataTypes.LongType);
 
-        DataFrame df = sqlContext.read()
+        Dataset<Row> df = sqlContext.read()
                 .format("org.apache.spark.sql.riak")
                 .schema(schema())
                 .load(bucketName())
@@ -148,7 +148,7 @@ public class TimeSeriesJavaReadTest extends AbstractJavaTimeSeriesTest {
                 DataTypes.createStructField("temperature_k", DataTypes.DoubleType, true),
         });
 
-        DataFrame df = sqlContext.read()
+        Dataset<Row> df = sqlContext.read()
                 .option("spark.riak.partitioning.ts-range-field-name", "time")
                 .format("org.apache.spark.sql.riak")
                 .schema(structType)
@@ -171,7 +171,7 @@ public class TimeSeriesJavaReadTest extends AbstractJavaTimeSeriesTest {
     public void dataFrameReadShouldHandleTimestampAsLong() {
         SQLContext sqlContext = new SQLContext(jsc);
 
-        DataFrame df = sqlContext.read()
+        Dataset<Row> df = sqlContext.read()
                 .format("org.apache.spark.sql.riak")
                 .option("spark.riakts.bindings.timestamp", "useLong")
                 .option("spark.riak.partitioning.ts-range-field-name", "time")

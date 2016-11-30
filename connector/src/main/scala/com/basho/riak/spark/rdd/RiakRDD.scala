@@ -25,7 +25,8 @@ import com.basho.riak.spark.rdd.partitioner._
 import com.basho.riak.spark.util.{CountingIterator, DataConvertingIterator}
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.rdd.RDD
-import org.apache.spark.{Logging, Partition, SparkContext, TaskContext}
+import org.apache.spark.riak.Logging
+import org.apache.spark.{Partition, SparkContext, TaskContext}
 
 import scala.language.existentials
 import scala.reflect.ClassTag
