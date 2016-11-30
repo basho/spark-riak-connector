@@ -22,7 +22,6 @@ import com.basho.riak.spark.toSparkContextFunctions
 import org.apache.spark.SparkException
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.functions.udf
-import org.apache.spark.sql.riak.RiakSQLContext
 import org.apache.spark.sql.types._
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -128,39 +127,6 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest {
       .sql(s"SELECT * FROM $bucketName $sqlWhereClause")
       .map(r => TimeSeriesData(r.getLong(0), r.getString(1), r.getDouble(2)))
       .collect()
-  }
-
-  @Test
-  def sqlRangeQuery(): Unit = {
-    /*
-     * This usage scenario requires to use RiakSQLContext, otherwise
-     * RuntimeException('Table Not Found: time_series_test') will be thrown
-     */
-    val sqlContext = new RiakSQLContext(sc)
-    sqlContext.udf.register("getMillis", getMillis) // transforms timestamp to not deal with timezones
-    val df = sqlContext.sql(
-        s"""
-           | SELECT getMillis(time) as time, user_id, temperature_k
-           | FROM $bucketName
-           | WHERE time >= CAST('$fromStr' AS TIMESTAMP)
-           |   AND time <= CAST('$toStr' AS TIMESTAMP)
-           |   AND surrogate_key = 1
-           |   AND family = 'f'
-      """.stripMargin)
-
-    // -- verification
-    val data = df.toJSON.collect()
-
-    assertEqualsUsingJSONIgnoreOrder(
-      """
-        |[
-        |   {time: 111111, user_id:'bryce', temperature_k:305.37},
-        |   {time: 111222, user_id:'bryce', temperature_k:300.12},
-        |   {time: 111333, user_id:'bryce', temperature_k:295.95},
-        |   {time: 111444, user_id:'ratman', temperature_k:362.121},
-        |   {time: 111555, user_id:'ratman', temperature_k:3502.212}
-        |]
-      """.stripMargin, stringify(data))
   }
 
   @Test

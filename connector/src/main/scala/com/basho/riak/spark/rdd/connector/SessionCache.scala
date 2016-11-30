@@ -25,7 +25,6 @@ import com.basho.riak.client.api.{RiakClient, RiakCommand}
 import com.basho.riak.client.core.{FutureOperation, RiakCluster, RiakFuture, RiakNode}
 import com.basho.riak.client.core.util.HostAndPort
 import com.google.common.cache._
-import org.apache.spark.Logging
 
 import scala.collection.JavaConverters._
 import java.util.concurrent.{Executors, ScheduledThreadPoolExecutor, ThreadFactory, TimeUnit}
@@ -34,6 +33,7 @@ import io.netty.bootstrap.Bootstrap
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.nio.NioSocketChannel
 import io.netty.util.concurrent.DefaultThreadFactory
+import org.apache.spark.riak.Logging
 
 import scala.collection.concurrent.TrieMap
 

@@ -4,7 +4,8 @@ import com.basho.riak.client.core.query.Namespace
 import com.basho.riak.client.core.util.HostAndPort
 import com.basho.riak.stub.{RiakMessageHandler, RiakNodeStub}
 import org.apache.commons.lang3.exception.ExceptionUtils
-import org.apache.spark.{Logging, SparkConf, SparkContext}
+import org.apache.spark.riak.Logging
+import org.apache.spark.{SparkConf, SparkContext}
 import org.hamcrest.{Description, Matchers}
 import org.junit.internal.matchers.ThrowableCauseMatcher
 import org.junit.{After, Before}

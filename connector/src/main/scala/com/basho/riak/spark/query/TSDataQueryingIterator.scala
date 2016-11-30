@@ -18,8 +18,8 @@
 package com.basho.riak.spark.query
 
 import com.basho.riak.client.core.query.timeseries.Row
-import org.apache.spark.Logging
 import com.basho.riak.client.core.query.timeseries.ColumnDescription
+import org.apache.spark.riak.Logging
 
 class TSDataQueryingIterator(query: QueryTS) extends Iterator[Row] with Logging {
 

@@ -23,7 +23,6 @@ import java.util.Date
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.SaveMode
-import org.apache.spark.sql.riak.RiakSQLContext
 import org.apache.spark.sql.types.DoubleType
 import org.apache.spark.sql.types.LongType
 import org.apache.spark.sql.types.StringType
@@ -147,14 +146,6 @@ object SimpleScalaRiakTSDataframesExample {
       .filter(s"time >= $fromMillis AND time <= $toMillis AND  weather = 'sunny' AND family = 'f'")
     dfUseLong.printSchema
     dfUseLong.show
-    
-    // Alternative way to read data from Riak TS
-    println("-------------------------- Reading with RiakSQLContext --------------------------")
-    val riakSqlContext = new RiakSQLContext(sc)
-    val alternativeDf = riakSqlContext.sql(
-      s"SELECT * from $tableName WHERE time >= CAST('$from' AS TIMESTAMP) AND time <= CAST('$to' AS TIMESTAMP) AND  weather = 'sunny' AND family = 'f'")
-    alternativeDf.printSchema
-    alternativeDf.show
   }
 
   private def setSparkOpt(sparkConf: SparkConf, option: String, defaultOptVal: String): SparkConf = {

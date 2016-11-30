@@ -31,8 +31,8 @@ import com.basho.riak.spark.rdd.connector.{RiakConnector, RiakSession}
 import com.basho.riak.spark.util.{CountingIterator, DataMapper}
 import com.basho.riak.spark.writer.ts.RowDef
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
-import org.apache.spark.riak.RiakWriterTaskCompletionListener
-import org.apache.spark.{Logging, TaskContext}
+import org.apache.spark.riak.Logging
+import org.apache.spark.TaskContext
 
 import scala.collection.JavaConversions._
 import scala.collection._
@@ -78,7 +78,6 @@ abstract class RiakWriter[T, U](
       val endTime = System.currentTimeMillis()
       val duration = (endTime - startTime) / 1000.0
       logDebug(s"Writing FINISHED in $duration seconds")
-      taskContext.addTaskCompletionListener(RiakWriterTaskCompletionListener(rowIterator.count))
     }
   }
 

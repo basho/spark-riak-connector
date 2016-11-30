@@ -18,7 +18,7 @@
 package com.basho.riak.spark.query
 
 import com.basho.riak.client.core.query.{Location, RiakObject}
-import org.apache.spark.Logging
+import org.apache.spark.riak.Logging
 
 class KVDataQueryingIterator[T](query: Query[T]) extends Iterator[(Location, RiakObject)] with Logging {
 

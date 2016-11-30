@@ -1,4 +1,7 @@
 # Change Log
+## [2.0](https://github.com/basho/spark-riak-connector/releases/tag/v2.0.0)
+
+* Spark 2.0.2 support; RiakCatalog, RiakSQLContext were removed due to changes in Spark 2.0 API
 
 ## [1.6.2](https://github.com/basho/spark-riak-connector/releases/tag/v1.6.2)
 Critical fix Python KV:  if object values are JSON objects with list fields (empty or not) then exception happens (https://github.com/basho/spark-riak-connector/pull/219).

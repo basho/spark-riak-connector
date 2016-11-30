@@ -33,7 +33,7 @@ import com.basho.riak.client.core.query.timeseries.FullColumnDescription
 import com.basho.riak.client.core.query.timeseries.Row
 import com.basho.riak.client.core.query.timeseries.TableDefinition
 import com.basho.riak.spark.rdd.AbstractRiakSparkTest
-import org.apache.spark.Logging
+import org.apache.spark.riak.Logging
 import org.apache.spark.sql.types._
 import org.junit.Assert._
 import org.junit.Rule

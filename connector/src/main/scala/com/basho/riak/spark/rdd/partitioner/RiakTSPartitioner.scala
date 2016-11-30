@@ -19,7 +19,7 @@ package com.basho.riak.spark.rdd.partitioner
 
 import java.sql.Timestamp
 
-import org.apache.spark.{Logging, Partition}
+import org.apache.spark.Partition
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types.StructType
 import com.basho.riak.client.core.util.HostAndPort
@@ -34,6 +34,7 @@ import scala.collection.JavaConversions._
 import scala.util.control.Exception._
 import com.basho.riak.client.core.query.timeseries.CoverageEntry
 import com.basho.riak.spark.util.DumpUtils
+import org.apache.spark.riak.Logging
 
 /**
  * @author Sergey Galkin <srggal at gmail dot com>

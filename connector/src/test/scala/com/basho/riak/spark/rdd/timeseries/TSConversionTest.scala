@@ -19,14 +19,16 @@ package com.basho.riak.spark.rdd.timeseries
 
 import java.sql.Timestamp
 import java.util.{Calendar, Date}
+
 import com.basho.riak.client.core.query.timeseries.ColumnDescription.ColumnType._
-import com.basho.riak.client.core.query.timeseries.{ColumnDescription, Cell, Row}
+import com.basho.riak.client.core.query.timeseries.{Cell, ColumnDescription, Row}
 import com.basho.riak.client.core.util.BinaryValue
 import com.basho.riak.spark.util.TSConversionUtil
-import org.apache.spark.Logging
+import org.apache.spark.riak.Logging
 import org.apache.spark.sql.types._
 import org.junit.Assert._
 import org.junit.Test
+
 import scala.collection.JavaConversions._
 import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
 

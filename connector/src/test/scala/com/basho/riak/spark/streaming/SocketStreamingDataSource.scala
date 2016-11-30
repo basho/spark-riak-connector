@@ -4,7 +4,7 @@ import java.net.InetSocketAddress
 import java.nio.channels.{AsynchronousCloseException, AsynchronousServerSocketChannel, AsynchronousSocketChannel, CompletionHandler}
 
 import com.basho.riak.stub.SocketUtils
-import org.apache.spark.Logging
+import org.apache.spark.riak.Logging
 
 class SocketStreamingDataSource extends Logging {
 

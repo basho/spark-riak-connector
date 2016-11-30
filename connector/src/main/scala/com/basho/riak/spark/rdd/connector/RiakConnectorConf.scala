@@ -19,10 +19,11 @@ package com.basho.riak.spark.rdd.connector
 
 import java.net.InetAddress
 import com.basho.riak.client.core.util.HostAndPort
-import org.apache.spark.{Logging, SparkConf}
+import org.apache.spark.SparkConf
 import scala.collection.JavaConversions._
 import scala.util.control.NonFatal
 import com.basho.riak.client.core.RiakNode
+import org.apache.spark.riak.Logging
 
 
 /** Stores configuration of a connection to Riak.

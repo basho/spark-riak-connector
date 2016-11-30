@@ -1,8 +1,9 @@
 object Versions {
-  val spark = "1.6.1"
+  val spark = "2.0.2"
   val guava = "14.0.1"
   val riakClient = "2.0.7"
-  val kafka = "0.8.2.2"
+  val kafka = "0.10.1.0"
+  val sparkStreamingKafka = "1.6.3"
   val jfree = "1.0.19"
   val scalaChart = "0.4.2"
   val powermokc = "1.6.4"

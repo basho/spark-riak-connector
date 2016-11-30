@@ -17,18 +17,20 @@
   */
 package com.basho.riak.spark.rdd
 
-import com.basho.riak.client.core.query.timeseries.{ Row, ColumnDescription }
-import com.basho.riak.spark.query.{ TSQueryData, QueryTS }
+import com.basho.riak.client.core.query.timeseries.{ColumnDescription, Row}
+import com.basho.riak.spark.query.{QueryTS, TSQueryData}
 import com.basho.riak.spark.rdd.connector.RiakConnector
-import com.basho.riak.spark.rdd.partitioner.{ RiakTSPartition, RiakTSPartitioner }
-import com.basho.riak.spark.util.{ TSConversionUtil, CountingIterator, DataConvertingIterator }
+import com.basho.riak.spark.rdd.partitioner.{RiakTSPartition, RiakTSPartitioner}
+import com.basho.riak.spark.util.{CountingIterator, DataConvertingIterator, TSConversionUtil}
 import org.apache.spark.sql.types.StructType
-import org.apache.spark.{ TaskContext, Partition, Logging, SparkContext }
+import org.apache.spark.{Partition, SparkContext, TaskContext}
 import org.apache.spark.rdd.RDD
+
 import scala.reflect.ClassTag
 import org.apache.spark.sql.sources.Filter
-import com.basho.riak.spark.rdd.partitioner.{ SinglePartitionRiakTSPartitioner, RangedRiakTSPartitioner }
+import com.basho.riak.spark.rdd.partitioner.{RangedRiakTSPartitioner, SinglePartitionRiakTSPartitioner}
 import com.basho.riak.spark.query.TSDataQueryingIterator
+import org.apache.spark.riak.Logging
 
 /**
   * @author Sergey Galkin <srggal at gmail dot com>

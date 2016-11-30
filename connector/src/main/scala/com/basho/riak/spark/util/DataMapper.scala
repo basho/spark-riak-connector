@@ -19,7 +19,7 @@ package com.basho.riak.spark.util
 
 import com.basho.riak.client.api.convert.JSONConverter
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
-import org.apache.spark.Logging
+import org.apache.spark.riak.Logging
 
 trait DataMapper extends Serializable {
     DataMapper.ensureInitialized()

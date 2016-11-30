@@ -19,7 +19,8 @@ package com.basho.riak.spark.rdd.connector
 
 
 import com.basho.riak.client.core.util.HostAndPort
-import org.apache.spark.{Logging, SparkConf}
+import org.apache.spark.riak.Logging
+import org.apache.spark.SparkConf
 
 /**
   * Provides and manages [[RiakSession]].

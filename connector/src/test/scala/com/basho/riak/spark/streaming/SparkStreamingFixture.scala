@@ -1,6 +1,7 @@
 package com.basho.riak.spark.streaming
 
-import org.apache.spark.{Logging, SparkContext}
+import org.apache.spark.riak.Logging
+import org.apache.spark.SparkContext
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.junit.{After, Before}
 

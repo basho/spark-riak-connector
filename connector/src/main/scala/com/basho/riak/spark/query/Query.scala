@@ -24,7 +24,7 @@ import com.basho.riak.client.core.query.{Location, RiakObject}
 import com.basho.riak.client.core.util.HostAndPort
 import com.basho.riak.spark.rdd.connector.RiakConnector
 import com.basho.riak.spark.rdd.{BucketDef, ReadConf}
-import org.apache.spark.Logging
+import org.apache.spark.riak.Logging
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable.ArrayBuffer

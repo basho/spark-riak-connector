@@ -20,10 +20,7 @@ package com.basho.riak.spark.rdd.timeseries;
 import com.basho.riak.spark.japi.rdd.RiakTSJavaRDD;
 import com.basho.riak.spark.rdd.RiakTSTests;
 import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.sql.DataFrame;
-import org.apache.spark.sql.Row;
-import org.apache.spark.sql.Row$;
-import org.apache.spark.sql.SQLContext;
+import org.apache.spark.sql.*;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.StructType$;
 import org.junit.Test;
@@ -84,7 +81,7 @@ public class TimeSeriesJavaWriteTest extends AbstractJavaTimeSeriesTest {
                 "{\"surrogate_key\": 1, \"family\": \"f\", \"time\": 111555, \"user_id\": \"ratman\", \"temperature_k\": 3502.212}"
         ));
 
-        DataFrame df = sqlContext.read().schema(StructType$.MODULE$.apply(asScalaBuffer(asList(
+        Dataset<Row> df = sqlContext.read().schema(StructType$.MODULE$.apply(asScalaBuffer(asList(
                 DataTypes.createStructField("surrogate_key", DataTypes.IntegerType, true),
                 DataTypes.createStructField("family", DataTypes.StringType, true),
                 DataTypes.createStructField("time", DataTypes.LongType, true),
