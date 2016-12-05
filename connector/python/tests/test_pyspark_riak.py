@@ -503,6 +503,28 @@ def test_kv_query_2i_range(spark_context, riak_client, sql_context):
 def test_kv_query_partition_by_2i_range(spark_context, riak_client, sql_context):
 	_test_spark_rdd_kv_read_partition_by_2i_range(10, spark_context, riak_client, sql_context)
 
+#
+# if object values are JSON objects with more than 4 keys exception happens
+# https://github.com/basho/spark-riak-connector/issues/206
+@pytest.mark.regression
+def test_read_JSON_value_with_more_then_4_fields(spark_context, riak_client):
+    bucket = riak_client.bucket("test-bucket-"+str(randint(0,100000)))
+    item = bucket.new("test-key")
+    item.data = {'field1': 'abc',
+                 'field2': 'def',
+                 'field3': 'ABC123',
+                 'field4': 'home',
+                 'field5': '10',
+                 'field6': '10.0.0.1',
+                 'field7': '1479398907',
+                 'field8': '1479398907',
+                 'field9': 'DEF456,GHI789',
+                 'field11': 'JKL000',
+                 'field12': 'abc'}
+
+    item.store()
+    result = spark_context.riakBucket(bucket.name).queryBucketKeys("test-key").collect()
+
 ###### TS Tests #######
 
 def test_ts_df_write_use_timestamp(spark_context, riak_client, sql_context):
