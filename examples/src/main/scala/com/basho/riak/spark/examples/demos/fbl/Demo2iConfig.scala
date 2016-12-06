@@ -14,7 +14,6 @@ import com.basho.riak.client.api.annotations.{RiakKey, RiakIndex}
 import org.apache.spark.{SparkConf, SparkContext}
 
 case class Demo2iConfig(riakConf: RiakConnectorConf, index: String, bucket: String, from: Long, to: Long, name:String){
-  val riakNamespace = new Namespace("default", bucket)
 
   def riakNodeBuilder(minConnections:Int = 2):RiakNode.Builder = {
     val firstTheWinner = riakConf.hosts.iterator.next()

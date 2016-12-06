@@ -24,7 +24,7 @@ import static com.basho.riak.spark.japi.SparkJavaUtil.javaFunctions;
  * Really simple demo program which calculates the number of records loaded from the Riak bucket
  */
 public class SimpleJavaRiakExample implements Serializable {
-  private static final Namespace SOURCE_DATA = new Namespace("test-data");
+  private static final String SOURCE_DATA = "test-data";
   private static final String TEST_DATA = "[" + "  {key: 'key-1', creationNo: 1, value: 'value1'}"
       + ", {key: 'key-2', creationNo: 2, value: 'value2'}" 
       + ", {key: 'key-3', creationNo: 3, value: 'value3'}"
@@ -81,7 +81,7 @@ public class SimpleJavaRiakExample implements Serializable {
   private static void createDemoData(JavaSparkContext jsc) throws IOException {
     List<Demo> vals = tolerantMapper.readValue(TEST_DATA, new TypeReference<List<Demo>>() {});
     JavaRDD<Demo> rdd = jsc.parallelize(vals);
-    javaFunctions(rdd).saveToRiak(SOURCE_DATA);
+    javaFunctions(rdd).saveToRiak("test-data");
   }
 
   private static SparkConf setSparkOpt(SparkConf sparkConf, String option, String defaultOptVal) {

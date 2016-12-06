@@ -37,7 +37,7 @@ import com.basho.riak.spark.rdd.RiakFunctions
  * connector for spark
  */
 object SimpleScalaRiakDataframesExample {
-  private val namespace = new Namespace("users")
+  private val bucketName = "users"
 
   case class UserData(user_id: String, name: String, age: Int, category: String)
 
@@ -76,10 +76,10 @@ object SimpleScalaRiakDataframesExample {
         // User defined type when reading from Riak
         obj.setContentType("application/json")
         obj
-    }.saveToRiak(namespace)
+    }.saveToRiak(bucketName)
 
     // Read from Riak with UDT to enable schema inference using reflection
-    val df = sc.riakBucket[UserData](namespace).queryAll.toDF
+    val df = sc.riakBucket[UserData](bucketName).queryAll.toDF
 
     println(s"Dataframe from Riak query: \n ${df.show()}")
 
@@ -101,7 +101,7 @@ object SimpleScalaRiakDataframesExample {
   private def clearBucket(sparkConf: SparkConf): Unit = {
     val rf = RiakFunctions(sparkConf)
     rf.withRiakDo(session => {
-      rf.resetAndEmptyBucket(namespace)
+      rf.resetAndEmptyBucketByName(bucketName)
     })
   }
 
