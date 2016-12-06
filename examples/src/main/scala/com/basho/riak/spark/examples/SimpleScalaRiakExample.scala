@@ -27,7 +27,7 @@ import com.basho.riak.spark._
  * from the Riak bucket
  */
 object SimpleScalaRiakExample {
-  private val SOURCE_DATA = new Namespace("test-data")
+  private val SOURCE_DATA = "test-data"
 
   private val TEST_DATA: String =
     "[" +
@@ -53,7 +53,7 @@ object SimpleScalaRiakExample {
 
     createTestData(sparkConf)
     val sc = new SparkContext(sparkConf)
-    val rdd = sc.riakBucket(SOURCE_DATA)
+    val rdd = sc.riakBucket("test-data")
       .queryAll()
 
     println(s"Riak query result: \n ${rdd.foreach(println)}")
@@ -64,7 +64,7 @@ object SimpleScalaRiakExample {
     val rf = RiakFunctions(sparkConf)
 
     rf.withRiakDo(session => {
-      rf.createValues(session, SOURCE_DATA, TEST_DATA, true )
+      rf.createValuesForBucket(session, SOURCE_DATA, TEST_DATA, true)
     })
   }
 

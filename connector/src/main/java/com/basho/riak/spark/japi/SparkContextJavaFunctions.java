@@ -63,6 +63,10 @@ public class SparkContextJavaFunctions {
         return toJavaRDD(rdd, rdmf.targetClass());
     }
 
+    public <T> RiakJavaRDD<T> riakBucket(String bucketName, Class<T> valueClass) {
+        return riakBucket(bucketName, "default", valueClass);
+    }
+
     public <T> RiakJavaRDD<T> riakBucket(String bucketName, String bucketType, Class<T> valueClass) {
         final ReadDataMapperFactory<T> rdmf = ReadValueDataMapper$.MODULE$.factory(getClassTag(valueClass));
         return this.riakBucket(bucketName, bucketType, rdmf);

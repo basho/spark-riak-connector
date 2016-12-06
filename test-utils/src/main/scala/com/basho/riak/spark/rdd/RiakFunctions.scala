@@ -139,6 +139,11 @@ trait RiakFunctions extends JsonFunctions {
     })
   }
 
+
+  def createValuesForBucket(session: RiakClient, bucketName: String, data: String, purgeBucketBefore: Boolean = false): Unit = {
+    createValues(session, new Namespace(bucketName), data, purgeBucketBefore)
+  }
+
   def createValueAsync(session: RiakClient, ns: Namespace, obj: AnyRef, key: String = null):RiakFuture[StoreValue.Response, Location] = {
     val builder = new StoreValue.Builder(obj)
 
@@ -155,6 +160,10 @@ trait RiakFunctions extends JsonFunctions {
       .build()
 
     session.executeAsync(store)
+  }
+
+  def createValueAsyncForBucket(session: RiakClient, bucketName: String, obj: AnyRef, key: String = null):RiakFuture[StoreValue.Response, Location] = {
+    createValueAsync(session, new Namespace(bucketName), obj, key)
   }
 
   def createValueRaw(session: RiakClient, ns: Namespace, ro: RiakObject, key: String = null, checkCreation: Boolean = true):String = {
@@ -277,6 +286,8 @@ trait RiakFunctions extends JsonFunctions {
 
     riakSession.executeAsync(deleteRequest)
   }
+
+  def resetAndEmptyBucketByName(bucketName: String): Unit = resetAndEmptyBucket(new Namespace(bucketName))
 
   def resetAndEmptyBucket(ns:Namespace): Unit = {
     logger.debug("\n----------\n" +
