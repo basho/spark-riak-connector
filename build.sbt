@@ -25,11 +25,15 @@ import sbtassembly.MergeStrategy
 import com.atlassian.labs.gitstamp.GitStampPlugin._
 
 import scala.util.Properties
+import sbt.complete._
+import complete.DefaultParsers.oneOf
+import complete.DefaultParsers.success
 
 lazy val namespace = "spark-riak-connector"
 
 lazy val pullDockerRiakImage = taskKey[Unit]("Pulls Riak image from Docker Hub")
-lazy val runPySparkTests = taskKey[Unit]("Runs PySpark tests")
+lazy val runPySparkTests = InputKey[Unit]("runPySparkTests")
+lazy val kvTestsOnlyParser : Parser[String] = oneOf(Seq(" kv-tests-only", success(" all-tests")))
 
 //scalastyle:off
 lazy val root = (project in file("."))
@@ -66,6 +70,10 @@ lazy val sparkRiakConnector = (project in file("connector"))
     },
     (test in Test) <<= (test in Test) dependsOn pullDockerRiakImage,
     runPySparkTests := {
+      val pyTestMark = kvTestsOnlyParser.parsed.trim match {
+        case "kv-tests-only" => "riakkv"
+        case _ => "riakkv,riakts"
+      }
       val home = Paths.get(System.getenv("HOME"))
       val buildDir = Paths.get(System.getenv().getOrDefault("TRAVIS_BUILD_DIR", "")).toAbsolutePath
       val riakHosts = System.getenv().getOrDefault("RIAK_HOSTS", "localhost:8087")
@@ -76,7 +84,7 @@ lazy val sparkRiakConnector = (project in file("connector"))
       val uberJar = buildDir.relativize((assemblyOutputPath in assembly).value.toPath)
 
       if(!scalaBinaryVersion.value.equals("2.11")) {
-        val rtnCode = s"connector/python/test.sh $uberJar:$cp" ! streams.value.log
+        val rtnCode = s"connector/python/test.sh $uberJar:$cp $pyTestMark" ! streams.value.log
         //val rtnCode = s"docker build -t $namespace ." #&& s"docker run --rm -i -e RIAK_HOSTS=$riakHosts -e SPARK_CLASSPATH=$uberJar:$cp -v ${buildDir.toString}:/usr/src/$namespace -v ${home.toString}/.ivy2:/root/.ivy2 -v /var/run/docker.sock:/var/run/docker.sock -v /usr/bin/docker:/bin/docker -w /usr/src/$namespace $namespace ./connector/python/test.sh" ! streams.value.log
         if (rtnCode != 0) {
           sys.error("runPySparkTests failed!")

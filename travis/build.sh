@@ -2,18 +2,23 @@
 
 set -e
 
-export RIAK_HOSTS=$(docker inspect -f '{{.NetworkSettings.IPAddress}}' riak-ts):8087,$(docker inspect -f '{{.NetworkSettings.IPAddress}}' riak-ts-2):8087,$(docker inspect -f '{{.NetworkSettings.IPAddress}}' riak-ts-3):8087
+if [ -z ${RIAK_HOSTS+x} ]; then
+    echo "RIAK_HOSTS is not set, Docker will be used to spin up Riak nodes"
+    export RIAK_HOSTS=$(docker inspect -f '{{.NetworkSettings.IPAddress}}' riak-ts):8087,$(docker inspect -f '{{.NetworkSettings.IPAddress}}' riak-ts-2):8087,$(docker inspect -f '{{.NetworkSettings.IPAddress}}' riak-ts-3):8087
+fi
+
 #,$(docker inspect -f '{{.NetworkSettings.IPAddress}}' riak-ts-4):8087,$(docker inspect -f '{{.NetworkSettings.IPAddress}}' riak-ts-5):8087
 
 SBT_CMD="sbt -Dcom.basho.riak.pbchost=$RIAK_HOSTS ++$TRAVIS_SCALA_VERSION"
 
 $SBT_CMD package assembly spPackage
 
+python -m ensurepip
+pip install --upgrade pip setuptools pytest findspark riak timeout_decorator tzlocal
+
 if [ "$RIAK_FLAVOR" == "riak-kv" ]; then
-  $SBT_CMD runRiakKVTests
+  $SBT_CMD runRiakKVTests "runPySparkTests kv-tests-only"
 else
-  python -m ensurepip
-  pip install --upgrade pip setuptools pytest findspark riak timeout_decorator tzlocal
   $SBT_CMD test runPySparkTests
 
 	if [[ $TRAVIS_BRANCH =~ release-.* || "develop" == "$TRAVIS_BRANCH" ]] && [ "false" == "$TRAVIS_PULL_REQUEST" ]; then

@@ -234,31 +234,31 @@ def make_ts_query(riak_ts_table_name, start, end):
 
 ###### TESTS #######
 
-def _test_connection(spark_context, riak_client, sql_context):
-
-    riak_client.ping()
-
-    obj = setup_kv_obj(riak_client, 'temp_bucket', 'temp_key', 'text/plain', 'temp_data')
-
-    obj.store()
-
-    result = riak_client.bucket('temp_bucket').get('temp_key')
-
-    assert result.data == 'temp_data'
-
-    riak_ts_table_name, create_sql, riak_ts_table = setup_table(riak_client)
-
-    riak_ts_table.query(create_sql)
-
-    time.sleep(5)
-
-    ts_obj = setup_ts_obj(riak_ts_table, [['field1_val', 'field2_val', unix_time_millis(datetime.datetime(2015, 1, 1, 12, 0, 0)), 0]])
-
-    ts_obj.store()
-
-    result = riak_client.ts_get(riak_ts_table_name, ['field1_val', 'field2_val', unix_time_millis(datetime.datetime(2015, 1, 1, 12, 0, 0))])
-
-    assert result.rows == [['field1_val', 'field2_val', unix_time_millis(datetime.datetime(2015, 1, 1, 12, 0, 0)), 0]]
+# def _test_connection(spark_context, riak_client, sql_context):
+#
+#     riak_client.ping()
+#
+#     obj = setup_kv_obj(riak_client, 'temp_bucket', 'temp_key', 'text/plain', 'temp_data')
+#
+#     obj.store()
+#
+#     result = riak_client.bucket('temp_bucket').get('temp_key')
+#
+#     assert result.data == 'temp_data'
+#
+#     riak_ts_table_name, create_sql, riak_ts_table = setup_table(riak_client)
+#
+#     riak_ts_table.query(create_sql)
+#
+#     time.sleep(5)
+#
+#     ts_obj = setup_ts_obj(riak_ts_table, [['field1_val', 'field2_val', unix_time_millis(datetime.datetime(2015, 1, 1, 12, 0, 0)), 0]])
+#
+#     ts_obj.store()
+#
+#     result = riak_client.ts_get(riak_ts_table_name, ['field1_val', 'field2_val', unix_time_millis(datetime.datetime(2015, 1, 1, 12, 0, 0))])
+#
+#     assert result.rows == [['field1_val', 'field2_val', unix_time_millis(datetime.datetime(2015, 1, 1, 12, 0, 0)), 0]]
 
 ###### Riak TS Test #######
 
@@ -480,26 +480,32 @@ def _test_spark_rdd_kv_read_partition_by_2i_range(N, spark_context, riak_client,
 
 ###### Run Tests ######
 
-def test_con(spark_context, riak_client, sql_context):
-	_test_connection(spark_context, riak_client, sql_context)
+# def test_con(spark_context, riak_client, sql_context):
+# 	_test_connection(spark_context, riak_client, sql_context)
 
 ###### KV Tests #######
 
+@pytest.mark.riakkv
 def test_kv_write(spark_context, riak_client, sql_context):
 	_test_spark_rdd_write_kv(10, spark_context, riak_client, sql_context)
 
+@pytest.mark.riakkv
 def test_kv_query_all(spark_context, riak_client, sql_context):
 	_test_spark_rdd_kv_read_query_all(10, spark_context, riak_client, sql_context)
 
+@pytest.mark.riakkv
 def test_kv_query_bucket_keys(spark_context, riak_client, sql_context):
 	_test_spark_rdd_kv_read_query_bucket_keys(10, spark_context, riak_client, sql_context)
 
+@pytest.mark.riakkv
 def test_kv_query_2i_keys(spark_context, riak_client, sql_context):
 	_test_spark_rdd_kv_read_query_2i_keys(10, spark_context, riak_client, sql_context)
 
+@pytest.mark.riakkv
 def test_kv_query_2i_range(spark_context, riak_client, sql_context):
 	_test_spark_rdd_kv_read_query2iRange(10, spark_context, riak_client, sql_context)
 
+@pytest.mark.riakkv
 def test_kv_query_partition_by_2i_range(spark_context, riak_client, sql_context):
 	_test_spark_rdd_kv_read_partition_by_2i_range(10, spark_context, riak_client, sql_context)
 
@@ -507,6 +513,7 @@ def test_kv_query_partition_by_2i_range(spark_context, riak_client, sql_context)
 # if object values are JSON objects with more than 4 keys exception happens
 # https://github.com/basho/spark-riak-connector/issues/206
 @pytest.mark.regression
+@pytest.mark.riakkv
 def test_read_JSON_value_with_more_then_4_fields(spark_context, riak_client):
     bucket = riak_client.bucket("test-bucket-"+str(randint(0,100000)))
     item = bucket.new("test-key")
@@ -527,32 +534,42 @@ def test_read_JSON_value_with_more_then_4_fields(spark_context, riak_client):
 
 ###### TS Tests #######
 
+@pytest.mark.riakts
 def test_ts_df_write_use_timestamp(spark_context, riak_client, sql_context):
 	_test_spark_df_ts_write_use_timestamp(10, 5, spark_context, riak_client, sql_context)
 
+@pytest.mark.riakts
 def test_ts_df_write_use_long(spark_context, riak_client, sql_context):
 	_test_spark_df_ts_write_use_long(10, 5, spark_context, riak_client, sql_context)
 
+@pytest.mark.riakts
 def test_ts_df_read_use_timestamp(spark_context, riak_client, sql_context):
 	_test_spark_df_ts_read_use_timestamp(10, 5, spark_context, riak_client, sql_context)
 
+@pytest.mark.riakts
 def test_ts_df_read_use_long(spark_context, riak_client, sql_context):
 	_test_spark_df_ts_read_use_long(10, 5, spark_context, riak_client, sql_context)
 
+@pytest.mark.riakts
 def test_ts_df_read_use_timestamp_ts_quantum(spark_context, riak_client, sql_context):
 	_test_spark_df_ts_read_use_timestamp_ts_quantum(10, 5, spark_context, riak_client, sql_context)
 
+@pytest.mark.riakts
 def test_ts_df_read_use_long_ts_quantum(spark_context, riak_client, sql_context):
 	_test_spark_df_ts_read_use_long_ts_quantum(10, 5, spark_context, riak_client, sql_context)
 
+@pytest.mark.riakts
 def test_ts_df_range_query_input_split_count_use_timestamp(spark_context, riak_client, sql_context):
 	_test_spark_df_ts_range_query_input_split_count_use_timestamp(10, 5, 3, spark_context, riak_client, sql_context)
 
+@pytest.mark.riakts
 def test_ts_df_range_query_input_split_count_use_long(spark_context, riak_client, sql_context):
 	_test_spark_df_ts_range_query_input_split_count_use_long(10, 5, 3, spark_context, riak_client, sql_context)
 
+@pytest.mark.riakts
 def test_ts_df_range_query_input_split_count_use_timestamp_ts_quantum(spark_context, riak_client, sql_context):
 	_test_spark_df_ts_range_query_input_split_count_use_timestamp_ts_quantum(10, 5, 3, spark_context, riak_client, sql_context)
 
+@pytest.mark.riakts
 def test_ts_df_range_query_input_split_count_use_long_ts_quantum(spark_context, riak_client, sql_context):
 	_test_spark_df_ts_range_query_input_split_count_use_long_ts_quantum(10, 5, 3, spark_context, riak_client, sql_context)
