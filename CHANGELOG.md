@@ -1,5 +1,16 @@
 # Change Log
 
+## [1.6.1](https://github.com/basho/spark-riak-connector/releases/tag/v1.6.1)
+Miscellaneous enhancements and bug fixes
+    * Make Namespace not to be mandatory for KV operations (https://github.com/basho/spark-riak-connector/pull/212),(https://github.com/basho/spark-riak-connector/pull/203)
+    * Make the Python tests be executed on TravisCI for both: TS and KV (https://github.com/basho/spark-riak-connector/pull/213)
+    * Critical, Fix improper Spark partition order (https://github.com/basho/spark-riak-connector/pull/211)
+    * Critical, Fix Python serialization for JSON values with more than 4 keys (https://github.com/basho/spark-riak-connector/pull/210)
+    * Critical, fix empty writes (https://github.com/basho/spark-riak-connector/pull/205)
+    * Fix value mapping for JSON array values on KV reads (https://github.com/basho/spark-riak-connector/pull/215)  
+    * Fix Python .partitionBy2iKeys() error (https://github.com/basho/spark-riak-connector/pull/216)
+    
+
 ## [1.6.0](https://github.com/basho/spark-riak-connector/releases/tag/v1.6.0)
 
 * Support Python and KV buckets
