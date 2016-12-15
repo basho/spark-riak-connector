@@ -51,6 +51,8 @@ def riak_client(request):
       nodes =[{'protocol': "pbc", 'host': t[0], 'pb_port': t[1] if len(t)>1 else "8087"} for t in  [tuple(x.strip().split(':')) for x in os.environ['RIAK_HOSTS'].split(',') ]]
     client = riak.RiakClient(nodes=nodes)
     request.addfinalizer(lambda: client.close())
+
+    client.ping()
     return client
 
 def get_nodes(docker_cli):
