@@ -14,30 +14,25 @@ import org.apache.spark.{SparkConf, SparkContext}
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.io.Source
-import com.basho.riak.spark.rdd.{RiakFunctions, BucketDef}
-import com.basho.riak.spark.writer.{WriteDataMapperFactory, WriteDataMapper}
+import com.basho.riak.spark.rdd.RiakFunctions
 import com.basho.riak.spark._
-import com.basho.riak.client.core.query.{RiakObject, Namespace}
-import com.basho.riak.client.api.annotations.{RiakKey, RiakIndex}
 
 object FootballDemo {
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
-  private val FBL_SOURCE_DATA = new Namespace("fbl-data")
-  private val FBL_TEAM_WINS_AND_LOSS = new Namespace("fbl-team-wins-and-loss")
-  private val FBL_TEAM_HISTORY = new Namespace("fbl-team-score-history")
-  private val FBL_TEAM_SCORES = new Namespace("fbl-team-scores")
-  private val FBL_BEST_QTRS = new Namespace("fbl-best-quarter")
+  private val FBL_SOURCE_DATA = "fbl-data"
+  private val FBL_TEAM_WINS_AND_LOSS = "fbl-team-wins-and-loss"
+  private val FBL_TEAM_HISTORY = "fbl-team-score-history"
+  private val FBL_TEAM_SCORES = "fbl-team-scores"
+  private val FBL_BEST_QTRS = "fbl-best-quarter"
 
-
-
-  val CFG_DEFAULT_BUCKET = FBL_SOURCE_DATA.getBucketNameAsString
+  val CFG_DEFAULT_BUCKET = FBL_SOURCE_DATA
   val CFG_DEFAULT_FROM = 2002L
   val CFG_DEFAULT_TO = Calendar.getInstance().get(Calendar.YEAR).toLong
   val CFG_DEFAULT_INDEX = "season"
 
-  val NUMBER_OF_PARALLEL_REQUESTS = 10;
-
+  val NUMBER_OF_PARALLEL_REQUESTS = 10
+  //scalastyle:off
   def main(args: Array[String]): Unit = {
 
     val usage = "FootballDemo usage: available options are:\n" +
@@ -52,14 +47,12 @@ object FootballDemo {
       sys.exit(1)
     } else if(args.length == 1) {
       args(0) match {
-        case "--truncate-data" => {
+        case "--truncate-data" =>
           theOnlyTruncateRequired = true
           println("All Riak buckets used for this demo will be truncated and no calculations will be performed")
-        }
-        case "--help" =>{
+        case "--help" =>
           println(usage)
           sys.exit(0)
-        }
         case _ =>
           println("Unknown option "+ args(0))
           println(usage)
@@ -91,11 +84,11 @@ object FootballDemo {
     val rf = RiakFunctions( demoCfg.riakConf.hosts, NUMBER_OF_PARALLEL_REQUESTS)
 
     for(ns <-List(FBL_TEAM_WINS_AND_LOSS, FBL_TEAM_HISTORY, FBL_TEAM_SCORES, FBL_BEST_QTRS)) {
-      rf.resetAndEmptyBucket(ns)
+      rf.resetAndEmptyBucketByName(ns)
     }
 
     if(theOnlyTruncateRequired){
-      rf.resetAndEmptyBucket(FBL_SOURCE_DATA)
+      rf.resetAndEmptyBucketByName(FBL_SOURCE_DATA)
       sys.exit()
     }
 
@@ -109,7 +102,7 @@ object FootballDemo {
   }
 
   def execute(sc: SparkContext, from: Long = CFG_DEFAULT_FROM, to: Long = CFG_DEFAULT_TO,
-              index: String = CFG_DEFAULT_INDEX, bucket: String = FBL_SOURCE_DATA.getBucketNameAsString ) = {
+              index: String = CFG_DEFAULT_INDEX, bucket: String = FBL_SOURCE_DATA) = {
 
     println(s"Football stats calculated for $index from $from to $to")
 
@@ -117,7 +110,7 @@ object FootballDemo {
     val rdd = sc.riakBucket[(String, List[Map[String, _]])](bucket, "default")
       .query2iRange(index, from, to)
       .mapValues( x => x.filterNot( _.getOrElse("off", "").toString.isEmpty ))
-      .filter(f=> !f._2.isEmpty)
+      .filter(f=> f._2.nonEmpty)
 
     rdd.cache()
 
@@ -150,9 +143,8 @@ object FootballDemo {
       val offTeam = g.getOrElse("off", "unknown")
 
       oscore - dscore match {
-        case x: Int if x > 0 => {
+        case x: Int if x > 0 =>
           offTeam -> defTeam
-        }
         case _ =>
           defTeam -> offTeam
       }
@@ -226,7 +218,7 @@ object FootballDemo {
      * Before creating test data we need to be sure that bucket is empty,
      * therefore we need to purge all data from it
       */
-    rf.resetAndEmptyBucket(demoConfig.riakNamespace)
+    rf.resetAndEmptyBucketByName(demoConfig.bucket)
 
     val is = this.getClass.getResourceAsStream("/fbl-data.zip")
     val zs = new ZipInputStream(is)
@@ -242,7 +234,7 @@ object FootballDemo {
 
         // assuming first line is a header
         val header = src.take(1).next.split(",", -1)
-        require( header.size > 0, "source csv file must have a header")
+        require( header.nonEmpty, "source csv file must have a header")
 
         val games = mutable.Map[String, mutable.ListBuffer[mutable.Map[String,_]]]()
         for(l <- src) {
@@ -272,7 +264,7 @@ object FootballDemo {
           }
 
           // Process all not empty events (events which have non empty gameid and at least 1 event)
-          for ((gameid, events) <- games if !gameid.isEmpty && !events.isEmpty){
+          for ((gameid, events) <- games if !gameid.isEmpty && events.nonEmpty){
             val season = gameid.substring(0,4).toLong
 
             val ro = RiakObjectConversionUtil.to(events)
@@ -282,7 +274,7 @@ object FootballDemo {
               .add(season)
 
             semaphore.acquire()
-            rf.createValueAsync(session, demoConfig.riakNamespace, ro, gameid)
+            rf.createValueAsyncForBucket(session, demoConfig.bucket, ro, gameid)
               .addListener(creationListener)
           }
 

@@ -35,13 +35,13 @@ object OFACDemo {
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
   private var stopwords = Array("")
 
-  private val OFAC_SOURCE_DATA = new Namespace("OFAC-data")
-  private val OFAC_COUNTRY_BANS = new Namespace("OFAC-country-bans")
-  private val OFAC_VESSTYPE_BANS = new Namespace("OFAC-vessel-type-bans")
-  private val OFAC_TONNAGE_HIST = new Namespace("OFAC-tonnage-hist")
-  private val OFAC_TITLES = new Namespace("OFAC-titles")
+  private val OFAC_SOURCE_DATA = "OFAC-data"
+  private val OFAC_COUNTRY_BANS = "OFAC-country-bans"
+  private val OFAC_VESSTYPE_BANS = "OFAC-vessel-type-bans"
+  private val OFAC_TONNAGE_HIST = "OFAC-tonnage-hist"
+  private val OFAC_TITLES = "OFAC-titles"
 
-  val CFG_DEFAULT_BUCKET = OFAC_SOURCE_DATA.getBucketNameAsString
+  val CFG_DEFAULT_BUCKET = OFAC_SOURCE_DATA
   val CFG_DEFAULT_FROM = 1
   val CFG_DEFAULT_TO = 20000.toLong
   val CFG_DEFAULT_INDEX = "entNum"
@@ -74,8 +74,8 @@ object OFACDemo {
 
     // -- Cleanup Riak buckets before we start
     val rf = RiakFunctions(sparkConf)
-    for(ns <-List(OFAC_VESSTYPE_BANS, OFAC_COUNTRY_BANS, OFAC_TONNAGE_HIST, OFAC_TITLES)) {
-      rf.resetAndEmptyBucket(ns)
+    for(buckeetName <-List(OFAC_VESSTYPE_BANS, OFAC_COUNTRY_BANS, OFAC_TONNAGE_HIST, OFAC_TITLES)) {
+      rf.resetAndEmptyBucketByName(buckeetName)
     }
 
     // -- Create test data
@@ -86,11 +86,11 @@ object OFACDemo {
   }
 
   def execute(sc: SparkContext, from: Long = CFG_DEFAULT_FROM, to: Long = CFG_DEFAULT_TO,
-              index: String = CFG_DEFAULT_INDEX, bucket: String = OFAC_SOURCE_DATA.getBucketNameAsString ) = {
+              index: String = CFG_DEFAULT_INDEX, bucket: String = OFAC_SOURCE_DATA) = {
 
     println(s"OFAC stats will be calculated for $index from $from to $to")
 
-    val rdd = sc.riakBucket[(String, Map[String, _])](bucket, "default").query2iRange(index, from, to).map(x => {
+    val rdd = sc.riakBucket[(String, Map[String, _])](bucket).query2iRange(index, from, to).map(x => {
       x._2("data").asInstanceOf[Map[String,String]]
     })
 
@@ -161,7 +161,7 @@ object OFACDemo {
 
   def createTestData(sc: SparkContext): Unit = {
     val rf = RiakFunctions(sc.getConf)
-    rf.resetAndEmptyBucket(OFAC_SOURCE_DATA)
+    rf.resetAndEmptyBucketByName(OFAC_SOURCE_DATA)
 
     println(s"Test data creation for OFAC-Demo")
 

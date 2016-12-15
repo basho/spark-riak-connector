@@ -96,7 +96,7 @@ Once a SparkContext is created, we can load data stored in Riak KV buckets into 
 
 **Scala**
 ```scala
-val kv_bucket_name = new Namespace("test-data")
+val kv_bucket_name = "test-data"
 ```
 
 Let's do a simple but very powerful full bucket read. We're going to read the content of entire Riak KV bucket in one command, and it will happen in an efficient partitioned parallel way and get values as Strings:
@@ -171,7 +171,7 @@ Define the output bucket and issue `saveToRiak` method on an RDD:
 
 **Scala**
 ```scala
-val output_kv_bucket = new Namespace("test-bucket")
+val output_kv_bucket = "test-bucket"
 rdd.saveToRiak(output_kv_bucket)
 ```
 
@@ -288,7 +288,7 @@ case class UserData(user_id: String, name: String, age: Int, category: String)
 Then, you can use the toDF() method on your RDD.
 
 ```scala  
-val kv_bucket_name = new Namespace("test-data")
+val kv_bucket_name = "test-data"
 val riakRdd = sc.riakBucket[UserData](kv_bucket_name).queryAll()
 val df = riakRdd.toDF()
 ```
