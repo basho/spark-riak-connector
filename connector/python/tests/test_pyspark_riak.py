@@ -478,6 +478,26 @@ def _test_spark_rdd_kv_read_partition_by_2i_range(N, spark_context, riak_client,
 
 	assert result.getNumPartitions() == N
 
+def _test_spark_rdd_kv_read_partition_by_2i_keys(N, spark_context, riak_client, sql_context):
+
+	test_bucket_name = "test-bucket-"+str(randint(0,100000))
+
+	test_data, string2i, integer2i, partitions, bad_partitions = make_kv_data_2i(N, test_bucket_name, riak_client)
+
+	result = spark_context.riakBucket(test_bucket_name).partitionBy2iKeys('string_index', *string2i)
+
+	assert sorted(result.collect(), key=lambda x: x[0]), sorted(test_data, key=lambda x: x[0])
+
+	assert result.getNumPartitions() == N
+
+	bad_strings = ['no', 'nein', 'net']
+
+	result = spark_context.riakBucket(test_bucket_name).partitionBy2iKeys('string_index', *bad_strings)
+
+	assert sorted(result.collect(), key=lambda x: x[0]) == sorted([], key=lambda x: x[0])
+
+	assert result.getNumPartitions() == len(bad_strings)
+
 ###### Run Tests ######
 
 # def test_con(spark_context, riak_client, sql_context):
@@ -509,6 +529,9 @@ def test_kv_query_2i_range(spark_context, riak_client, sql_context):
 def test_kv_query_partition_by_2i_range(spark_context, riak_client, sql_context):
 	_test_spark_rdd_kv_read_partition_by_2i_range(10, spark_context, riak_client, sql_context)
 
+@pytest.mark.riakkv
+def test_kv_query_partition_by_2i_keys(spark_context, riak_client, sql_context):
+	_test_spark_rdd_kv_read_partition_by_2i_keys(10, spark_context, riak_client, sql_context)
 #
 # if object values are JSON objects with more than 4 keys exception happens
 # https://github.com/basho/spark-riak-connector/issues/206

@@ -88,7 +88,5 @@ class RiakKVRDD(RDD):
         return self
 
     def partitionBy2iKeys(self, index, *keys):
-        rdd_initial = self._helper.partitionBy2iKeys(self.ctx._jsc, self.bucket_name, self.bucket_type, index, keys)
-        self.rrdd = rdd_initial.query2iRange(index, fromI, toI)
+        self.rrdd = self._helper.partitionBy2iKeys(self.ctx._jsc, self.bucket_name, self.bucket_type, index, keys)
         return self
-
