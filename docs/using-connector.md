@@ -14,7 +14,7 @@ Scroll down or click below for the desired information:
 - [Spark Dataframes With TS Table](./using-connector.md#spark-dataframes-with-ts-table)
 - [Partitioning for KV Buckets](./using-connector.md#partitioning-for-kv-buckets)
 - [Working With TS Dates](./using-connector.md#working-with-ts-dates)
-- [TS Table Range Query Partitioning](./using-connector.md#ts-table-range-query-partitioning)
+- [Partitioning for Riak TS Table Queries](./using-connector.md#partitioning-for-riak-ts-table-queries)
 - [TS Bulk Write](./using-connector.md#ts-bulk-write)
 - [Using Jupyter Notebook](./using-connector.md#using-jupyter-notebook)
 - [Spark Streaming](./using-connector.md#spark-streaming)
@@ -28,8 +28,6 @@ The following import statements should be included at the top of your Spark appl
 
 **Scala**
 ```scala
-import com.basho.riak.client.core.query.Namespace
-import com.basho.riak.spark.rdd.RiakFunctions
 import org.apache.spark.{SparkContext, SparkConf}
 import com.basho.riak.spark._
 ```

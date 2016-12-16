@@ -57,7 +57,7 @@ In order to use the Spark-Riak connector, you must have the following installed:
   - [Spark Dataframes With TS Table](./docs/using-connector.md#spark-dataframes-with-ts-table)
   - [Partitioning For KV Buckets](./docs/using-connector.md#partitioning-for-kv-buckets)
   - [Working With TS Dates](./docs/using-connector.md#working-with-ts-dates)
-  - [TS Table Range Query Partitioning](./docs/using-connector.md#ts-table-range-query-partitioning)
+  - [Partitioning for Riak TS Table Queries](./docs/using-connector.md#partitioning-for-riak-ts-table-queries)
   - [TS Bulk Write](./docs/using-connector.md#ts-bulk-write)
   - [Using Jupyter Notebook](./docs/using-connector.md#using-jupyter-notebook)
   - [Spark Streaming](./docs/using-connector.md#spark-streaming)
