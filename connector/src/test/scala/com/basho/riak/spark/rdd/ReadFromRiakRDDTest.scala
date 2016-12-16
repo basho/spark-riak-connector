@@ -28,6 +28,8 @@ import com.basho.riak.client.core.query.{Location, RiakObject}
 import com.basho.riak.client.core.util.BinaryValue
 import com.basho.riak.spark._
 import com.basho.riak.spark.rdd.mapper.{ReadDataMapper, ReadDataMapperAsFactory, ReadValueDataMapper}
+import com.basho.riak.spark.util.RiakObjectConversionUtil
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.Assert._
 import org.junit.experimental.categories.Category
 import org.junit.rules.ExpectedException
@@ -257,6 +259,36 @@ class ReadFromRiakRDDTest extends AbstractRiakSparkTest {
         "]",
       data
     )
+  }
+
+  @Test
+  def readJSONWithDefaultMapper(): Unit = {
+    val jsonData = Some(
+      s"""
+        |[
+        |   {key: 'singleObjectKey', value: {id: 0, value: '0value'}},
+        |   {key: 'arrayKey', value: [{id: 1, value: '1value'},{id: 2, value: '2value'}]}
+        |]
+      """.stripMargin)
+
+    withRiakDo(session => jsonData.foreach(createValues(session, DEFAULT_NAMESPACE, _, true)))
+
+    val data = sc.riakBucket[(String,Any)](DEFAULT_NAMESPACE)
+      .queryAll()
+      .collect()
+
+    assertEqualsUsingJSONIgnoreOrder("" +
+      "[" +
+      " ['arrayKey'," +
+      "   [" +
+      "     {'id':1,'value':'1value'}," +
+      "     {'id':2,'value':'2value'}" +
+      "   ]" +
+      "]," +
+      " ['singleObjectKey'," +
+      "   {'id':0,'value':'0value'}" +
+      " ]" +
+      "]", data)
   }
 
   @Test

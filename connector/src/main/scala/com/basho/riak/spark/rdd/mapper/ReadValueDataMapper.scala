@@ -22,7 +22,7 @@ object ReadValueDataMapper {
       // It's necessary to identify cases when parameter type is not specified (when T is Any)
       case x: Class[_] if x == classOf[Any] => parseContentTypeAndCharset(riakObject.getContentType) match {
         case ("text/plain", _) => ConverterFactory.getInstance.getConverter(classOf[String])
-        case ("application/json", _) => ConverterFactory.getInstance.getConverter(classOf[Map[String, _]])
+        case ("application/json", _) => ConverterFactory.getInstance.getConverter(classOf[Any])
         case _ => throw new IllegalStateException("Data type cannot be inferred by RiakObject content type.")
       }
       case x: Class[_] => ConverterFactory.getInstance.getConverter(x)
