@@ -45,6 +45,7 @@ import scala.reflect.ClassTag
 
 case class RiakObjectData( value: Object, key: String, indexes: mutable.Map[String, Object])
 
+//scalastyle:off
 trait RiakFunctions extends JsonFunctions {
   protected def riakHosts: Set[HostAndPort]
   protected def numberOfParallelRequests:Int
@@ -78,7 +79,7 @@ trait RiakFunctions extends JsonFunctions {
 
     // Set value
     rod.value match {
-      case map: Map[_,_] =>
+      case _: Map[_,_] | _: List[Map[_,_]] =>
         v = tolerantMapper
           .writerWithDefaultPrettyPrinter()
           .writeValueAsString(rod.value)

@@ -12,7 +12,7 @@ class ReadPairValueDataMapper[K, V](implicit
                                    ) extends ReadDataMapper[(K, V)] {
   override def mapValue(location: Location, riakObject: RiakObject)(implicit ct: ClassTag[(K, V)]): (K, V) = {
     // The only String keys are supported for now
-    val r = ReadDataMapperFactory.DefaultReadDataMapper.mapValue(location, riakObject)
+    val r = location.getKeyAsString.asInstanceOf[K] -> ReadValueDataMapper.mapValue[V](location,riakObject)
     r.asInstanceOf[(K,V)]
   }
 }
