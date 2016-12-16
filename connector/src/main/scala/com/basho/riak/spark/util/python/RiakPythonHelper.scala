@@ -52,7 +52,7 @@ class RiakPythonHelper {
     jsc.sc.riakBucket(bucketName, bucketType).partitionBy2iRanges(index, r: _*)
   }
 
-  def partitionBy2iKeys[K](jsc: JavaSparkContext, bucketName: String, bucketType: String, index: String, keys: K*) =
+  def partitionBy2iKeys[K](jsc: JavaSparkContext, bucketName: String, bucketType: String, index: String, keys: ArrayList[K]) =
     jsc.sc.riakBucket(bucketName, bucketType).partitionBy2iKeys(index, keys: _*)
 
   def pickleRows(rdd: RDD[_]): RDD[Array[Byte]] = rdd.pickle()
