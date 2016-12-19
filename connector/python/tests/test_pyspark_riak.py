@@ -532,6 +532,7 @@ def test_kv_query_partition_by_2i_range(spark_context, riak_client, sql_context)
 @pytest.mark.riakkv
 def test_kv_query_partition_by_2i_keys(spark_context, riak_client, sql_context):
 	_test_spark_rdd_kv_read_partition_by_2i_keys(10, spark_context, riak_client, sql_context)
+
 #
 # if object values are JSON objects with more than 4 keys exception happens
 # https://github.com/basho/spark-riak-connector/issues/206
@@ -554,6 +555,22 @@ def test_read_JSON_value_with_more_then_4_fields(spark_context, riak_client):
 
     item.store()
     result = spark_context.riakBucket(bucket.name).queryBucketKeys("test-key").collect()
+
+#
+# if object value is a JSON object that contains a List of values, exception raised
+# https://bashoeng.atlassian.net/browse/SPARK-275
+#
+@pytest.mark.regression
+@pytest.mark.riakkv
+def test_read_JSON_value_with_not_empty_list (spark_context, riak_client):
+	bucket = riak_client.bucket("test-bucket-"+str(randint(0,100000)))
+	item = bucket.new("test-key")
+	item.data = {"session_ids":["t_sess_1401"],
+				 "last_active_time":1481562896697,
+				 "ecompany":"test.riak.ecompany.com.1"}
+
+	item.store()
+	result = spark_context.riakBucket(bucket.name).queryBucketKeys("test-key").collect()
 
 ###### TS Tests #######
 
