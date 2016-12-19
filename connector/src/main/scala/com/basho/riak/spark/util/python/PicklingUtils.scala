@@ -19,22 +19,19 @@ package com.basho.riak.spark.util.python
 
 import java.io.NotSerializableException
 import java.io.OutputStream
-import java.util.Collection
-import java.util.{ HashMap => JHashMap, Map => JMap }
+import java.math.BigInteger
+import java.nio.ByteBuffer
+import java.util.{Collection, UUID, HashMap => JHashMap, Map => JMap}
 
 import scala.collection.JavaConversions._
-import scala.collection.mutable.Buffer
+import scala.collection.mutable.{ArraySeq, Buffer, WrappedArray}
 import scala.collection.immutable.HashSet.{HashSet1, HashTrieSet}
-import scala.collection.immutable.Map.{ Map1, Map2, Map3, Map4, WithDefault }
-import scala.collection.immutable.HashMap. { HashMap1, HashTrieMap }
-
+import scala.collection.immutable.Map.{Map1, Map2, Map3, Map4, WithDefault}
+import scala.collection.immutable.HashMap.{HashMap1, HashTrieMap}
 import org.apache.spark.rdd.RDD
-
 import com.basho.riak.spark.util.python.Conversions.asSeq
+import net.razorvine.pickle.{ IObjectConstructor, IObjectPickler, Opcodes, Pickler, Unpickler }
 
-import net.razorvine.pickle.IObjectPickler
-import net.razorvine.pickle.Pickler
-import net.razorvine.pickle.Unpickler
 import scala.collection.convert.Wrappers.JMapWrapper
 
 class PicklingUtils extends Serializable {
@@ -50,6 +47,16 @@ class PicklingUtils extends Serializable {
   }
 
   def register() {
+    Unpickler.registerConstructor("uuid", "UUID", UUIDUnpickler)
+
+    Pickler.registerCustomPickler(classOf[UUID], UUIDPickler)
+    Pickler.registerCustomPickler(classOf[UUIDHolder], UUIDPickler)
+    Pickler.registerCustomPickler(Class.forName("scala.collection.immutable.$colon$colon"), ListPickler)
+    Pickler.registerCustomPickler(classOf[ArraySeq[_]], ListPickler)
+    Pickler.registerCustomPickler(classOf[Buffer[_]], ListPickler)
+    Pickler.registerCustomPickler(classOf[WrappedArray.ofRef[_]], ListPickler)
+//    Pickler.registerCustomPickler(classOf[JListWrapper[_]], ListPickler)
+//    Pickler.registerCustomPickler(classOf[JSetWrapper[_]], ListPickler)
     Pickler.registerCustomPickler(classOf[Tuple1[_]], TuplePickler)
     Pickler.registerCustomPickler(classOf[Tuple2[_, _]], TuplePickler)
     Pickler.registerCustomPickler(classOf[Tuple3[_, _, _]], TuplePickler)
@@ -103,7 +110,7 @@ class UnpicklableRDD(rdd: RDD[Array[Byte]]) {
 }
 
 class BatchPickler(batchSize: Int = 1000)(implicit pickling: PicklingUtils)
-    extends (Iterator[_] => Iterator[Array[Byte]])
+  extends (Iterator[_] => Iterator[Array[Byte]])
     with Serializable {
 
   def apply(in: Iterator[_]): Iterator[Array[Byte]] = {
@@ -125,6 +132,40 @@ object TuplePickler extends IObjectPickler {
         case p: Product => seqAsJavaList(p.productIterator.toSeq).toArray()
         case _ => throw new NotSerializableException(o.toString())
       })
+  }
+}
+
+object UUIDPickler extends IObjectPickler {
+  def pickle(o: Any, out: OutputStream, pickler: Pickler): Unit = {
+    out.write(Opcodes.GLOBAL)
+    out.write("uuid\nUUID\n".getBytes())
+    out.write(Opcodes.MARK)
+    o match {
+      case uuid: UUID => pickler.save(uuid.toString())
+      case holder: UUIDHolder => pickler.save(holder.uuid.toString())
+    }
+    out.write(Opcodes.TUPLE)
+    out.write(Opcodes.REDUCE)
+  }
+}
+
+object UUIDUnpickler extends IObjectConstructor {
+  def construct(args: Array[Object]): Object = {
+    args.size match {
+      case 1 => UUID.fromString(args(0).asInstanceOf[String])
+      case _ => new UUIDHolder()
+    }
+  }
+}
+
+class UUIDHolder {
+  var uuid: UUID = null
+
+  def __setstate__(values: JHashMap[String, Object]): UUID = {
+    val i = values.get("int").asInstanceOf[BigInteger]
+    val buffer = ByteBuffer.wrap(i.toByteArray())
+    uuid = new UUID(buffer.getLong(), buffer.getLong())
+    uuid
   }
 }
 
