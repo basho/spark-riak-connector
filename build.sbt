@@ -129,7 +129,7 @@ lazy val commonSettings = Seq(
   sparkComponents += "sql",
   spIgnoreProvided := true,
   parallelExecution in Test := false,
-  testOptions += Tests.Argument(TestFrameworks.JUnit, "-q", "-v", "--exclude-categories=com.basho.riak.spark.rdd.RiakKVNotAvailableFeaturesTest"),
+  testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "--exclude-categories=com.basho.riak.spark.rdd.RiakKVNotAvailableFeaturesTest"),
   scalacOptions in (Compile,doc) := Seq("-groups", "-implicits"),
   crossScalaVersions := Seq("2.10.6", "2.11.7"),
   aggregate in doc := true,

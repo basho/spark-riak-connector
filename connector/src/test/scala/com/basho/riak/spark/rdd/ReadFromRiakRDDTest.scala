@@ -34,6 +34,7 @@ import org.junit.Assert._
 import org.junit.experimental.categories.Category
 import org.junit.rules.ExpectedException
 import org.junit.{Rule, Test}
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.reflect.ClassTag
 
@@ -263,19 +264,29 @@ class ReadFromRiakRDDTest extends AbstractRiakSparkTest {
 
   @Test
   def readJSONWithDefaultMapper(): Unit = {
-    val jsonData = Some(
-      s"""
-        |[
-        |   {key: 'singleObjectKey', value: {id: 0, value: '0value'}},
-        |   {key: 'arrayKey', value: [{id: 1, value: '1value'},{id: 2, value: '2value'}]}
-        |]
-      """.stripMargin)
+    val jsonData = "[" +
+      "{key: 'singleObjectKey', value: {id: 0, value: '0value'}}," +
+      "{key: 'arrayKey', value: [{id: 1, value: '1value'},{id: 2, value: '2value'}]}" +
+      "]"
 
-    withRiakDo(session => jsonData.foreach(createValues(session, DEFAULT_NAMESPACE, _, true)))
+    withRiakDo(session => createValues(session, DEFAULT_NAMESPACE, jsonData, true))
 
-    val data = sc.riakBucket[(String,Any)](DEFAULT_NAMESPACE)
+    Thread.sleep(60000)
+
+    val dataAll = sc.riakBucket[(String,Any)](DEFAULT_NAMESPACE)
       .queryAll()
       .collect()
+
+    println("Data for 'queryAll()': ")
+    dataAll.foreach{ case(key,value) => println(s"$key -> $value")}
+
+    val data = sc.riakBucket[(String,Any)](DEFAULT_NAMESPACE)
+      .queryBucketKeys("singleObjectKey","arrayKey")
+      .collect()
+
+    println("Data for 'queryBucketKeys()': ")
+    data.foreach{ case(key,value) => println(s"$key -> $value")}
+
 
     assertEqualsUsingJSONIgnoreOrder("" +
       "[" +
