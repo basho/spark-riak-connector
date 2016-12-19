@@ -263,18 +263,15 @@ class ReadFromRiakRDDTest extends AbstractRiakSparkTest {
 
   @Test
   def readJSONWithDefaultMapper(): Unit = {
-    val jsonData = Some(
-      s"""
-        |[
-        |   {key: 'singleObjectKey', value: {id: 0, value: '0value'}},
-        |   {key: 'arrayKey', value: [{id: 1, value: '1value'},{id: 2, value: '2value'}]}
-        |]
-      """.stripMargin)
+    val jsonData = "[" +
+      "{key: 'singleObjectKey', value: {id: 0, value: '0value'}}," +
+      "{key: 'arrayKey', value: [{id: 1, value: '1value'},{id: 2, value: '2value'}]}" +
+      "]"
 
-    withRiakDo(session => jsonData.foreach(createValues(session, DEFAULT_NAMESPACE, _, true)))
+    withRiakDo(session => createValues(session, DEFAULT_NAMESPACE, jsonData, true))
 
     val data = sc.riakBucket[(String,Any)](DEFAULT_NAMESPACE)
-      .queryAll()
+      .queryBucketKeys("singleObjectKey","arrayKey")
       .collect()
 
     assertEqualsUsingJSONIgnoreOrder("" +
