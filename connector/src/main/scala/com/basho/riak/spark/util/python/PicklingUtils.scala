@@ -52,6 +52,7 @@ class PicklingUtils extends Serializable {
     Pickler.registerCustomPickler(classOf[UUID], UUIDPickler)
     Pickler.registerCustomPickler(classOf[UUIDHolder], UUIDPickler)
     Pickler.registerCustomPickler(Class.forName("scala.collection.immutable.$colon$colon"), ListPickler)
+    Pickler.registerCustomPickler(Class.forName("scala.collection.immutable.Nil$"), ListPickler)
     Pickler.registerCustomPickler(classOf[ArraySeq[_]], ListPickler)
     Pickler.registerCustomPickler(classOf[Buffer[_]], ListPickler)
     Pickler.registerCustomPickler(classOf[WrappedArray.ofRef[_]], ListPickler)
