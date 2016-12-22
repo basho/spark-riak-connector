@@ -45,7 +45,7 @@ class RiakRDD[R] private[spark](@transient sc: SparkContext,
 
     val partitions = queryData match{
       case None =>
-        throw new IllegalMonitorStateException("Query criteria should be provided")
+        throw new IllegalStateException("Query criteria should be provided")
 
       case Some(rk) =>
         rk.coverageEntries match {
