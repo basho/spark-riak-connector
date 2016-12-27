@@ -1,5 +1,8 @@
 # Change Log
 
+## [1.6.2](https://github.com/basho/spark-riak-connector/releases/tag/v1.6.2)
+Critical fix Python KV:  if object values are JSON objects with list fields (empty or not) then exception happens (https://github.com/basho/spark-riak-connector/pull/219).
+
 ## [1.6.1](https://github.com/basho/spark-riak-connector/releases/tag/v1.6.1)
 Miscellaneous enhancements and bug fixes
     * Make Namespace not to be mandatory for KV operations (https://github.com/basho/spark-riak-connector/pull/212),(https://github.com/basho/spark-riak-connector/pull/203)
