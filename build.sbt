@@ -122,7 +122,7 @@ lazy val sparkRiakConnectorTestUtils = (project in file("test-utils"))
 lazy val commonSettings = Seq(
   organization := "com.basho.riak",
   version := "1.6.3-SNAPSHOT",
-  scalaVersion := "2.10.6",
+  scalaVersion := "2.11.8",
   crossPaths := true,
   spName := s"basho/$namespace",
   sparkVersion := Versions.spark,
@@ -155,7 +155,11 @@ lazy val commonDependencies = Seq(
       "org.powermock"                %  "powermock-module-junit4"   % Versions.powermokc % "test",
       "org.powermock"                %  "powermock-api-mockito"     % Versions.powermokc % "test",
       "com.novocode"                 %  "junit-interface"           % Versions.junitInterface % "test",
-      "com.basho.riak.test"          %  "riak-test-docker"          % Versions.riakTestDocker % "test"
+      "com.basho.riak.test"          %  "riak-test-docker"  % Versions.riakTestDocker % "test",
+      "com.spotify" % "docker-client" % "5.0.2" % "test"
+        exclude("com.fasterxml.jackson.core", "jackson-databind")
+        exclude("com.fasterxml.jackson.core", "jackson-annotations")
+        exclude("com.fasterxml.jackson.core", "jackson-core")
     ),
 
   // Connector will use same version of Jackson that Spark uses. No need to incorporate it into uber jar.
