@@ -1,5 +1,5 @@
 object Versions {
-  val spark = "2.0.2"
+  val spark = "2.1.0"
   val guava = "14.0.1"
   val riakClient = "2.0.7"
   val kafka = "0.10.1.0"
