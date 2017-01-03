@@ -6,8 +6,8 @@ MAINTAINER Alexey Suprun <asuprun@contractor.basho.com>
 # These options could be changed during starting container using --build-arg property with folliwing syntax:
 # --build-arg ARGUMENT_NAME=value
 ARG SBT_VERSION=0.13.12
-ARG SPARK_VERSION=2.0.2
-ARG SPARK_HADOOP_VERSION=hadoop2.6
+ARG SPARK_VERSION=2.1.0
+ARG SPARK_HADOOP_VERSION=hadoop2.7
 
 # Set env vars
 ENV SBT_HOME /usr/local/sbt
