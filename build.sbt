@@ -101,7 +101,8 @@ lazy val examples = (project in file("examples"))
   .settings(
     name := s"$namespace-examples",
     libraryDependencies ++= Seq(
-      "org.apache.spark"              %% "spark-streaming-kafka" % Versions.sparkStreamingKafka,
+      "org.apache.spark"              %% "spark-streaming-kafka" % Versions.sparkStreamingKafka
+        exclude("org.scalatest", s"scalatest_${scalaBinaryVersion.value}"),
       "org.apache.kafka"              %% "kafka"                 % Versions.kafka))
   .settings(publishSettings)
   .dependsOn(sparkRiakConnector, sparkRiakConnectorTestUtils)
@@ -142,8 +143,10 @@ lazy val commonDependencies = Seq(
       "com.basho.riak"               %  "riak-client"               % Versions.riakClient exclude("io.netty", "netty-all")
                                                                                           exclude("org.slf4j", "slf4j-api")
                                                                                           exclude("com.fasterxml.jackson.datatype", "jackson-datatype-joda"),
-      "org.apache.spark"             %% "spark-sql"                 % Versions.spark % "provided",
-      "org.apache.spark"             %% "spark-streaming"           % Versions.spark % "provided",
+      "org.apache.spark"             %% "spark-sql"                 % Versions.spark % "provided"
+        exclude("org.scalatest", s"scalatest_${scalaBinaryVersion.value}"),
+      "org.apache.spark"             %% "spark-streaming"           % Versions.spark % "provided"
+        exclude("org.scalatest", s"scalatest_${scalaBinaryVersion.value}"),
       "com.google.guava"             %  "guava"                     % Versions.guava,
       "com.fasterxml.jackson.module" %% "jackson-module-scala"      % Versions.jacksonModule exclude("com.google.guava", "guava")
                                                                                              exclude("com.google.code.findbugs", "jsr305")
