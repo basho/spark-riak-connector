@@ -161,6 +161,7 @@ abstract class AbstractTimeSeriesTest(val createTestData: Boolean = true) extend
           session.execute(new CreateTable.Builder(tableDefinition)
             .withQuantum(10, TimeUnit.SECONDS) // scalastyle:ignore
             .build())
+        case Left(ex) => throw ex
       }
     })
   }
