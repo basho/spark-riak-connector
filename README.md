@@ -14,10 +14,13 @@ The Spark-Riak connector enables you to connect Spark applications to Riak KV an
 * Construct a Spark RDD using Riak KV bucket's enhanced 2i query (a.k.a. full bucket read)
 * Perform parallel full bucket reads from a Riak KV bucket into multiple partitions
 
-## Compatibility
+## Version Compatibility
 
-* Riak TS 1.3.1+
-* Apache Spark 1.6+
+|  Connector | Spark | Riak TS | Riak KV |
+|------------|-------|---------|---------|
+| 2.X        | 2.X   | 1.5     | 2.2.0   |
+| 1.6.X      | 1.6.X | 1.4     | 2.2.0   |   
+
 * Scala 2.10 and 2.11
 * Java 8
 
