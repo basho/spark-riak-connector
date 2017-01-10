@@ -85,7 +85,7 @@ trait RiakTSPartitioner {
     }
     recursiveInterpolateFirst(sql, values.iterator)
   }
-
+  //scalastyle:off
   protected def toSql(columnNames: Option[Seq[String]], tableName: String, schema: Option[StructType], whereConstraints: (String, Seq[Any])): (String, Seq[Any]) = {
     var values: Seq[Any] = Seq.empty[Nothing]
     val sql = "SELECT " +
@@ -112,26 +112,32 @@ trait RiakTSPartitioner {
   }
 
   /** Construct Sql clause */
-  protected def filterToSqlAndValue(filter: Any): (String, Any) = {
+  protected def filterToSqlAndValue(filter: Any): (String, Option[Any]) = {
     val (attribute, sqlOperator, value) = filter match {
       case EqualTo(a, v)            => (a, "=", v)
       case LessThan(a, v)           => (a, "<", v)
       case LessThanOrEqual(a, v)    => (a, "<=", v)
       case GreaterThan(a, v)        => (a, ">", v)
       case GreaterThanOrEqual(a, v) => (a, ">=", v)
+      case IsNotNull(a)             => (a, "IS NOT NULL", None)
+      case IsNull(a)                => (a, "IS NULL", None)
       case _ =>
         throw new UnsupportedOperationException(
-          s"It's not a valid filter $filter to be pushed down, only >, <, >=, <= and =  are allowed.")
+          s"It's not a valid filter $filter to be pushed down, only is not null, is null, >, <, >=, <= and =  are allowed.")
     }
 
     // TODO: need to add pattern matching for values, to be sure that they are used correctly
-    (s"$attribute $sqlOperator ?", value)
-  }
 
+    value match {
+      case None => (s"$attribute $sqlOperator", None)
+      case _ => (s"$attribute $sqlOperator ?", Some(value))
+    }
+  }
+  //scalastyle:on
   protected def whereClause(filters: Array[Filter]): (String, Seq[Any]) = {
     val sqlValue = filters.map(filterToSqlAndValue)
     val sql = sqlValue.map(_._1).mkString(" AND ")
-    val args = sqlValue.map(_._2)
+    val args = sqlValue.flatMap(_._2) // Changed to use flatMap to remove None arguments
     (sql, args.seq)
   }
 }

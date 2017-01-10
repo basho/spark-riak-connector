@@ -187,7 +187,6 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) {
   }
 
   @Test
-  @Ignore //FIXME: doesn't work even with null value in Row
   def dataFrameWriteWithEmptyCells(): Unit = {
     val sqlContext = new SQLContext(sc)
 
@@ -197,7 +196,7 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) {
     val udfGetMillis = udf(getMillis)
 
     val tsRows = Seq[org.apache.spark.sql.Row] (
-      org.apache.spark.sql.Row(2L, "f", 111111L, "test", None),
+      org.apache.spark.sql.Row(2L, "f", 111111L, "test", null),
       org.apache.spark.sql.Row(2L, "f", 111222L, "test", 123.123),
       org.apache.spark.sql.Row(2L, "f", 111333L, "test", 345.34)
     )
