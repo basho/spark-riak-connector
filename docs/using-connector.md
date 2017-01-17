@@ -53,9 +53,7 @@ spark.riak.input.split.count                   | Desired minimum number of Spark
 spark.riak.write.replicas                      | Quorum value on write. Integer value or symbolic constant can be used. Possible symbolic constants are: <ul><li>all - All replicas must reply.</li><li>one - This is the same as integer value 1.</li><li>quorum - A majority of the replicas must respond, that is, “half plus one”.</li><li>default - Uses whatever the per-bucket consistency property, which may be any of the above values, or an integer.</li></ul>                                              | default | KV
 spark.riak.connections.inactivity.timeout      | Time to keep connection to Riak alive in milliseconds | 1000 | KV/TS
 spark.riakts.bindings.timestamp                | To treat/convert Riak TS timestamp columns either as a Long (UNIX milliseconds) or as a Timestamps during the automatic schema discovery. Valid values are: <ul><li>useLong</li><li>useTimestamp</li><ul> | useTimestamp | TS
-spark.riak.partitioning.ts-range-field-name    | Name of quantized field for range query       | 1                  | TS
 spark.riakts.write.bulk-size                   | Bulk size for parallel TS table writes            | 100                | TS
-spark.riak.partitioning.ts-quantum             | Size of the quantum for range field E.g.: "100s"  | N/A                | TS
 
 Example:
 
@@ -561,7 +559,6 @@ NOTE: All data from each subrange will be loaded at once. Paginated reads are no
 Large ranges can be automatically split into smaller sub-ranges at partitioning time without taking into account data location by simply dividing the initial range into a number of partitions.
 
 To use this functionality it's required to provide the following options:
-* `spark.riak.partitioning.ts-range-field-name` to identify quantized field
 * `spark.riak.input.split.count` to identify number of partitions/subranges (default value is `10`)
 
 For example:
@@ -570,7 +567,6 @@ For example:
 ```scala
    val df = sparkSession.read
       .option("spark.riak.input.split.count", "5")
-      .option("spark.riak.partitioning.ts-range-field-name", "time")
       .format("org.apache.spark.sql.riak")
       .schema(schema)
       .load(ts_table_name)
@@ -580,7 +576,6 @@ For example:
 ```python
 df = sparkSession.read \
       .option("spark.riak.input.split.count", "5") \
-      .option("spark.riak.partitioning.ts-range-field-name", "time") \
       .format("org.apache.spark.sql.riak") \
       .schema(schema) \
       .load(ts_table_name) \
@@ -595,15 +590,12 @@ The initial range query will be split into 5 subqueries (one per each partition)
 * ```time >= CAST(130000 AS TIMESTAMP) AND time < CAST(170000 AS TIMESTAMP) AND col1 = 'val1'```
 * ```time >= CAST(170000 AS TIMESTAMP) AND time < CAST(210000 AS TIMESTAMP) AND col1 = 'val1'```
 
-An additional option spark.riak.partitioning.ts-quantum can be passed to notify the Spark-Riak Connector of the quantum size. If the automatically created subranges break the 5 quanta limitation, the initial range will be split into ~4 quantum subranges and the resulting subranges will then be grouped to form the required number of partitions.
 **Scala**
 ```scala
    val df = sparkSession.read
       .option("spark.riak.input.split.count", "5")
-      .option("spark.riak.partitioning.ts-range-field-name", tsRangeFieldName)
-      .option("spark.riak.partitioning.ts-quantum", "5s")
       .format("org.apache.spark.sql.riak")
-      .schema(schema)
+      .schema(RiakStructType(schema, 5000L, tsRangeFieldName))
       .load(ts_table_name)
       .filter(s"time >= CAST(10000 AS TIMESTAMP) AND time < CAST(210000 AS TIMESTAMP) AND col1 = 'val1'")
 ```
@@ -611,10 +603,8 @@ An additional option spark.riak.partitioning.ts-quantum can be passed to notify 
 ```python
 df = sparkSession.read \
       .option("spark.riak.input.split.count", "5") \
-      .option("spark.riak.partitioning.ts-range-field-name", tsRangeFieldName) \
-      .option("spark.riak.partitioning.ts-quantum", "5s") \
       .format("org.apache.spark.sql.riak")
-      .schema(schema) \
+      .schema(RiakStructType(schema, 5000L, tsRangeFieldName)) \
       .load(ts_table_name) \
       .filter(s"time >= CAST(10000 AS TIMESTAMP) AND time < CAST(210000 AS TIMESTAMP) AND col1 = 'val1'")
 
@@ -626,8 +616,6 @@ In this case, the initial range will be spit into 5 sets of 2 subranges:
 * ```[(time >= 90000 AND time < 110000), (time >= 110000 AND time < 130000)]```
 * ```[(time >= 130000 AND time < 150000), (time >= 150000 AND time < 170000)]```
 * ```[(time >= 170000 AND time < 190000), (time >= 190000 AND time < 210000)]```
-
-Not providing the `spark.riak.partitioning.ts-range-field-name` property will default to having a single partition with initial query.
 
 NOTE: All data from each subrange will be loaded at once. Paginated reads are not yet implemented.
 

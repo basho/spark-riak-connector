@@ -73,8 +73,9 @@ class RiakTSRDD[R] private[spark](
     val q = new QueryTS(connector, queryData)
     val iterator: TSDataQueryingIterator = TSDataQueryingIterator(q)
     val columns = iterator.columnDefs
-    if (this.schema.isDefined && !columns.isEmpty)
+    if (this.schema.isDefined && columns.nonEmpty) {
       validateSchema(schema.get, columns)
+    }
     val convertingIterator = DataConvertingIterator.createTSConverting((columns, iterator), TSConversionUtil.from[R])
     val countingIterator = CountingIterator[R](convertingIterator)
     context.addTaskCompletionListener { (context) =>

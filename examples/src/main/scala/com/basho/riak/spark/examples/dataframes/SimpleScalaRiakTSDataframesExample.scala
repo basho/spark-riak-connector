@@ -22,6 +22,8 @@ import java.util.Date
 
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.{SaveMode, SparkSession}
+import org.apache.spark.riak.types.RiakStructType
+import org.apache.spark.sql.SaveMode
 import org.apache.spark.sql.types.DoubleType
 import org.apache.spark.sql.types.LongType
 import org.apache.spark.sql.types.StringType
@@ -62,13 +64,13 @@ object SimpleScalaRiakTSDataframesExample {
     StructField(name = "humidity", dataType = DoubleType),
     StructField(name = "pressure", dataType = DoubleType)))
 
-  val schemaWithLong = StructType(List(
+  val structFields = List(
     StructField(name = "weather", dataType = StringType),
     StructField(name = "family", dataType = StringType),
     StructField(name = "time", dataType = LongType),
     StructField(name = "temperature", dataType = DoubleType),
     StructField(name = "humidity", dataType = DoubleType),
-    StructField(name = "pressure", dataType = DoubleType)))
+    StructField(name = "pressure", dataType = DoubleType))
 
   def main(args: Array[String]) {
     val sparkConf = new SparkConf().setAppName("Riak TS Spark Dataframes Example")
@@ -119,13 +121,14 @@ object SimpleScalaRiakTSDataframesExample {
     val withSchemaProvidedLongTime = sparkSession.read
       .option("spark.riak.partitioning.ts-range-field-name", "time")
       .format("org.apache.spark.sql.riak")
-      .schema(schemaWithLong)
+      .schema(RiakStructType(structFields, "time"))
       .load(tableName)
       .filter(s"time >= $fromMillis AND time <= $toMillis AND  weather = 'sunny' AND family = 'f'")
     withSchemaProvidedLongTime.printSchema
     withSchemaProvidedLongTime.show
 
     // Simple Riak range query without providing schema
+    //FIXME: need to check if it works fine without schema
     println("-------------------- Range query with inferred schema ---------------------------")
     val df = sparkSession.read
       .option("spark.riak.partitioning.ts-range-field-name", "time")
@@ -134,7 +137,8 @@ object SimpleScalaRiakTSDataframesExample {
       .filter(s"time >= CAST('$from' AS TIMESTAMP) AND time <= CAST('$to' AS TIMESTAMP) AND  weather = 'sunny' AND family = 'f'")
     df.printSchema
     df.show
-    
+
+    //FIXME: need to check if it works fine without schema
     // Simple Riak range query without providing schema and with useLong option for timestamp binding
     println("------ Range query with inferred schema and treating timestamps as Long (in milliseconds) ---------")
     val dfUseLong = sparkSession.read

@@ -19,6 +19,7 @@ package com.basho.riak.spark.rdd.timeseries;
 
 import com.basho.riak.spark.rdd.RiakTSTests;
 import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.riak.types.RiakStructType;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.api.java.UDF1;
@@ -28,9 +29,14 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import scala.None$;
+import scala.Option;
+import scala.Some$;
 import scala.collection.Seq;
 
 import java.sql.Timestamp;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -133,18 +139,18 @@ public class TimeSeriesJavaReadTest extends AbstractJavaTimeSeriesTest {
 
     @Test
     public void dataFrameReadShouldConvertTimestampToLong() {
-        StructType structType = new StructType(new StructField[]{
+        StructField[] structFields = {
                 DataTypes.createStructField("surrogate_key", DataTypes.LongType, true),
                 DataTypes.createStructField("family", DataTypes.StringType, true),
                 DataTypes.createStructField("time", DataTypes.LongType, true),
                 DataTypes.createStructField("user_id", DataTypes.StringType, true),
                 DataTypes.createStructField("temperature_k", DataTypes.DoubleType, true),
-        });
+        };
 
         Dataset<Row> df = sparkSession().read()
                 .option("spark.riak.partitioning.ts-range-field-name", "time")
                 .format("org.apache.spark.sql.riak")
-                .schema(structType)
+                .schema(new RiakStructType(structFields, scala.Option.empty(), scala.Option.apply("time")))
                 .load(bucketName())
                 .filter(String.format("time >= %s AND time <= %s AND surrogate_key = 1 AND family = 'f'", queryFromMillis(), queryToMillis()));
         df = df.select(df.col("time"), df.col("family"), df.col("surrogate_key"), df.col("user_id"), df.col("temperature_k"));
@@ -165,7 +171,6 @@ public class TimeSeriesJavaReadTest extends AbstractJavaTimeSeriesTest {
         Dataset<Row> df = sparkSession().read()
                 .format("org.apache.spark.sql.riak")
                 .option("spark.riakts.bindings.timestamp", "useLong")
-                .option("spark.riak.partitioning.ts-range-field-name", "time")
                 .load(bucketName())
                 .filter(String.format("time > %s AND time < %s AND surrogate_key = 1 AND family = 'f'", queryFromMillis(), queryToMillis()));
         df = df.select(df.col("time"), df.col("family"), df.col("surrogate_key"), df.col("user_id"), df.col("temperature_k"));

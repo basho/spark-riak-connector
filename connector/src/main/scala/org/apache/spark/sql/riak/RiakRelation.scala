@@ -28,9 +28,8 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.sources.{BaseRelation, Filter, InsertableRelation, PrunedFilteredScan}
 import org.apache.spark.sql.types._
 import org.apache.spark.sql._
-
-import com.basho.riak.spark.query.QueryBucketDef
 import org.apache.spark.riak.Logging
+import org.apache.spark.riak.types.RiakStructType
 
 /**
   * Implements [[BaseRelation]]]], [[InsertableRelation]]]] and [[PrunedFilteredScan]]]]
@@ -49,13 +48,8 @@ private[riak] class RiakRelation(
   extends BaseRelation with PrunedFilteredScan with InsertableRelation with Logging {
 
   override def schema: StructType = userSpecifiedSchema match {
-    case None =>
-      val readSchemaQuery = QueryBucketDef(connector, readConf)
-      readSchemaQuery.getTableSchema(bucket) match {
-        case None        => throw new IllegalStateException(s"No bucket $bucket was found")
-        case Some(riakShema) => riakShema
-      }
     case Some(st: StructType) => st
+    case None => connector withSessionDo { _.getTableDefinition(bucket, readConf.tsTimestampBinding) }
   }
 
   private[this] val baseRdd: RiakTSRDD[Row] = sqlContext.sparkContext
@@ -66,21 +60,25 @@ private[riak] class RiakRelation(
   override def buildScan(requiredColumns: Array[String], filters: Array[Filter]): RDD[Row] = {
 
     val prunedRdd = {
-      if (requiredColumns.isEmpty)
-        baseRdd
-      else
-        baseRdd.select(requiredColumns: _*)
+      if (requiredColumns.isEmpty) baseRdd
+      else baseRdd.select(requiredColumns: _*)
     }
 
-    val tsRangeFieldName = readConf.tsRangeFieldName
-    if (tsRangeFieldName != null && readConf.splitCount > 1) {
-      val partitionedRdd = prunedRdd.partitionByTimeRanges(tsRangeFieldName, filters)
-      readConf.quantum match {
+    val riakStructType = schema match {
+      case rst: RiakStructType => rst
+      case st: StructType => new RiakStructType(schema.fields)
+    }
+
+    val tsRangeFieldName = riakStructType.quantizedField
+    if (tsRangeFieldName.nonEmpty && readConf.splitCount > 1) {
+      val partitionedRdd = prunedRdd.partitionByTimeRanges(tsRangeFieldName.get, filters)
+      riakStructType.quantum match {
         case None    => partitionedRdd
         case Some(q) => partitionedRdd.quantum(q)
       }
-    } else
+    } else {
       prunedRdd.filter(filters)
+    }
   }
 
   override def insert(data: DataFrame, overwrite: Boolean): Unit = {

@@ -20,8 +20,6 @@ package com.basho.riak.spark.rdd
 import java.io.InputStream
 import java.util.Properties
 import org.apache.spark.SparkConf
-import java.time.Duration
-import org.joda.time.Duration
 import org.apache.spark.network.util.JavaUtils
 
 /** RDD read settings
@@ -34,16 +32,6 @@ case class ReadConf (
   val splitCount: Int = ReadConf.DefaultSplitCount,
   val tsTimestampBinding: TsTimestampBindingType = ReadConf.DefaultTsTimestampBinding,
   /**
-   * Used only in ranged partitioner to identify quantized field.
-   * Usage example:
-   *    sparkSession.read
-   *      .option("spark.riak.partitioning.ts-range-field-name", "time")
-   * Providing this property automatically turns on RangedRiakTSPartitioner
-   */
-  val tsRangeFieldName: String = null,
-  val quantum: Option[Long] = None,
-
-  /**
     * Turns on streaming values support for PEx.
     *
     * It will make Full Bucket Reads more efficient: values will be streamed as a part of the FBR response
@@ -54,7 +42,8 @@ case class ReadConf (
     * DO NOT CHANGE THIS VALUES MANUALLY IF YOU DON'T KNOW WHAT YOU ARE DOING
     * IT MAY CAUSE EITHER PERFORMANCE DEGRADATION or INTRODUCE FBR ERRORS
     */
-  useStreamingValuesForFBRead: Boolean = ReadConf.DefaultUseStreamingValues4FBRead
+  useStreamingValuesForFBRead: Boolean = ReadConf.DefaultUseStreamingValues4FBRead,
+  val tsPartitioner: Option[String] = None
 ) {
 
   def overrideProperties(options: Map[String, String]): ReadConf = {
@@ -62,9 +51,8 @@ case class ReadConf (
     val newSplitCount = options.getOrElse(ReadConf.splitCountPropName, splitCount.toString).toInt
     val newUseStreamingValuesForFBRead = options.getOrElse(ReadConf.useStreamingValuesPropName, useStreamingValuesForFBRead.toString).toBoolean
     val newTsTimestampBinding = TsTimestampBindingType(options.getOrElse(ReadConf.tsBindingsTimestamp, tsTimestampBinding.value))
-    val newTsRangeFieldName = options.getOrElse(ReadConf.tsRangeFieldPropName, tsRangeFieldName)
-    val newQuantum = options.get(ReadConf.tsQuantumPropName).map(JavaUtils.timeStringAsMs)
-    ReadConf(newFetchSize, newSplitCount, newTsTimestampBinding, newTsRangeFieldName, newQuantum, newUseStreamingValuesForFBRead)
+    val newTSPartitioner = options.get(ReadConf.tsPartitionerName)
+    ReadConf(newFetchSize, newSplitCount, newTsTimestampBinding, newUseStreamingValuesForFBRead, newTSPartitioner)
   }
 }
 
@@ -74,8 +62,7 @@ object ReadConf {
   final val useStreamingValuesPropName = "spark.riak.fullbucket.use-streaming-values"
   final val fetchSizePropName = "spark.riak.input.fetch-size"
   final val tsBindingsTimestamp = "spark.riakts.bindings.timestamp"
-  final val tsRangeFieldPropName = "spark.riak.partitioning.ts-range-field-name"
-  final val tsQuantumPropName = "spark.riak.partitioning.ts-quantum"
+  final val tsPartitionerName = "spark.riak.ts.partitioner"
 
   private val defaultProperties: Properties =
      getClass.getResourceAsStream("/ee-default.properties") match {
@@ -108,9 +95,8 @@ object ReadConf {
       fetchSize = conf.getInt(fetchSizePropName, DefaultFetchSize),
       splitCount = conf.getInt(splitCountPropName, DefaultSplitCount),
       tsTimestampBinding = TsTimestampBindingType(conf.get(tsBindingsTimestamp, DefaultTsTimestampBinding.value)),
-      tsRangeFieldName = conf.get(tsRangeFieldPropName, null),
-      quantum = conf.getOption(tsQuantumPropName).map(JavaUtils.timeStringAsMs),
-      useStreamingValuesForFBRead = conf.getBoolean(useStreamingValuesPropName, DefaultUseStreamingValues4FBRead)
+      useStreamingValuesForFBRead = conf.getBoolean(useStreamingValuesPropName, DefaultUseStreamingValues4FBRead),
+      tsPartitioner = conf.getOption(tsPartitionerName)
     )
   }
 

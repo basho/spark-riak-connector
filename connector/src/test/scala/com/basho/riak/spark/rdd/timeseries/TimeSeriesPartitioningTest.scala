@@ -20,6 +20,7 @@
 package com.basho.riak.spark.rdd.timeseries
 
 import java.sql.Timestamp
+
 import org.apache.spark.sql.sources.EqualTo
 import org.apache.spark.sql.sources.Filter
 import org.apache.spark.sql.sources.GreaterThanOrEqual
@@ -27,6 +28,7 @@ import org.apache.spark.sql.sources.LessThan
 import org.junit.Test
 import com.basho.riak.spark.rdd.partitioner.RiakTSPartition
 import com.basho.riak.spark.toSparkContextFunctions
+import org.apache.spark.riak.types.RiakStructType
 import org.junit.Assert.assertEquals
 
 class TimeSeriesPartitioningTest extends AbstractTimeSeriesTest(createTestData = false) {
@@ -47,9 +49,8 @@ class TimeSeriesPartitioningTest extends AbstractTimeSeriesTest(createTestData =
   def withOptionTest(): Unit = {
     val df = sparkSession.read
       .option("spark.riak.input.split.count", partitionsCount.toString)
-      .option("spark.riak.partitioning.ts-range-field-name", tsRangeFieldName)
       .format("org.apache.spark.sql.riak")
-      .schema(schema)
+      .schema(RiakStructType(schema, tsRangeFieldName))
       .load(bucketName)
       .filter(s"time >=  CAST('$from' AS TIMESTAMP) AND time <= CAST('$to' AS TIMESTAMP)")
 
@@ -62,9 +63,8 @@ class TimeSeriesPartitioningTest extends AbstractTimeSeriesTest(createTestData =
     val (localFrom, localTo) = (new Timestamp(500L), new Timestamp(504L))
     val df = sparkSession.read
       .option("spark.riak.input.split.count", partitionsCount.toString)
-      .option("spark.riak.partitioning.ts-range-field-name", tsRangeFieldName)
       .format("org.apache.spark.sql.riak")
-      .schema(schema)
+      .schema(RiakStructType(schema, tsRangeFieldName))
       .load(bucketName)
       .filter(s"time >=  CAST('$localFrom' AS TIMESTAMP) AND time <= CAST('$localTo' AS TIMESTAMP)")
 
@@ -78,10 +78,8 @@ class TimeSeriesPartitioningTest extends AbstractTimeSeriesTest(createTestData =
     expectedException.expectMessage("requirement failed: Invalid range query")
     val df = sparkSession.read
       .option("spark.riak.input.split.count", partitionsCount.toString)
-      .option("spark.riak.partitioning.ts-range-field-name", tsRangeFieldName)
-      .option("spark.riak.partitioning.ts-quantum", "10s")
       .format("org.apache.spark.sql.riak")
-      .schema(schema)
+      .schema(RiakStructType(schema, 10000, tsRangeFieldName))
       .load(bucketName)
       .filter(s"time >=  CAST('$from' AS TIMESTAMP) AND time < CAST('$from' AS TIMESTAMP)")
 
@@ -92,10 +90,8 @@ class TimeSeriesPartitioningTest extends AbstractTimeSeriesTest(createTestData =
   def withOptionTestFromToTo(): Unit = {
     val df = sparkSession.read
       .option("spark.riak.input.split.count", partitionsCount.toString)
-      .option("spark.riak.partitioning.ts-range-field-name", tsRangeFieldName)
-      .option("spark.riak.partitioning.ts-quantum", "10s")
       .format("org.apache.spark.sql.riak")
-      .schema(schema)
+      .schema(RiakStructType(schema, 500, tsRangeFieldName))
       .load(bucketName)
       .filter(s"time >=  CAST('$from' AS TIMESTAMP) AND time <= CAST('$from' AS TIMESTAMP)")
 
@@ -116,9 +112,8 @@ class TimeSeriesPartitioningTest extends AbstractTimeSeriesTest(createTestData =
   def greaterThanToLessThanOrEqualTest(): Unit = {
     val df = sparkSession.read
       .option("spark.riak.input.split.count", partitionsCount.toString)
-      .option("spark.riak.partitioning.ts-range-field-name", tsRangeFieldName)
       .format("org.apache.spark.sql.riak")
-      .schema(schema)
+      .schema(RiakStructType(schema,tsRangeFieldName))
       .load(bucketName)
       .select("time", "user_id", "temperature_k")
       .filter(s"time >  CAST('$from' AS TIMESTAMP) AND time <= CAST('$to' AS TIMESTAMP)")
@@ -135,9 +130,8 @@ class TimeSeriesPartitioningTest extends AbstractTimeSeriesTest(createTestData =
   def lessThanToGreaterThanOrEqualTest(): Unit = {
     val df = sparkSession.read
       .option("spark.riak.input.split.count", partitionsCount.toString)
-      .option("spark.riak.partitioning.ts-range-field-name", tsRangeFieldName)
       .format("org.apache.spark.sql.riak")
-      .schema(schema)
+      .schema(RiakStructType(schema,tsRangeFieldName))
       .load(bucketName)
       .select("time", "user_id", "temperature_k")
       .filter(s"time >=  CAST('$from' AS TIMESTAMP) AND time < CAST('$to' AS TIMESTAMP)")
@@ -156,9 +150,8 @@ class TimeSeriesPartitioningTest extends AbstractTimeSeriesTest(createTestData =
     expectedException.expectMessage(s"No LessThanOrEqual or LessThan filers found for tsRangeFieldName $tsRangeFieldName")
     val df = sparkSession.read
       .option("spark.riak.input.split.count", partitionsCount.toString)
-      .option("spark.riak.partitioning.ts-range-field-name", tsRangeFieldName)
       .format("org.apache.spark.sql.riak")
-      .schema(schema)
+      .schema(RiakStructType(schema,tsRangeFieldName))
       .load(bucketName)
       .filter(s"time >=  CAST('$from' AS TIMESTAMP)")
     val partitions = df.rdd.partitions
@@ -170,9 +163,8 @@ class TimeSeriesPartitioningTest extends AbstractTimeSeriesTest(createTestData =
     expectedException.expectMessage(s"No GreaterThanOrEqual or GreaterThan filers found for tsRangeFieldName $tsRangeFieldName")
     val df = sparkSession.read
       .option("spark.riak.input.split.count", partitionsCount.toString)
-      .option("spark.riak.partitioning.ts-range-field-name", tsRangeFieldName)
       .format("org.apache.spark.sql.riak")
-      .schema(schema)
+      .schema(RiakStructType(schema,tsRangeFieldName))
       .load(bucketName)
       .filter(s"time <=  CAST('$to' AS TIMESTAMP)")
     val partitions = df.rdd.partitions
@@ -182,10 +174,8 @@ class TimeSeriesPartitioningTest extends AbstractTimeSeriesTest(createTestData =
   def withLessThanQuantaLimitTest(): Unit = {
     val df = sparkSession.read
       .option("spark.riak.input.split.count", partitionsCount.toString)
-      .option("spark.riak.partitioning.ts-range-field-name", tsRangeFieldName)
-      .option("spark.riak.partitioning.ts-quantum", "20d")
       .format("org.apache.spark.sql.riak")
-      .schema(schema)
+      .schema(RiakStructType(schema, 17280000000L, tsRangeFieldName))
       .load(bucketName)
       .filter(s"time >=  CAST('$from' AS TIMESTAMP) AND time <= CAST('$to' AS TIMESTAMP)")
 
@@ -200,10 +190,8 @@ class TimeSeriesPartitioningTest extends AbstractTimeSeriesTest(createTestData =
     val (localFrom, localTo) = (new Timestamp(1000000L), new Timestamp(3000000L))
     val df = sparkSession.read
       .option("spark.riak.input.split.count", partitionsCount.toString)
-      .option("spark.riak.partitioning.ts-range-field-name", tsRangeFieldName)
-      .option("spark.riak.partitioning.ts-quantum", "10s")
       .format("org.apache.spark.sql.riak")
-      .schema(schema)
+      .schema(RiakStructType(schema, 10000L, tsRangeFieldName))
       .load(bucketName)
       .filter(s"time >=  CAST('$localFrom' AS TIMESTAMP) AND time < CAST('$localTo' AS TIMESTAMP)")
 
@@ -219,9 +207,8 @@ class TimeSeriesPartitioningTest extends AbstractTimeSeriesTest(createTestData =
     expectedException.expectMessage(s"No filers found for tsRangeFieldName $tsRangeFieldName")
     val df = sparkSession.read
       .option("spark.riak.input.split.count", partitionsCount.toString)
-      .option("spark.riak.partitioning.ts-range-field-name", tsRangeFieldName)
       .format("org.apache.spark.sql.riak")
-      .schema(schema)
+      .schema(RiakStructType(schema, tsRangeFieldName))
       .load(bucketName)
       .filter(s"user_id = 'user1'")
     val partitions = df.rdd.partitions

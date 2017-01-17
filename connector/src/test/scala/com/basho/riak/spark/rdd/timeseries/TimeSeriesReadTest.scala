@@ -20,6 +20,7 @@ package com.basho.riak.spark.rdd.timeseries
 import com.basho.riak.spark.rdd.RiakTSTests
 import com.basho.riak.spark.toSparkContextFunctions
 import org.apache.spark.SparkException
+import org.apache.spark.riak.types.RiakStructType
 import org.apache.spark.sql.functions.udf
 import org.apache.spark.sql.types._
 import org.junit.Assert.assertEquals
@@ -166,7 +167,7 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest {
     val df = sparkSession.read
       .option("spark.riak.partitioning.ts-range-field-name", "time")
       .format("org.apache.spark.sql.riak")
-      .schema(newSchema)
+      .schema(RiakStructType(newSchema, "time"))
       .load(bucketName)
       .filter(s"time >= $queryFromMillis AND time <= $queryToMillis AND surrogate_key = 1 AND family = 'f'")
       .select($"time", $"family", $"surrogate_key", $"user_id", $"temperature_k")
@@ -193,19 +194,18 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest {
     expectedException.expect(classOf[SparkException])
     expectedException.expectMessage("Provided schema contains fields that are not returned by query: unknown_field")
 
-    val structType = StructType(List(
+    val structFields = List(
       StructField(name = "surrogate_key", dataType = LongType),
       StructField(name = "family", dataType = StringType),
       StructField(name = "time", dataType = LongType),
       StructField(name = "user_id", dataType = StringType),
       StructField(name = "temperature_k", dataType = DoubleType),
       StructField(name = "unknown_field", dataType = StringType))
-    )
 
     sparkSession.read
       .option("spark.riak.partitioning.ts-range-field-name", "time")
       .format("org.apache.spark.sql.riak")
-      .schema(structType)
+      .schema(RiakStructType(structFields, "time"))
       .load(bucketName)
       .filter(s"time >= $queryFromMillis AND time <= $queryToMillis AND surrogate_key = 1 AND family = 'f'")
       .select($"time", $"family", $"surrogate_key", $"user_id", $"temperature_k")
@@ -391,7 +391,6 @@ class TimeSeriesReadTest extends AbstractTimeSeriesTest {
     val df = sparkSession.read
       .format("org.apache.spark.sql.riak")
       .option("spark.riakts.bindings.timestamp", "useLong")
-      .option("spark.riak.partitioning.ts-range-field-name", "time")
       .load(bucketName)
 
     assertEquals(LongType, df.schema("time").dataType)

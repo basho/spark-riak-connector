@@ -28,14 +28,20 @@ import com.google.common.cache._
 
 import scala.collection.JavaConverters._
 import java.util.concurrent.{Executors, ScheduledThreadPoolExecutor, ThreadFactory, TimeUnit}
+import scala.collection.JavaConversions._
 
+import com.basho.riak.client.core.operations.ts.DescribeTableOperation
+import com.basho.riak.spark.rdd.TsTimestampBindingType
 import io.netty.bootstrap.Bootstrap
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.nio.NioSocketChannel
 import io.netty.util.concurrent.DefaultThreadFactory
 import org.apache.spark.riak.Logging
+import org.apache.spark.riak.types.RiakStructType
+import org.apache.spark.sql.types.StructType
 
 import scala.collection.concurrent.TrieMap
+import scala.util.Try
 
 /**
   * Simple [[RiakSession]] Cache/Pool.
@@ -265,6 +271,15 @@ class CachedSession(val conf: RiakConnectorConf, riakClient: RiakClient, afterCl
       case Seq(first: RiakNode, rest @ _*) => first.getMinConnections
       case _                               => throw new IllegalArgumentException("requirement failed: At least 1 node required to obtain minConnection info")
     }
+  }
+
+  override def getTableDefinition(name: String, bindingType: TsTimestampBindingType): StructType = {
+      val describeOp = new DescribeTableOperation.Builder(name).build()
+      val tableDef = Try(execute(describeOp).get()) getOrElse {
+        throw new IllegalStateException(s"No table $name was found")
+      }
+
+      RiakStructType(tableDef.getFullColumnDescriptions.toSeq, bindingType)
   }
 
   override def maxConnectionsPerNode: Int = {

@@ -103,7 +103,7 @@ case class QueryFullBucket(bucket: BucketDef,
     response.getEntries.toList match {
       case Nil if coverageEntriesIt.get.hasNext => nextChunk(None)
       case entries: List[FullBucketRead.Response.Entry] =>
-        val data = entries.map(e => e.getLocation -> e.getFetchedValue.getValue(classOf[RiakObject]))
+        val data = entries.map(e => e.getFetchedValue.getLocation -> e.getFetchedValue.getValue(classOf[RiakObject]))
         response.hasContinuation match {
           case true => Some(Left(response.getContinuation.toStringUtf8)) -> data
           case _ if coverageEntriesIt.get.hasNext => Some(Right(coverageEntriesIt.get.next)) -> data

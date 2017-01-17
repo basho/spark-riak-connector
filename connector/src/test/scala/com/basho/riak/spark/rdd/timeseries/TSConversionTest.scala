@@ -207,27 +207,6 @@ class TSConversionTest extends Logging {
   }
   
   @Test
-  def toColumnDefWithoutMetadataTest(): Unit = {
-    val field = StructField("field", LongType)
-    val colDescr = TSConversionUtil.asColumnDef(field)
-    assertEquals("field", colDescr.getName)
-    assertEquals(SINT64, colDescr.getType)
-    assertNull(colDescr.getLocalKeyOrdinal)
-    assertNull(colDescr.getPartitionKeyOrdinal)
-  }
-  
-  @Test
-  def toColumnDefWithMetadataTest(): Unit = {
-    val metadata = new MetadataBuilder().putLong(TSConversionUtil.localKeyOrdinalProp, 1).putLong(TSConversionUtil.partitionKeyOrdinalProp, 1).build()
-    val field = StructField("field", LongType, true, metadata)
-    val colDescr = TSConversionUtil.asColumnDef(field)
-    assertEquals("field", colDescr.getName)
-    assertEquals(SINT64, colDescr.getType)
-    assertEquals(1, colDescr.getLocalKeyOrdinal)
-    assertEquals(1, colDescr.getPartitionKeyOrdinal)
-  }
-  
-  @Test
   def nullableConversionTest(): Unit = {
     val millis = System.currentTimeMillis
     val date = new Date(millis)
