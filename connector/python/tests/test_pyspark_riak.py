@@ -4,7 +4,8 @@ import sys
 from operator import add
 import findspark
 findspark.init()
-from pyspark import SparkContext, SparkConf, SQLContext, Row
+from pyspark import SparkContext, SparkConf, Row
+from pyspark.sql import SparkSession
 import os, subprocess, json, riak, time
 import pyspark_riak
 import timeout_decorator
@@ -262,7 +263,7 @@ def make_ts_query(riak_ts_table_name, start, end):
 
 ###### Riak TS Test #######
 
-def _test_spark_df_ts_write_use_long(N, M, spark_context, riak_client, sql_context):
+def _test_spark_df_ts_write_use_long(N, M, spark_context, riak_client):
 
 	useLong=True
 	start, end, riak_ts_table_name, test_df, test_rdd, test_data, riak_ts_table = make_table_with_data(N, M, useLong, spark_context, riak_client)
@@ -272,7 +273,7 @@ def _test_spark_df_ts_write_use_long(N, M, spark_context, riak_client, sql_conte
 
 	assert sorted(result.rows, key=lambda x: x[2]) == sorted(test_rdd.collect(), key=lambda x: x[2])
 
-def _test_spark_df_ts_write_use_timestamp(N, M, spark_context, riak_client, sql_context):
+def _test_spark_df_ts_write_use_timestamp(N, M, spark_context, riak_client):
 
 	useLong=False
 	start_timestamp, end_timestamp, riak_ts_table_name, test_df, test_rdd, timestamp_data, long_data, start_long, end_long, riak_ts_table = make_table_with_data(N, M, useLong, spark_context, riak_client)
@@ -282,59 +283,59 @@ def _test_spark_df_ts_write_use_timestamp(N, M, spark_context, riak_client, sql_
 	result = riak_ts_table.query(query)
 	assert sorted(result.rows, key=lambda x: x[2]) == sorted(spark_context.parallelize(long_data).collect(), key=lambda x: x[2])
 
-def _test_spark_df_ts_read_use_long(N, M, spark_context, riak_client, sql_context):
+def _test_spark_df_ts_read_use_long(N, M, spark_sesion, spark_context, riak_client):
 
 	useLong=True
 	start, end, riak_ts_table_name, test_df, test_rdd, test_data, riak_ts_table = make_table_with_data(N, M, useLong, spark_context, riak_client)
 
 	temp_filter = make_filter(useLong, start, end)
 
-	result = sql_context.read.format("org.apache.spark.sql.riak").option("spark.riakts.bindings.timestamp", "useLong").load(riak_ts_table_name).filter(temp_filter)
+	result = spark_sesion.read.format("org.apache.spark.sql.riak").option("spark.riakts.bindings.timestamp", "useLong").load(riak_ts_table_name).filter(temp_filter)
 
 	assert sorted(result.collect(), key=lambda x: x[2]) == sorted(test_df.collect(), key=lambda x: x[2])
 
-def _test_spark_df_ts_read_use_long_ts_quantum(N, M, spark_context, riak_client, sql_context):
+def _test_spark_df_ts_read_use_long_ts_quantum(N, M, spark_session, spark_context, riak_client):
 
 	useLong=True
 	start, end, riak_ts_table_name, test_df, test_rdd, test_data, riak_ts_table = make_table_with_data(N, M, useLong, spark_context, riak_client)
 	temp_filter = make_filter(useLong, start, end)
 
-	result = sql_context.read.format("org.apache.spark.sql.riak") \
+	result = spark_session.read.format("org.apache.spark.sql.riak") \
 	.option("spark.riakts.bindings.timestamp", "useLong") \
 	.option("spark.riak.partitioning.ts-quantum", "24h") \
 	.load(riak_ts_table_name).filter(temp_filter)
 
 	assert sorted(result.collect(), key=lambda x: x[2]) == sorted(test_df.collect(), key=lambda x: x[2])
 
-def _test_spark_df_ts_read_use_timestamp(N, M, spark_context, riak_client, sql_context):
+def _test_spark_df_ts_read_use_timestamp(N, M, spark_session, spark_context, riak_client):
 
 	useLong=False
 	start_timestamp, end_timestamp, riak_ts_table_name, test_df, test_rdd, timestamp_data, long_data, start_long, end_long, riak_ts_table = make_table_with_data(N, M, useLong, spark_context, riak_client)
 	temp_filter = make_filter(useLong, unix_time_seconds(start_timestamp), unix_time_seconds(end_timestamp))
 
-	result = sql_context.read.format("org.apache.spark.sql.riak").option("spark.riakts.bindings.timestamp", "useTimestamp").load(riak_ts_table_name).filter(temp_filter)
+	result = spark_session.read.format("org.apache.spark.sql.riak").option("spark.riakts.bindings.timestamp", "useTimestamp").load(riak_ts_table_name).filter(temp_filter)
 
 	assert sorted(result.collect(), key=lambda x: x[2]) == sorted(test_df.collect(), key=lambda x: x[2])
 
-def _test_spark_df_ts_read_use_timestamp_ts_quantum(N, M, spark_context, riak_client, sql_context):
+def _test_spark_df_ts_read_use_timestamp_ts_quantum(N, M, spark_session, spark_context, riak_client):
 
 	useLong=False
 	start_timestamp, end_timestamp, riak_ts_table_name, test_df, test_rdd, timestamp_data, long_data, start_long, end_long, riak_ts_table = make_table_with_data(N, M, useLong, spark_context, riak_client)
 
 	temp_filter = make_filter(useLong, unix_time_seconds(start_timestamp), unix_time_seconds(end_timestamp))
 
-	result = sql_context.read.format("org.apache.spark.sql.riak").option("spark.riakts.bindings.timestamp", "useTimestamp").option("spark.riak.partitioning.ts-quantum", "24h").load(riak_ts_table_name).filter(temp_filter)
+	result = spark_session.read.format("org.apache.spark.sql.riak").option("spark.riakts.bindings.timestamp", "useTimestamp").option("spark.riak.partitioning.ts-quantum", "24h").load(riak_ts_table_name).filter(temp_filter)
 
 	assert sorted(result.collect(), key=lambda x: x[2]) == sorted(test_df.collect(), key=lambda x: x[2])
 
-def _test_spark_df_ts_range_query_input_split_count_use_long(N, M, S,spark_context, riak_client, sql_context):
+def _test_spark_df_ts_range_query_input_split_count_use_long(N, M, S, spark_session, spark_context, riak_client):
 
 	useLong=True
 	start, end, riak_ts_table_name, test_df, test_rdd, test_data, riak_ts_table = make_table_with_data(N, M, useLong, spark_context, riak_client)
 	time.sleep(1)
 	temp_filter = make_filter(useLong, start, end)
 
-	result = sql_context.read.format("org.apache.spark.sql.riak") \
+	result = spark_session.read.format("org.apache.spark.sql.riak") \
 						.option("spark.riakts.bindings.timestamp", "useLong") \
 						.option("spark.riak.input.split.count", str(S)) \
 						.option("spark.riak.partitioning.ts-range-field-name", "datetime") \
@@ -344,13 +345,13 @@ def _test_spark_df_ts_range_query_input_split_count_use_long(N, M, S,spark_conte
 	assert sorted(result.collect(), key=lambda x: x[2]) ==  sorted(test_df.collect(), key=lambda x: x[2])
 	assert result.rdd.getNumPartitions() ==  S
 
-def _test_spark_df_ts_range_query_input_split_count_use_long_ts_quantum(N, M, S,spark_context, riak_client, sql_context):
+def _test_spark_df_ts_range_query_input_split_count_use_long_ts_quantum(N, M, S, spark_session, spark_context, riak_client):
 
 	useLong=True
 	start, end, riak_ts_table_name, test_df, test_rdd, test_data, riak_ts_table = make_table_with_data(N, M, useLong, spark_context, riak_client)
 	temp_filter = make_filter(useLong, start, end)
 
-	result = sql_context.read.format("org.apache.spark.sql.riak") \
+	result = spark_session.read.format("org.apache.spark.sql.riak") \
 	.option("spark.riakts.bindings.timestamp", "useLong") \
 	.option("spark.riak.partitioning.ts-quantum", "24h") \
 	.option("spark.riak.input.split.count", str(S)) \
@@ -360,13 +361,13 @@ def _test_spark_df_ts_range_query_input_split_count_use_long_ts_quantum(N, M, S,
 	assert sorted(result.collect(), key=lambda x: x[2]) ==  sorted(test_df.collect(), key=lambda x: x[2])
 	assert result.rdd.getNumPartitions() ==  S
 
-def _test_spark_df_ts_range_query_input_split_count_use_timestamp(N, M, S,spark_context, riak_client, sql_context):
+def _test_spark_df_ts_range_query_input_split_count_use_timestamp(N, M, S, spark_session, spark_context, riak_client):
 
 	useLong=False
 	start_timestamp, end_timestamp, riak_ts_table_name, test_df, test_rdd, timestamp_data, long_data, start_long, end_long, riak_ts_table = make_table_with_data(N, M, useLong, spark_context, riak_client)
 
 	temp_filter = make_filter(useLong, unix_time_seconds(start_timestamp), unix_time_seconds(end_timestamp))
-	result = sql_context.read.format("org.apache.spark.sql.riak") \
+	result = spark_session.read.format("org.apache.spark.sql.riak") \
 	.option("spark.riakts.bindings.timestamp", "useTimestamp") \
 	.option("spark.riak.input.split.count", str(S)) \
 	.option("spark.riak.partitioning.ts-range-field-name", "datetime") \
@@ -375,12 +376,12 @@ def _test_spark_df_ts_range_query_input_split_count_use_timestamp(N, M, S,spark_
 	assert sorted(result.collect(), key=lambda x: x[2]) ==  sorted(test_df.collect(), key=lambda x: x[2])
 	assert result.rdd.getNumPartitions() ==  S
 
-def _test_spark_df_ts_range_query_input_split_count_use_timestamp_ts_quantum(N, M, S,spark_context, riak_client, sql_context):
+def _test_spark_df_ts_range_query_input_split_count_use_timestamp_ts_quantum(N, M, S, spark_session, spark_context, riak_client):
 
 	useLong=False
 	start_timestamp, end_timestamp, riak_ts_table_name, test_df, test_rdd, timestamp_data, long_data, start_long, end_long, riak_ts_table = make_table_with_data(N, M, useLong, spark_context, riak_client)
 	temp_filter = make_filter(useLong, unix_time_seconds(start_timestamp), unix_time_seconds(end_timestamp))
-	result = sql_context.read.format("org.apache.spark.sql.riak") \
+	result = spark_session.read.format("org.apache.spark.sql.riak") \
 	.option("spark.riakts.bindings.timestamp", "useTimestamp") \
 	.option("spark.riak.partitioning.ts-quantum", "24h") \
 	.option("spark.riak.input.split.count", str(S)) \
@@ -392,7 +393,7 @@ def _test_spark_df_ts_range_query_input_split_count_use_timestamp_ts_quantum(N, 
 
 ###### Riak KV Tests ######
 
-def _test_spark_rdd_write_kv(N, spark_context, riak_client, sql_context):
+def _test_spark_rdd_write_kv(N, spark_context, riak_client):
 
 	test_bucket_name = "test-bucket-"+str(randint(0,100000))
 
@@ -404,7 +405,7 @@ def _test_spark_rdd_write_kv(N, spark_context, riak_client, sql_context):
 
 	assert sorted(source_data) == sorted(test_data)
 
-def _test_spark_rdd_kv_read_query_all(N, spark_context, riak_client, sql_context):
+def _test_spark_rdd_kv_read_query_all(N, spark_context, riak_client):
 
 	test_bucket_name = "test-bucket-"+str(randint(0,100000))
 
@@ -416,7 +417,7 @@ def _test_spark_rdd_kv_read_query_all(N, spark_context, riak_client, sql_context
 
 	assert sorted(result.collect(), key=lambda x: x[0]) == sorted(test_data, key=lambda x: x[0])
 
-def _test_spark_rdd_kv_read_query_bucket_keys(N, spark_context, riak_client, sql_context):
+def _test_spark_rdd_kv_read_query_bucket_keys(N, spark_context, riak_client):
 
 	test_bucket_name = "test-bucket-"+str(randint(0,100000))
 
@@ -432,7 +433,7 @@ def _test_spark_rdd_kv_read_query_bucket_keys(N, spark_context, riak_client, sql
 
 	assert sorted(result.collect(), key=lambda x: x[0]) == sorted([], key=lambda x: x[0])
 
-def _test_spark_rdd_kv_read_query_2i_keys(N, spark_context, riak_client, sql_context):
+def _test_spark_rdd_kv_read_query_2i_keys(N, spark_context, riak_client):
 
 	test_bucket_name = "test-bucket-"+str(randint(0,100000))
 
@@ -446,7 +447,7 @@ def _test_spark_rdd_kv_read_query_2i_keys(N, spark_context, riak_client, sql_con
 
 	assert sorted(result.collect(), key=lambda x: x[0]) == sorted(test_data, key=lambda x: x[0])
 
-def _test_spark_rdd_kv_read_query2iRange(N, spark_context, riak_client, sql_context):
+def _test_spark_rdd_kv_read_query2iRange(N, spark_context, riak_client):
 
 	test_bucket_name = "test-bucket-"+str(randint(0,100000))
 
@@ -460,7 +461,7 @@ def _test_spark_rdd_kv_read_query2iRange(N, spark_context, riak_client, sql_cont
 
 	assert sorted(result.collect(), key=lambda x: x[0]) == sorted([], key=lambda x: x[0])
 
-def _test_spark_rdd_kv_read_partition_by_2i_range(N, spark_context, riak_client, sql_context):
+def _test_spark_rdd_kv_read_partition_by_2i_range(N, spark_context, riak_client):
 
 	test_bucket_name = "test-bucket-"+str(randint(0,100000))
 
@@ -478,7 +479,7 @@ def _test_spark_rdd_kv_read_partition_by_2i_range(N, spark_context, riak_client,
 
 	assert result.getNumPartitions() == N
 
-def _test_spark_rdd_kv_read_partition_by_2i_keys(N, spark_context, riak_client, sql_context):
+def _test_spark_rdd_kv_read_partition_by_2i_keys(N, spark_context, riak_client):
 
 	test_bucket_name = "test-bucket-"+str(randint(0,100000))
 
@@ -506,32 +507,32 @@ def _test_spark_rdd_kv_read_partition_by_2i_keys(N, spark_context, riak_client, 
 ###### KV Tests #######
 
 @pytest.mark.riakkv
-def test_kv_write(spark_context, riak_client, sql_context):
-	_test_spark_rdd_write_kv(10, spark_context, riak_client, sql_context)
+def test_kv_write(spark_context, riak_client):
+	_test_spark_rdd_write_kv(10, spark_context, riak_client)
 
 @pytest.mark.riakkv
-def test_kv_query_all(spark_context, riak_client, sql_context):
-	_test_spark_rdd_kv_read_query_all(10, spark_context, riak_client, sql_context)
+def test_kv_query_all(spark_context, riak_client):
+	_test_spark_rdd_kv_read_query_all(10, spark_context, riak_client)
 
 @pytest.mark.riakkv
-def test_kv_query_bucket_keys(spark_context, riak_client, sql_context):
-	_test_spark_rdd_kv_read_query_bucket_keys(10, spark_context, riak_client, sql_context)
+def test_kv_query_bucket_keys(spark_context, riak_client):
+	_test_spark_rdd_kv_read_query_bucket_keys(10, spark_context, riak_client)
 
 @pytest.mark.riakkv
-def test_kv_query_2i_keys(spark_context, riak_client, sql_context):
-	_test_spark_rdd_kv_read_query_2i_keys(10, spark_context, riak_client, sql_context)
+def test_kv_query_2i_keys(spark_context, riak_client):
+	_test_spark_rdd_kv_read_query_2i_keys(10, spark_context, riak_client)
 
 @pytest.mark.riakkv
-def test_kv_query_2i_range(spark_context, riak_client, sql_context):
-	_test_spark_rdd_kv_read_query2iRange(10, spark_context, riak_client, sql_context)
+def test_kv_query_2i_range(spark_context, riak_client):
+	_test_spark_rdd_kv_read_query2iRange(10, spark_context, riak_client)
 
 @pytest.mark.riakkv
-def test_kv_query_partition_by_2i_range(spark_context, riak_client, sql_context):
-	_test_spark_rdd_kv_read_partition_by_2i_range(10, spark_context, riak_client, sql_context)
+def test_kv_query_partition_by_2i_range(spark_context, riak_client):
+	_test_spark_rdd_kv_read_partition_by_2i_range(10, spark_context, riak_client)
 
 @pytest.mark.riakkv
-def test_kv_query_partition_by_2i_keys(spark_context, riak_client, sql_context):
-	_test_spark_rdd_kv_read_partition_by_2i_keys(10, spark_context, riak_client, sql_context)
+def test_kv_query_partition_by_2i_keys(spark_context, riak_client):
+	_test_spark_rdd_kv_read_partition_by_2i_keys(10, spark_context, riak_client)
 
 #
 # if object values are JSON objects with more than 4 keys exception happens
@@ -607,41 +608,41 @@ def test_read_JSON_value_with_an_empty_map (spark_context, riak_client):
 ###### TS Tests #######
 
 @pytest.mark.riakts
-def test_ts_df_write_use_timestamp(spark_context, riak_client, sql_context):
-	_test_spark_df_ts_write_use_timestamp(10, 5, spark_context, riak_client, sql_context)
+def test_ts_df_write_use_timestamp(spark_session, spark_context, riak_client):
+	_test_spark_df_ts_write_use_timestamp(10, 5, spark_context, riak_client)
 
 @pytest.mark.riakts
-def test_ts_df_write_use_long(spark_context, riak_client, sql_context):
-	_test_spark_df_ts_write_use_long(10, 5, spark_context, riak_client, sql_context)
+def test_ts_df_write_use_long(spark_context, riak_client):
+	_test_spark_df_ts_write_use_long(10, 5, spark_context, riak_client)
 
 @pytest.mark.riakts
-def test_ts_df_read_use_timestamp(spark_context, riak_client, sql_context):
-	_test_spark_df_ts_read_use_timestamp(10, 5, spark_context, riak_client, sql_context)
+def test_ts_df_read_use_timestamp(spark_session, spark_context, riak_client):
+	_test_spark_df_ts_read_use_timestamp(10, 5, spark_session, spark_context, riak_client)
 
 @pytest.mark.riakts
-def test_ts_df_read_use_long(spark_context, riak_client, sql_context):
-	_test_spark_df_ts_read_use_long(10, 5, spark_context, riak_client, sql_context)
+def test_ts_df_read_use_long(spark_session, spark_context, riak_client):
+	_test_spark_df_ts_read_use_long(10, 5, spark_session, spark_context, riak_client)
 
 @pytest.mark.riakts
-def test_ts_df_read_use_timestamp_ts_quantum(spark_context, riak_client, sql_context):
-	_test_spark_df_ts_read_use_timestamp_ts_quantum(10, 5, spark_context, riak_client, sql_context)
+def test_ts_df_read_use_timestamp_ts_quantum(spark_session, spark_context, riak_client):
+	_test_spark_df_ts_read_use_timestamp_ts_quantum(10, 5, spark_session, spark_context, riak_client)
 
 @pytest.mark.riakts
-def test_ts_df_read_use_long_ts_quantum(spark_context, riak_client, sql_context):
-	_test_spark_df_ts_read_use_long_ts_quantum(10, 5, spark_context, riak_client, sql_context)
+def test_ts_df_read_use_long_ts_quantum(spark_session, spark_context, riak_client):
+	_test_spark_df_ts_read_use_long_ts_quantum(10, 5, spark_session, spark_context, riak_client)
 
 @pytest.mark.riakts
-def test_ts_df_range_query_input_split_count_use_timestamp(spark_context, riak_client, sql_context):
-	_test_spark_df_ts_range_query_input_split_count_use_timestamp(10, 5, 3, spark_context, riak_client, sql_context)
+def test_ts_df_range_query_input_split_count_use_timestamp(spark_session, spark_context, riak_client):
+	_test_spark_df_ts_range_query_input_split_count_use_timestamp(10, 5, 3, spark_session, spark_context, riak_client)
 
 @pytest.mark.riakts
-def test_ts_df_range_query_input_split_count_use_long(spark_context, riak_client, sql_context):
-	_test_spark_df_ts_range_query_input_split_count_use_long(10, 5, 3, spark_context, riak_client, sql_context)
+def test_ts_df_range_query_input_split_count_use_long(spark_session, spark_context, riak_client):
+	_test_spark_df_ts_range_query_input_split_count_use_long(10, 5, 3, spark_session, spark_context, riak_client)
 
 @pytest.mark.riakts
-def test_ts_df_range_query_input_split_count_use_timestamp_ts_quantum(spark_context, riak_client, sql_context):
-	_test_spark_df_ts_range_query_input_split_count_use_timestamp_ts_quantum(10, 5, 3, spark_context, riak_client, sql_context)
+def test_ts_df_range_query_input_split_count_use_timestamp_ts_quantum(spark_session, spark_context, riak_client):
+	_test_spark_df_ts_range_query_input_split_count_use_timestamp_ts_quantum(10, 5, 3, spark_session, spark_context, riak_client)
 
 @pytest.mark.riakts
-def test_ts_df_range_query_input_split_count_use_long_ts_quantum(spark_context, riak_client, sql_context):
-	_test_spark_df_ts_range_query_input_split_count_use_long_ts_quantum(10, 5, 3, spark_context, riak_client, sql_context)
+def test_ts_df_range_query_input_split_count_use_long_ts_quantum(spark_session, spark_context, riak_client):
+	_test_spark_df_ts_range_query_input_split_count_use_long_ts_quantum(10, 5, 3, spark_session, spark_context, riak_client)

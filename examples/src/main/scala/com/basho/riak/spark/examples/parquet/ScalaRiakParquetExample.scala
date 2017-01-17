@@ -16,8 +16,8 @@
   * under the License.
   */
 package com.basho.riak.spark.examples.parquet
-import org.apache.spark.sql.{SaveMode, SQLContext}
-import org.apache.spark.{SparkContext, SparkConf}
+import org.apache.spark.sql.{SaveMode, SparkSession}
+import org.apache.spark.SparkConf
 
 /**
   * Simple demo which illustrates how data can be extracted from Riak TS and saved as a parquet file
@@ -60,37 +60,37 @@ object ScalaRiakParquetExample {
     setSparkOpt(sparkConf, "spark.riak.connection.host", "127.0.0.1:8087")
     println(s"Test data start time: $startDate")
 
-    val sc = new SparkContext(sparkConf)
-    val sqlCtx = SQLContext.getOrCreate(sc)
+    val sparkSession = SparkSession.builder().config(sparkConf).getOrCreate()
+    val sc = sparkSession.sparkContext
 
-    import sqlCtx.implicits._
+
+    import sparkSession.implicits._
 
     val rdd = sc.parallelize(testData)
     rdd.toDF().write.format("org.apache.spark.sql.riak")
       .mode(SaveMode.Append).save(tableName)
 
-    val df = sqlCtx.read.format("org.apache.spark.sql.riak")
-      .load(tableName).registerTempTable(tableName)
+    val df = sparkSession.read.format("org.apache.spark.sql.riak")
+      .load(tableName).createOrReplaceTempView(tableName)
 
     val from = (startDate / 1000).toInt
     val query = s"select * from $tableName where measurementDate >= CAST($from AS TIMESTAMP) " +
       s"AND measurementDate <= CAST(${from + 1} AS TIMESTAMP) AND site = 'MY7' AND species = 'PM10'"
 
     println(s"Query: $query")
-    val rows = sqlCtx.sql(query)
+    val rows = sparkSession.sql(query)
     rows.show()
     val schema = rows.schema
 
     rows.write.mode("overwrite").parquet(parquetFileName)
     println(s"Data was successfully saved to Parquet file: $parquetFileName")
 
-    val parquetFile = sqlCtx.read.parquet(parquetFileName)
-    parquetFile.registerTempTable("parquetFile")
-    val data = sqlCtx.sql("SELECT MAX(value) max_value FROM parquetFile ")
+    val parquetFile = sparkSession.read.parquet(parquetFileName)
+    parquetFile.createTempView("parquetFile")
+    val data = sparkSession.sql("SELECT MAX(value) max_value FROM parquetFile ")
 
     println("Maximum value retrieved from Parquet file:")
     data.show()
-
   }
 
   private def setSparkOpt(sparkConf: SparkConf, option: String, defaultOptVal: String): SparkConf = {

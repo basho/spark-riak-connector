@@ -32,14 +32,7 @@ import java.util.stream.StreamSupport;
 
 public abstract class AbstractJavaSparkTest extends AbstractRiakSparkTest {
     // JavaSparkContext, created per test case
-    protected JavaSparkContext jsc = null;
-
-    @Override
-    public SparkContext createSparkContext(SparkConf conf) {
-        final SparkContext sc = new SparkContext(conf);
-        jsc = new JavaSparkContext(sc);
-        return sc;
-    }
+    protected JavaSparkContext jsc = new JavaSparkContext(sparkSession().sparkContext());
 
     protected static class FuncReMapWithPartitionIdx<T> implements Function2<Integer, Iterator<T>, Iterator<Tuple2<Integer, T>>> {
         @Override

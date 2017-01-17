@@ -1,6 +1,7 @@
 package com.basho.riak.spark.run
 
 import org.apache.spark._
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.rdd._
 
 object LongJobApp {
@@ -39,7 +40,8 @@ object LongJobApp {
 
     val conf = new SparkConf().setAppName(APP_NAME)
       .setMaster(options.getOrElse('master, SPARK_URL).asInstanceOf[String])
-    val sc = new SparkContext(conf)
+    val sparkSession = SparkSession.builder().config(conf).getOrCreate()
+    val sc = sparkSession.sparkContext
 
     val count = sc.parallelize(1 to options.getOrElse('samples, NUM_SAMPLES).asInstanceOf[Int],
       options.getOrElse('partitions, PARTITIONS).asInstanceOf[Int])

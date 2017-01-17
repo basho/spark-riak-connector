@@ -31,6 +31,7 @@ import scala.reflect.ClassTag
 import com.basho.riak.spark.rdd.AbstractRiakSparkTest._
 import com.basho.riak.spark.rdd.mapper.ReadValueDataMapper
 import org.apache.spark.SparkConf
+import org.apache.spark.sql.SparkSession
 import org.junit.ClassRule
 
 import scala.collection.JavaConversions._
@@ -38,6 +39,7 @@ import scala.collection.JavaConversions._
 
 abstract class AbstractRiakSparkTest extends AbstractRiakTest {
   // SparkContext, created per test case
+  protected val sparkSession: SparkSession = createSparkSession(initSparkConf())
   protected var sc: SparkContext = _
 
   protected override def riakHosts: Set[HostAndPort] =  HostAndPort.hostsFromString(
@@ -55,10 +57,10 @@ abstract class AbstractRiakSparkTest extends AbstractRiakTest {
 
   override def initialize(): Unit = {
     super.initialize()
-    sc = createSparkContext(initSparkConf())
+    sc = sparkSession.sparkContext
   }
 
-  protected def createSparkContext(conf: SparkConf): SparkContext = new SparkContext(conf)
+  protected def createSparkSession(conf: SparkConf): SparkSession = SparkSession.builder().config(conf).getOrCreate()
 
   @After
   def destroySparkContext(): Unit = Option(sc).foreach(x => x.stop())

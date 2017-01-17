@@ -19,8 +19,9 @@ package com.basho.riak.spark.examples
 
 import com.basho.riak.client.core.query.Namespace
 import com.basho.riak.spark.rdd.RiakFunctions
-import org.apache.spark.{SparkContext, SparkConf}
+import org.apache.spark.{SparkConf, SparkContext}
 import com.basho.riak.spark._
+import org.apache.spark.sql.SparkSession
 
 /**
  * Really simple demo program which calculates the number of records loaded
@@ -52,7 +53,8 @@ object SimpleScalaRiakExample {
     println(s"Writing test data to Riak: \n $TEST_DATA")
 
     createTestData(sparkConf)
-    val sc = new SparkContext(sparkConf)
+    val sparkSession = SparkSession.builder().config(sparkConf).getOrCreate()
+    val sc = sparkSession.sparkContext
     val rdd = sc.riakBucket("test-data")
       .queryAll()
 

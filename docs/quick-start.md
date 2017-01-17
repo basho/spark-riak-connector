@@ -185,10 +185,10 @@ import java.sql.Timestamp
 import com.basho.riak.spark.rdd.connector.RiakConnector
 ```
 
-Then, set up implicits for Spark sqlContext:
+Then, set up implicits for Spark:
 
 ```scala
-import sqlContext.implicits._
+import sparkSession.implicits._
 ```
 
 ###### Create an RDD with some timeseries data:
@@ -243,7 +243,7 @@ And, finally, check that the table was successfully written into the Riak TS tab
 
 val test_query = "ts >= CAST('1980-1-1 10:00:00' AS TIMESTAMP) AND ts <= CAST('1980-1-1 10:30:00' AS TIMESTAMP) AND k = 1 AND family = 'f'"
 
-val df2 = sqlContext.read.format("org.apache.spark.sql.riak").load(tableName).filter(test_query)
+val df2 = sparkSession.read.format("org.apache.spark.sql.riak").load(tableName).filter(test_query)
 
 df2.show()
 ```
@@ -446,8 +446,7 @@ df.write \
 Lets check that the write was successful by reading the TS table into a new DataFrame:
 
 ```python
-sqlContext = SQLContext(sc)
-df2 = sqlContext.read\
+df2 = sparkSession.read\
     .format("org.apache.spark.sql.riak")\
     .option("spark.riak.connection.host", hostAndPort)\
     .option("spark.riakts.bindings.timestamp", "useLong")\
@@ -500,8 +499,8 @@ You should see something like this:
 ###### Register the DataFrame as a temp sql table and run a sql query to obtain the average of the "value" column:
 
  ```python
-df2.registerTempTable("pyspark_tmp")
-sqlContext.sql("select avg(value) as average_value from pyspark_tmp").show()
+df2.createOrReplaceTempView("pyspark_tmp")
+sparkSession.sql("select avg(value) as average_value from pyspark_tmp").show()
  ```
 
 You should see something similar to this:

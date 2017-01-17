@@ -36,7 +36,7 @@ case class ReadConf (
   /**
    * Used only in ranged partitioner to identify quantized field.
    * Usage example:
-   *    sqlContext.read
+   *    sparkSession.read
    *      .option("spark.riak.partitioning.ts-range-field-name", "time")
    * Providing this property automatically turns on RangedRiakTSPartitioner
    */

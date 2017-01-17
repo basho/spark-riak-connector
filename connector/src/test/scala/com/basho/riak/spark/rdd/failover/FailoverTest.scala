@@ -18,25 +18,28 @@ class FailoverTest extends AbstractRiakSparkTest {
   private val NUMBER_OF_TEST_VALUES = 1000
   private val STUBS_AMOUNT = 1
 
-  private var stubNodes: Seq[RiakNodeStub] = Seq()
+  private var stubNodes: Seq[RiakNodeStub] = _
 
   protected override val jsonData = Some(asStrictJSON((1 to NUMBER_OF_TEST_VALUES)
     .map(i => Map("key" -> s"k$i", "value" -> s"v$i", "indexes" -> Map("creationNo" -> i))))) // scalastyle:ignore
 
   // Configure Spark using proxied hosts
-  override protected def initSparkConf(): SparkConf = super.initSparkConf()
-    .set("spark.riak.connection.host", riakHosts.map {
-      case hp: HostAndPort if stubNodes.length < STUBS_AMOUNT =>
-        val stub = RiakNodeStub(new ProxyMessageHandler(hp) {
-          override def onRespond(input: RiakMessage, output: Iterable[RiakMessage]): Unit = input.getCode match {
-            case MSG_CoverageReq => stubNodes.head.stop() // stop proxy node after coverage plan sent to client
-            case _ => super.onRespond(input, output)
-          }
-        })
-        stubNodes = stubNodes :+ stub
-        stub.start()
-      case hp: HostAndPort => hp
-    }.map(hp => s"${hp.getHost}:${hp.getPort}").mkString(","))
+  override protected def initSparkConf(): SparkConf = {
+    stubNodes = Seq()
+    super.initSparkConf()
+      .set("spark.riak.connection.host", riakHosts.map {
+        case hp: HostAndPort if stubNodes.length < STUBS_AMOUNT =>
+          val stub = RiakNodeStub(new ProxyMessageHandler(hp) {
+            override def onRespond(input: RiakMessage, output: Iterable[RiakMessage]): Unit = input.getCode match {
+              case MSG_CoverageReq => stubNodes.head.stop() // stop proxy node after coverage plan sent to client
+              case _ => super.onRespond(input, output)
+            }
+          })
+          stubNodes = stubNodes :+ stub
+          stub.start()
+        case hp: HostAndPort => hp
+      }.map(hp => s"${hp.getHost}:${hp.getPort}").mkString(","))
+  }
 
   @After
   override def destroySparkContext(): Unit = {

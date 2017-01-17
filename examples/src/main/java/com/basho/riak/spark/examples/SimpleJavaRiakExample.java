@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.sql.SparkSession;
 
 import java.io.IOException;
 import java.io.Serializable;

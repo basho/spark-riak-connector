@@ -71,8 +71,6 @@ public class TimeSeriesJavaWriteTest extends AbstractJavaTimeSeriesTest {
 
     @Test
     public void saveDataFrameWithSchemaToRiak() {
-        SQLContext sqlContext = new SQLContext(jsc);
-
         JavaRDD<String> jsonRdd = jsc.parallelize(asList(
                 "{\"surrogate_key\": 1, \"family\": \"f\", \"time\": 111111, \"user_id\": \"bryce\", \"temperature_k\": 305.37}",
                 "{\"surrogate_key\": 1, \"family\": \"f\", \"time\": 111222, \"user_id\": \"bryce\", \"temperature_k\": 300.12}",
@@ -81,7 +79,7 @@ public class TimeSeriesJavaWriteTest extends AbstractJavaTimeSeriesTest {
                 "{\"surrogate_key\": 1, \"family\": \"f\", \"time\": 111555, \"user_id\": \"ratman\", \"temperature_k\": 3502.212}"
         ));
 
-        Dataset<Row> df = sqlContext.read().schema(StructType$.MODULE$.apply(asScalaBuffer(asList(
+        Dataset<Row> df = sparkSession().read().schema(StructType$.MODULE$.apply(asScalaBuffer(asList(
                 DataTypes.createStructField("surrogate_key", DataTypes.IntegerType, true),
                 DataTypes.createStructField("family", DataTypes.StringType, true),
                 DataTypes.createStructField("time", DataTypes.LongType, true),

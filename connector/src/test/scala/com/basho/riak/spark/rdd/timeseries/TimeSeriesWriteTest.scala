@@ -23,9 +23,10 @@ import com.basho.riak.spark.writer.WriteDataMapperFactory._
 import org.apache.spark.SparkException
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{DataFrame, Row, SQLContext, SaveMode}
+import org.apache.spark.sql._
+import org.apache.spark.sql.functions.udf
 import org.junit.Assert._
-import org.junit.{Ignore, Test}
+import org.junit.Test
 import org.junit.experimental.categories.Category
 import com.basho.riak.spark.util.TSConversionUtil
 
@@ -34,6 +35,7 @@ import com.basho.riak.spark.util.TSConversionUtil
   */
 @Category(Array(classOf[RiakTSTests]))
 class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) {
+  import sparkSession.implicits._
 
   @Test
   def saveSqlRowsToRiak(): Unit = {
@@ -80,8 +82,7 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) {
 
   @Test
   def saveDataFrameWithSchemaToRiak(): Unit = {
-    val sqlContext = new SQLContext(sc)
-    val sourceDF = getSourceDF(sqlContext)
+    val sourceDF = getSourceDF(sparkSession)
     sourceDF.rdd.saveToRiakTS(DEFAULT_TS_NAMESPACE.getBucketTypeAsString)
 
     // -- verification
@@ -104,14 +105,9 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) {
 
   @Test
   def dataFrameGenericSave(): Unit = {
-    val sqlContext = new SQLContext(sc)
-
-    import org.apache.spark.sql.functions.udf
-    import sqlContext.implicits._
-
     val udfGetMillis = udf(getMillis)
 
-    val sourceDF =  getSourceDF(sqlContext)
+    val sourceDF =  getSourceDF(sparkSession)
 
     sourceDF.write
       .format("org.apache.spark.sql.riak")
@@ -119,7 +115,7 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) {
       .save(bucketName)
 
     // -- verification
-    val df = sqlContext.read
+    val df = sparkSession.read
       .format("org.apache.spark.sql.riak")
       .schema(schema)
       .load(bucketName)
@@ -143,14 +139,10 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) {
 
   @Test
   def dataFrameWriteWithTimeFieldAsLongShouldPass(): Unit = {
-    val sqlContext = new SQLContext(sc)
-
     import org.apache.spark.sql.functions.udf
-    import sqlContext.implicits._
-
     val udfGetMillis = udf(getMillis)
 
-    val sourceDF = getSourceDF(sqlContext, StructType(List(
+    val sourceDF = getSourceDF(sparkSession, StructType(List(
       StructField(name = "surrogate_key", dataType = LongType),
       StructField(name = "family", dataType = StringType),
       StructField(name = "time", dataType = LongType),
@@ -164,7 +156,7 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) {
       .save(bucketName)
 
     // -- verification
-    val df = sqlContext.read
+    val df = sparkSession.read
       .format("org.apache.spark.sql.riak")
       .schema(schema)
       .load(bucketName)
@@ -188,11 +180,6 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) {
 
   @Test
   def dataFrameWriteWithEmptyCells(): Unit = {
-    val sqlContext = new SQLContext(sc)
-
-    import org.apache.spark.sql.functions.udf
-    import sqlContext.implicits._
-
     val udfGetMillis = udf(getMillis)
 
     val tsRows = Seq[org.apache.spark.sql.Row] (
@@ -207,14 +194,14 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) {
       StructField(name = "user_id", dataType = StringType),
       StructField(name = "temperature_k", dataType = DoubleType)))
 
-    val initialDF = getInitialDF(sqlContext, schema, tsRows)
+    val initialDF = getInitialDF(sparkSession, schema, tsRows)
 
     initialDF.write
       .format("org.apache.spark.sql.riak")
       .mode(SaveMode.Append)
       .save(bucketName)
 
-    val df = sqlContext.read
+    val df = sparkSession.read
       .format("org.apache.spark.sql.riak")
       .schema(schema)
       .load(bucketName)
@@ -237,12 +224,11 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) {
     expectedException.expect(classOf[SparkException])
     expectedException.expectMessage("Invalid data found at row index(es)")
 
-    val sqlContext = new SQLContext(sc)
     val tsRows = Seq[org.apache.spark.sql.Row] (
       org.apache.spark.sql.Row(2L, "f", null, "test", 123.123)
     )
 
-    val initialDF = getInitialDF(sqlContext, StructType(List(
+    val initialDF = getInitialDF(sparkSession, StructType(List(
       StructField(name = "surrogate_key", dataType = LongType),
       StructField(name = "family", dataType = StringType),
       StructField(name = "time", dataType = LongType),
@@ -260,12 +246,11 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) {
     expectedException.expect(classOf[SparkException])
     expectedException.expectMessage("Invalid data found at row index(es)")
 
-    val sqlContext = new SQLContext(sc)
     val tsRows = Seq[org.apache.spark.sql.Row] (
       org.apache.spark.sql.Row(null, "f", 111222L, "test", 123.123)
     )
 
-    val initialDF = getInitialDF(sqlContext, StructType(List(
+    val initialDF = getInitialDF(sparkSession, StructType(List(
       StructField(name = "surrogate_key", dataType = LongType),
       StructField(name = "family", dataType = StringType),
       StructField(name = "time", dataType = LongType),
@@ -283,12 +268,11 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) {
     expectedException.expect(classOf[SparkException])
     expectedException.expectMessage("Invalid data found at row index(es)")
 
-    val sqlContext = new SQLContext(sc)
     val tsRows = Seq[org.apache.spark.sql.Row] (
       org.apache.spark.sql.Row(2L, null, 111222L, "test", 123.123)
     )
 
-    val initialDF = getInitialDF(sqlContext, StructType(List(
+    val initialDF = getInitialDF(sparkSession, StructType(List(
       StructField(name = "surrogate_key", dataType = LongType),
       StructField(name = "family", dataType = StringType),
       StructField(name = "time", dataType = LongType),
@@ -301,14 +285,14 @@ class TimeSeriesWriteTest extends AbstractTimeSeriesTest(false) {
         .save(bucketName)
   }
 
-  private def getSourceDF(sqlContext: SQLContext, structType:StructType = schema): DataFrame = {
+  private def getSourceDF(sparkSession: SparkSession, structType:StructType = schema): DataFrame = {
     val sparkRowsWithSchema = riakTSRows.map( r => TSConversionUtil.asSparkRow(structType, r))
-    val rdd: RDD[Row] = sqlContext.sparkContext.parallelize(sparkRowsWithSchema)
-    sqlContext.createDataFrame(rdd, structType)
+    val rdd: RDD[Row] = sparkSession.sparkContext.parallelize(sparkRowsWithSchema)
+    sparkSession.createDataFrame(rdd, structType)
   }
 
-  private def getInitialDF(sqlContext: SQLContext, structType:StructType = schema, rows: Seq[Row]): DataFrame = {
-    val rdd: RDD[Row] = sqlContext.sparkContext.parallelize(rows)
-    sqlContext.createDataFrame(rdd, structType)
+  private def getInitialDF(sparkSession: SparkSession, structType:StructType = schema, rows: Seq[Row]): DataFrame = {
+    val rdd: RDD[Row] = sparkSession.sparkContext.parallelize(rows)
+    sparkSession.createDataFrame(rdd, structType)
   }
 }

@@ -23,14 +23,16 @@ import com.basho.riak.spark._
 import com.basho.riak.spark.util.RiakObjectConversionUtil
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
+
 import scala.reflect.runtime.universe
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.{ Failure, Success }
+import scala.util.{Failure, Success}
 import com.basho.riak.client.core.query.RiakObject
 import com.basho.riak.client.api.RiakClient
 import com.basho.riak.client.core.query.Location
 import com.basho.riak.spark.rdd.RiakFunctions
+import org.apache.spark.sql.SparkSession
 
 /**
  * Example shows how Spark DataFrames can be used with Riak
@@ -56,14 +58,13 @@ object SimpleScalaRiakDataframesExample {
     setSparkOpt(sparkConf, "spark.master", "local")
     setSparkOpt(sparkConf, "spark.riak.connection.host", "127.0.0.1:8087")
 
-    val sc = new SparkContext(sparkConf)
+    val sparkSession = SparkSession.builder().config(sparkConf).getOrCreate()
+    val sc = sparkSession.sparkContext
 
     // Work with clear bucket
     clearBucket(sparkConf)
 
-    val sqlContext = new org.apache.spark.sql.SQLContext(sc)
-    // To enable toDF()
-    import sqlContext.implicits._
+    import sparkSession.implicits._
 
     println(s" Saving data to Riak: \n ${println(testData)}")
 
@@ -83,18 +84,18 @@ object SimpleScalaRiakDataframesExample {
 
     println(s"Dataframe from Riak query: \n ${df.show()}")
 
-    df.registerTempTable("users")
+    df.createTempView("users")
 
     println("count by category")
     df.groupBy("category").count.show
 
     println("sort by num of letters")
     // Register user defined function
-    sqlContext.udf.register("stringLength", (s: String) => s.length)
-    sqlContext.sql("select user_id, name, stringLength(name) nameLength from users order by nameLength").show
+    sparkSession.udf.register("stringLength", (s: String) => s.length)
+    sparkSession.sql("select user_id, name, stringLength(name) nameLength from users order by nameLength").show
 
     println("filter age >= 21")
-    sqlContext.sql("select * from users where age >= 21").show
+    sparkSession.sql("select * from users where age >= 21").show
 
   }
 

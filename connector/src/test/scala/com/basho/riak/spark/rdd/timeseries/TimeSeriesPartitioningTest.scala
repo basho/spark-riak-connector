@@ -43,16 +43,9 @@ class TimeSeriesPartitioningTest extends AbstractTimeSeriesTest(createTestData =
     LessThan("time", to),
     EqualTo("user_id", "user1"))
 
-  var sqlContext: org.apache.spark.sql.SQLContext = null
-
-  override def initialize(): Unit = {
-    super.initialize()
-    sqlContext = new org.apache.spark.sql.SQLContext(sc)
-  }
-
   @Test
   def withOptionTest(): Unit = {
-    val df = sqlContext.read
+    val df = sparkSession.read
       .option("spark.riak.input.split.count", partitionsCount.toString)
       .option("spark.riak.partitioning.ts-range-field-name", tsRangeFieldName)
       .format("org.apache.spark.sql.riak")
@@ -67,7 +60,7 @@ class TimeSeriesPartitioningTest extends AbstractTimeSeriesTest(createTestData =
   @Test
   def smallRangeShouldBeSinglePartitionTest(): Unit = {
     val (localFrom, localTo) = (new Timestamp(500L), new Timestamp(504L))
-    val df = sqlContext.read
+    val df = sparkSession.read
       .option("spark.riak.input.split.count", partitionsCount.toString)
       .option("spark.riak.partitioning.ts-range-field-name", tsRangeFieldName)
       .format("org.apache.spark.sql.riak")
@@ -83,7 +76,7 @@ class TimeSeriesPartitioningTest extends AbstractTimeSeriesTest(createTestData =
   def invalidRangeTest(): Unit = {
     expectedException.expect(classOf[IllegalArgumentException])
     expectedException.expectMessage("requirement failed: Invalid range query")
-    val df = sqlContext.read
+    val df = sparkSession.read
       .option("spark.riak.input.split.count", partitionsCount.toString)
       .option("spark.riak.partitioning.ts-range-field-name", tsRangeFieldName)
       .option("spark.riak.partitioning.ts-quantum", "10s")
@@ -97,7 +90,7 @@ class TimeSeriesPartitioningTest extends AbstractTimeSeriesTest(createTestData =
 
   @Test
   def withOptionTestFromToTo(): Unit = {
-    val df = sqlContext.read
+    val df = sparkSession.read
       .option("spark.riak.input.split.count", partitionsCount.toString)
       .option("spark.riak.partitioning.ts-range-field-name", tsRangeFieldName)
       .option("spark.riak.partitioning.ts-quantum", "10s")
@@ -121,7 +114,7 @@ class TimeSeriesPartitioningTest extends AbstractTimeSeriesTest(createTestData =
 
   @Test
   def greaterThanToLessThanOrEqualTest(): Unit = {
-    val df = sqlContext.read
+    val df = sparkSession.read
       .option("spark.riak.input.split.count", partitionsCount.toString)
       .option("spark.riak.partitioning.ts-range-field-name", tsRangeFieldName)
       .format("org.apache.spark.sql.riak")
@@ -140,7 +133,7 @@ class TimeSeriesPartitioningTest extends AbstractTimeSeriesTest(createTestData =
 
   @Test
   def lessThanToGreaterThanOrEqualTest(): Unit = {
-    val df = sqlContext.read
+    val df = sparkSession.read
       .option("spark.riak.input.split.count", partitionsCount.toString)
       .option("spark.riak.partitioning.ts-range-field-name", tsRangeFieldName)
       .format("org.apache.spark.sql.riak")
@@ -161,7 +154,7 @@ class TimeSeriesPartitioningTest extends AbstractTimeSeriesTest(createTestData =
   def noLessThanTest(): Unit = {
     expectedException.expect(classOf[IllegalArgumentException])
     expectedException.expectMessage(s"No LessThanOrEqual or LessThan filers found for tsRangeFieldName $tsRangeFieldName")
-    val df = sqlContext.read
+    val df = sparkSession.read
       .option("spark.riak.input.split.count", partitionsCount.toString)
       .option("spark.riak.partitioning.ts-range-field-name", tsRangeFieldName)
       .format("org.apache.spark.sql.riak")
@@ -175,7 +168,7 @@ class TimeSeriesPartitioningTest extends AbstractTimeSeriesTest(createTestData =
   def noGreaterThanTest(): Unit = {
     expectedException.expect(classOf[IllegalArgumentException])
     expectedException.expectMessage(s"No GreaterThanOrEqual or GreaterThan filers found for tsRangeFieldName $tsRangeFieldName")
-    val df = sqlContext.read
+    val df = sparkSession.read
       .option("spark.riak.input.split.count", partitionsCount.toString)
       .option("spark.riak.partitioning.ts-range-field-name", tsRangeFieldName)
       .format("org.apache.spark.sql.riak")
@@ -187,7 +180,7 @@ class TimeSeriesPartitioningTest extends AbstractTimeSeriesTest(createTestData =
 
   @Test
   def withLessThanQuantaLimitTest(): Unit = {
-    val df = sqlContext.read
+    val df = sparkSession.read
       .option("spark.riak.input.split.count", partitionsCount.toString)
       .option("spark.riak.partitioning.ts-range-field-name", tsRangeFieldName)
       .option("spark.riak.partitioning.ts-quantum", "20d")
@@ -205,7 +198,7 @@ class TimeSeriesPartitioningTest extends AbstractTimeSeriesTest(createTestData =
   @Test
   def withGreaterThanQuantaLimitTest(): Unit = {
     val (localFrom, localTo) = (new Timestamp(1000000L), new Timestamp(3000000L))
-    val df = sqlContext.read
+    val df = sparkSession.read
       .option("spark.riak.input.split.count", partitionsCount.toString)
       .option("spark.riak.partitioning.ts-range-field-name", tsRangeFieldName)
       .option("spark.riak.partitioning.ts-quantum", "10s")
@@ -224,7 +217,7 @@ class TimeSeriesPartitioningTest extends AbstractTimeSeriesTest(createTestData =
   def noFiltersForFieldTest(): Unit = {
     expectedException.expect(classOf[IllegalArgumentException])
     expectedException.expectMessage(s"No filers found for tsRangeFieldName $tsRangeFieldName")
-    val df = sqlContext.read
+    val df = sparkSession.read
       .option("spark.riak.input.split.count", partitionsCount.toString)
       .option("spark.riak.partitioning.ts-range-field-name", tsRangeFieldName)
       .format("org.apache.spark.sql.riak")

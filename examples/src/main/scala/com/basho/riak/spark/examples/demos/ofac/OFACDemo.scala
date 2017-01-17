@@ -18,17 +18,17 @@
 package com.basho.riak.spark.examples.demos.ofac
 
 import com.basho.riak.client.core.query.indexes.LongIntIndex
-import com.basho.riak.spark.rdd.{RiakFunctions, BucketDef}
+import com.basho.riak.spark.rdd.{BucketDef, RiakFunctions}
 import com.basho.riak.spark.util.RiakObjectConversionUtil
-import com.basho.riak.spark.writer.{WriteDataMapperFactory, WriteDataMapper}
-import org.slf4j.{LoggerFactory, Logger}
+import com.basho.riak.spark.writer.{WriteDataMapper, WriteDataMapperFactory}
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.io.Source
 import scala.annotation.meta.field
-
 import com.basho.riak.spark._
-import com.basho.riak.client.core.query.{RiakObject, Namespace}
-import com.basho.riak.client.api.annotations.{RiakKey, RiakIndex}
+import com.basho.riak.client.core.query.{Namespace, RiakObject}
+import com.basho.riak.client.api.annotations.{RiakIndex, RiakKey}
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.{SparkConf, SparkContext}
 
 object OFACDemo {
@@ -70,7 +70,8 @@ object OFACDemo {
     setSparkOpt(sparkConf,"spark.riak.demo.to", CFG_DEFAULT_TO.toString)
 
     // -- Create spark context
-    val sc = new SparkContext(sparkConf)
+    val sparkSession = SparkSession.builder().config(sparkConf).getOrCreate()
+    val sc = sparkSession.sparkContext
 
     // -- Cleanup Riak buckets before we start
     val rf = RiakFunctions(sparkConf)

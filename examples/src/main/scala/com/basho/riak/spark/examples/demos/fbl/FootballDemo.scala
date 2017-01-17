@@ -1,21 +1,25 @@
 package com.basho.riak.spark.examples.demos.fbl
 import java.util.Calendar
-import java.util.concurrent.{TimeUnit, Semaphore}
+import java.util.concurrent.{Semaphore, TimeUnit}
+
 import com.basho.riak.client.api.commands.kv.StoreValue
 import com.basho.riak.client.api.commands.kv.StoreValue.Response
 import com.basho.riak.client.core.query.indexes.LongIntIndex
 import com.basho.riak.client.core.{RiakFuture, RiakFutureListener}
 import com.basho.riak.spark.util.RiakObjectConversionUtil
-import org.slf4j.{LoggerFactory, Logger}
+import org.slf4j.{Logger, LoggerFactory}
 import java.util.zip.ZipInputStream
-import com.basho.riak.client.core.query.{Namespace, Location}
+
+import com.basho.riak.client.core.query.Location
 import com.basho.riak.spark.rdd._
 import org.apache.spark.{SparkConf, SparkContext}
+
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.io.Source
 import com.basho.riak.spark.rdd.RiakFunctions
 import com.basho.riak.spark._
+import org.apache.spark.sql.SparkSession
 
 object FootballDemo {
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
@@ -92,7 +96,8 @@ object FootballDemo {
       sys.exit()
     }
 
-    val sc = new SparkContext(sparkConf)
+    val sparkSession = SparkSession.builder().config(sparkConf).getOrCreate()
+    val sc = sparkSession.sparkContext
 
     // -- Create test data
     createTestData(sc)

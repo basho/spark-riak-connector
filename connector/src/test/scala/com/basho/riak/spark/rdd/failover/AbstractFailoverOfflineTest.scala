@@ -5,6 +5,7 @@ import com.basho.riak.client.core.util.HostAndPort
 import com.basho.riak.stub.{RiakMessageHandler, RiakNodeStub}
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.apache.spark.riak.Logging
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.{SparkConf, SparkContext}
 import org.hamcrest.{Description, Matchers}
 import org.junit.internal.matchers.ThrowableCauseMatcher
@@ -44,7 +45,8 @@ abstract class AbstractFailoverOfflineTest extends Logging {
   @Before
   def setUp(): Unit = {
     riakNodes = initRiakNodes()
-    sc = new SparkContext(sparkConf)
+    val sparkSession = SparkSession.builder().config(sparkConf).getOrCreate()
+    sc = sparkSession.sparkContext
   }
 
   @After

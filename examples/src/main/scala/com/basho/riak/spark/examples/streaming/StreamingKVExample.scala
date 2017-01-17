@@ -6,6 +6,7 @@ import kafka.serializer.StringDecoder
 import com.basho.riak.spark._
 import com.basho.riak.spark.streaming._
 import com.basho.riak.spark.util.RiakObjectConversionUtil
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.streaming.kafka.KafkaUtils
 import org.apache.spark.streaming.{Durations, StreamingContext}
 import org.apache.spark.{SparkConf, SparkContext}
@@ -27,7 +28,8 @@ object StreamingKVExample {
     setSparkOpt(sparkConf, "spark.riak.connection.host", "127.0.0.1:8087")
     setSparkOpt(sparkConf, "kafka.broker", "127.0.0.1:9092")
 
-    val sc = new SparkContext(sparkConf)
+    val sparkSession = SparkSession.builder().config(sparkConf).getOrCreate()
+    val sc = sparkSession.sparkContext
     val streamCtx = new StreamingContext(sc, Durations.seconds(15))
 
     val kafkaProps = Map[String, String](

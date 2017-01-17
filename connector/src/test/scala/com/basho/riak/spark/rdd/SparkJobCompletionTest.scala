@@ -23,6 +23,7 @@ import com.basho.riak.client.core.query.Namespace
 import com.basho.riak.spark._
 import com.basho.riak.spark.rdd.SparkJobCompletionTest._
 import com.basho.riak.spark.rdd.connector.RiakConnectorConf
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.{SparkConf, SparkContext}
 import org.junit.Test
 import org.junit.Assert
@@ -127,7 +128,8 @@ object SparkJobCompletionTest extends JsonFunctions {
       .set("spark.riak.connections.inactivity.timeout",
         (RiakConnectorConf.defaultInactivityTimeout * 60 * 5).toString) // 5 minutes is enough time to complete Spark job
 
-    val data = new SparkContext(sparkConf).riakBucket(ns).queryAll().collect()
+    val sparkSession = SparkSession.builder().config(sparkConf).getOrCreate()
+    val data = sparkSession.sparkContext.riakBucket(ns).queryAll().collect()
 
     // HACK: Results should be printed  for further analysis in the original JVM
     // to indicate that Spark job was completed successfully

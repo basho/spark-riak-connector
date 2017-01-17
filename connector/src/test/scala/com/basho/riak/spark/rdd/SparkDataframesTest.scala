@@ -19,7 +19,7 @@ package com.basho.riak.spark.rdd
 
 import scala.reflect.runtime.universe
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.SparkSession
 import org.junit.Assert._
 import org.junit.{ Before, Test }
 import com.basho.riak.spark.toSparkContextFunctions
@@ -44,17 +44,15 @@ class SparkDataframesTest extends AbstractRiakSparkTest {
 
   protected override def initSparkConf() = super.initSparkConf().setAppName("Dataframes Test")
 
-  var sqlContextHolder: SQLContext = _
   var df: DataFrame = _
 
   @Before
   def initializeDF(): Unit = {
-    val sqlContext = new org.apache.spark.sql.SQLContext(sc)
-    import sqlContext.implicits._
-    sqlContextHolder = sqlContext
+    val spark = sparkSession
+    import spark.implicits._
     df = sc.riakBucket[TestData](DEFAULT_NAMESPACE.getBucketNameAsString)
       .queryAll().toDF
-    df.registerTempTable("test")
+    df.createTempView("test")
   }
 
   @Test
@@ -67,7 +65,7 @@ class SparkDataframesTest extends AbstractRiakSparkTest {
 
   @Test
   def sqlQueryTest(): Unit = {
-    val sqlResult = sqlContextHolder.sql("select * from test where category >= 'CategoryC'").toJSON.collect
+    val sqlResult = sparkSession.sql("select * from test where category >= 'CategoryC'").toJSON.collect
     val expected =
       """ [
         |   {id:'u4',name:'Chris',age:10,category:'CategoryC'},
@@ -78,8 +76,8 @@ class SparkDataframesTest extends AbstractRiakSparkTest {
 
   @Test
   def udfTest(): Unit = {
-    sqlContextHolder.udf.register("stringLength", (s: String) => s.length)
-    val udf = sqlContextHolder.sql("select name, stringLength(name) strLgth from test order by strLgth, name").toJSON.collect
+    sparkSession.udf.register("stringLength", (s: String) => s.length)
+    val udf = sparkSession.sql("select name, stringLength(name) strLgth from test order by strLgth, name").toJSON.collect
     val expected =
       """ [
         |   {name:'Ben',strLgth:3},
@@ -107,7 +105,7 @@ class SparkDataframesTest extends AbstractRiakSparkTest {
 
   @Test
   def sqlVsFilterTest(): Unit = {
-    val sql = sqlContextHolder.sql("select id, name from test where age >= 50").toJSON.collect
+    val sql = sparkSession.sql("select id, name from test where age >= 50").toJSON.collect
     val filtered = df.where(df("age") >= 50).select("id", "name").toJSON.collect
     assertEqualsUsingJSONIgnoreOrder(stringify(sql), stringify(filtered))
   }

@@ -18,22 +18,18 @@
 package org.apache.spark.sql.riak
 
 import scala.collection.JavaConversions.asScalaBuffer
-
-import org.apache.spark.{ SparkConf, SparkContext }
 import org.apache.spark.sql._
-import org.apache.spark.sql.types.{ StringType, StructField, StructType }
-import org.junit.{ After, Before, Test }
+import org.apache.spark.sql.types.{StringType, StructField, StructType}
+import org.junit.{After, Before, Test}
 import org.junit.Assert._
-
 import com.basho.riak.client.core.RiakNode
 import com.basho.riak.client.core.util.HostAndPort
-import com.basho.riak.spark.rdd.connector.{ RiakConnector, RiakConnectorConf }
+import com.basho.riak.spark.rdd.connector.{RiakConnector, RiakConnectorConf}
+import org.apache.spark.SparkConf
 
 class OptionsTest {
-
   private val source = new DefaultSource
 
-  private var sqlContext: SQLContext = _
   private val initialHost = "default:1111"
   private val initialConnectionsMin = 111
   private val initialConnectionsMax = 999
@@ -54,26 +50,20 @@ class OptionsTest {
     .set("spark.riak.input.fetch-size", initialFetchSize.toString)
     .set("spark.riak.input.split.count", initialSplitCount.toString)
 
+  protected def createSparkSession(conf: SparkConf): SparkSession = SparkSession.builder().config(conf).getOrCreate()
+
   private val dummySchema = StructType(List(StructField("dummy", StringType, nullable = true)))
-  private var df: DataFrame = _
-
-  @Before
-  def initializeDF(): Unit = {
-    val conf = initSparkConf
-    val sc = new SparkContext(conf)
-    sqlContext = new org.apache.spark.sql.SQLContext(sc)
-
-    df = sqlContext.createDataFrame(sc.emptyRDD[Row], dummySchema)
-  }
+  private val sparkSession: SparkSession = createSparkSession(initSparkConf)
+  private var df: DataFrame = sparkSession.createDataFrame(sparkSession.sparkContext.emptyRDD[Row], dummySchema)
 
   @After
   def destroySparkContext(): Unit = {
-    Option(sqlContext).foreach(sqlc => sqlc.sparkContext.stop())
+    Option(sparkSession).foreach(sqlc => sqlc.sparkContext.stop())
   }
 
   @Test
   def noReadOptionsShouldResultInKeepingInitialProperties(): Unit = {
-    val rel = source.createRelation(sqlContext,
+    val rel = source.createRelation(sparkSession.sqlContext,
       Map("path" -> "path"), dummySchema).asInstanceOf[RiakRelation]
     val riakConnector = getConnector(rel)
     val riakConf = getRiakConnectorConf(riakConnector)
@@ -87,7 +77,7 @@ class OptionsTest {
 
   @Test
   def noWriteOptionsShouldResultInKeepingInitialProperties(): Unit = {
-    val rel = source.createRelation(sqlContext, SaveMode.Append,
+    val rel = source.createRelation(sparkSession.sqlContext, SaveMode.Append,
       Map("path" -> "path"), df).asInstanceOf[RiakRelation]
     val riakConnector = getConnector(rel)
     val writeConf = rel.writeConf
@@ -102,7 +92,7 @@ class OptionsTest {
   @Test
   def writeOptionsOnReadShouldNotAffectProperties(): Unit = {
     val newQuorum = 1
-    val rel = source.createRelation(sqlContext,
+    val rel = source.createRelation(sparkSession.sqlContext,
       Map("path" -> "path", "spark.riak.write.replicas" -> newQuorum.toString), dummySchema).asInstanceOf[RiakRelation]
     val writeConf = rel.writeConf
   }
@@ -111,7 +101,7 @@ class OptionsTest {
   def readOptionsOnWriteShouldNotAffectProperties(): Unit = {
     val newFetchSize = 100
     val newSplitCount = 10
-    val rel = source.createRelation(sqlContext, SaveMode.Append,
+    val rel = source.createRelation(sparkSession.sqlContext, SaveMode.Append,
       Map("path" -> "path", "spark.riak.input.fetch-size" -> newFetchSize.toString,
         "spark.riak.input.split.count" -> newSplitCount.toString), df).asInstanceOf[RiakRelation]
     val readConf = rel.readConf
@@ -120,7 +110,7 @@ class OptionsTest {
   @Test
   def writeOptionsOnWriteShouldAffectProperties(): Unit = {
     val newQuorum = 1
-    val rel = source.createRelation(sqlContext, SaveMode.Append,
+    val rel = source.createRelation(sparkSession.sqlContext, SaveMode.Append,
       Map("path" -> "path", "spark.riak.write.replicas" -> newQuorum.toString), df).asInstanceOf[RiakRelation]
     val writeConf = rel.writeConf
     assertEquals(newQuorum, writeConf.writeReplicas.toInt)
@@ -130,7 +120,7 @@ class OptionsTest {
   def readOptionsOnReadShouldAffectProperties(): Unit = {
     val newFetchSize = 100
     val newSplitCount = 10
-    val rel = source.createRelation(sqlContext, Map("path" -> "path", "spark.riak.input.fetch-size" -> newFetchSize.toString,
+    val rel = source.createRelation(sparkSession.sqlContext, Map("path" -> "path", "spark.riak.input.fetch-size" -> newFetchSize.toString,
       "spark.riak.input.split.count" -> newSplitCount.toString), dummySchema).asInstanceOf[RiakRelation]
     val readConf = rel.readConf
     assertEquals(newFetchSize, readConf.fetchSize)
@@ -142,7 +132,7 @@ class OptionsTest {
     val newHost = "newHost:9999"
     val newConnectionsMin = 1
     val newConnectionsMax = 9
-    val rel = source.createRelation(sqlContext,
+    val rel = source.createRelation(sparkSession.sqlContext,
       Map("path" -> "path", "spark.riak.connection.host" -> newHost,
         "spark.riak.connections.min" -> newConnectionsMin.toString,
         "spark.riak.connections.max" -> newConnectionsMax.toString), dummySchema).asInstanceOf[RiakRelation]
@@ -156,7 +146,7 @@ class OptionsTest {
   @Test
   def riakConnectionOptionsShouldChangeOnlySpecifiedProperties(): Unit = {
     val newHost = "newHost:9999"
-    val rel = source.createRelation(sqlContext,
+    val rel = source.createRelation(sparkSession.sqlContext,
       Map("path" -> "path", "spark.riak.connection.host" -> newHost), dummySchema).asInstanceOf[RiakRelation]
     val riakConnector = getConnector(rel)
     val riakConf = getRiakConnectorConf(riakConnector)

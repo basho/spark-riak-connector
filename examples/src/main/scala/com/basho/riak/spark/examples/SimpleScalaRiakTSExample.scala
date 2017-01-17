@@ -25,12 +25,15 @@ import com.basho.riak.client.core.util.BinaryValue
 import com.basho.riak.spark.rdd.RiakFunctions
 import com.basho.riak.spark.toSparkContextFunctions
 import java.util.Calendar
+
 import com.basho.riak.spark.rdd.RiakObjectData
 import com.basho.riak.client.core.operations.ts.StoreOperation
+
 import scala.collection.JavaConversions._
 import com.basho.riak.client.core.query.Namespace
 import com.basho.riak.spark.util.RiakObjectConversionUtil
 import com.basho.riak.client.core.query.indexes.LongIntIndex
+import org.apache.spark.sql.SparkSession
 
 /**
  * Really simple demo timeseries-related features
@@ -78,7 +81,8 @@ object SimpleScalaRiakTSExample {
 
     clearBucket(sparkConf)
     loadDemoData(sparkConf)
-    val sc = new SparkContext(sparkConf)
+    val sparkSession = SparkSession.builder().config(sparkConf).getOrCreate()
+    val sc = sparkSession.sparkContext
     
     val from = beginingOfQuantumMillis(testData.head.time)
     val to = endOfQuantumMillis(testData.last.time)
