@@ -17,7 +17,9 @@
  */
 package com.basho.riak.spark.rdd
 
+import com.basho.riak.client.core.query.RiakObject
 import com.basho.riak.spark._
+import org.junit.Assert.assertTrue
 import org.junit.experimental.categories.Category
 import org.junit.{Assert, Test}
 
@@ -84,12 +86,21 @@ class RDDTest extends AbstractRiakSparkTest {
   @Test
   def checkDefaultDataMapping(): Unit = {
     val rdd = sc.riakBucket(DEFAULT_NAMESPACE).query2iRange(CREATION_INDEX, 1, 2)
+    val data = rdd.collect()
 
+    // #1: prove that we've got (key, RiakObject)
+    data.foreach( x => assertTrue(x._2.isInstanceOf[RiakObject]))
+
+    // #2: verify the object contents
     assertEqualsUsingJSONIgnoreOrder(
       """[
-        |   ["my_key_2",{"gauge1":145,"timestamp":"2014-11-24T13:14:05.823Z","latitude":28.946907,"longitude":-82.00319,"user_id":"2c1421c4-161d-456b-a1c1-63ceededc3d5","gauge2":"min"}],
-        |   ["my_key_1",{"gauge1":142,"timestamp":"2014-11-24T13:14:04.823Z","latitude":28.946907,"longitude":-82.00319,"user_id":"2c1421c4-161d-456b-a1c1-63ceededc3d5"}]
-        |]""".stripMargin, rdd.collect())
+        |   ['my_key_2', {charset:null, content-type:'application/json',
+        |       data: {"gauge1":145,"timestamp":"2014-11-24T13:14:05.823Z","latitude":28.946907,"longitude":-82.00319,"user_id":"2c1421c4-161d-456b-a1c1-63ceededc3d5","gauge2":"min"},
+        |       indexes: [{"name":"creationno","type":"INT","values":["2"]}]}],
+        |   ['my_key_1', {charset:null, content-type:'application/json',
+        |       data: {"gauge1":142,"timestamp":"2014-11-24T13:14:04.823Z","latitude":28.946907,"longitude":-82.00319,"user_id":"2c1421c4-161d-456b-a1c1-63ceededc3d5"},
+        |       indexes: [{"name":"creationno","type":"INT","values":["1"]}]}]
+        |]""".stripMargin, data)
   }
   
   @Test

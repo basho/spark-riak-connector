@@ -19,6 +19,8 @@ package com.basho.riak
 
 import java.io.IOException
 
+import com.basho.riak.client.core.query.RiakObject
+import com.basho.riak.client.core.query.indexes.RiakIndex
 import com.basho.riak.spark.rdd.JsonFunctions
 import com.fasterxml.jackson.core.{JsonGenerator, JsonProcessingException, Version}
 import com.fasterxml.jackson.databind.{JsonSerializer, ObjectMapper, SerializerProvider}
@@ -37,7 +39,9 @@ trait JsonTestFunctions extends JsonFunctions {
         new SimpleModule("RiakTs Module", new Version(1,0,0,null))
           .addSerializer(classOf[RiakCell], new RiakCellSerializer)
           .addSerializer(classOf[RiakRow], new RiakRowSerializer)
-          .addSerializer(classOf[HostAndPort], new HostAndPortSerializer))
+          .addSerializer(classOf[HostAndPort], new HostAndPortSerializer)
+          .addSerializer(classOf[RiakObject], new RiakObjectSerializer)
+          .addSerializer(classOf[RiakIndex[_]], new RiakIndexSerializer))
 
 
   protected def assertEqualsUsingJSON(jsonExpected: AnyRef, actual: AnyRef): Unit = {
@@ -109,6 +113,41 @@ trait JsonTestFunctions extends JsonFunctions {
         }
         jgen.writeEndObject()
       }
+    }
+  }
+
+  private  class RiakIndexSerializer extends JsonSerializer[RiakIndex[_]] {
+    override def serialize(value: RiakIndex[_], jgen: JsonGenerator, serializers: SerializerProvider): Unit = {
+      jgen.writeStartObject()
+      jgen.writeStringField("name", value.getName)
+      jgen.writeStringField("type", value.getType.name())
+      jgen.writeArrayFieldStart("values")
+      value.rawValues().foreach(v => jgen.writeString(v.toStringUtf8))
+      jgen.writeEndArray()
+      jgen.writeEndObject()
+    }
+  }
+
+  private  class RiakObjectSerializer extends JsonSerializer[RiakObject] {
+    override def serialize(value: RiakObject, jgen: JsonGenerator, serializers: SerializerProvider): Unit = {
+      jgen.writeStartObject()
+      jgen.writeStringField("charset", value.getCharset)
+      jgen.writeStringField("content-type", value.getContentType)
+
+
+      if ("application/json".equalsIgnoreCase(value.getContentType)) {
+        val v = tolerantMapper.readValue(value.getValue.toStringUtf8, classOf[Map[String, _]])
+        jgen.writeObjectField("data", v)
+      } else {
+        jgen.writeStringField("data", value.getValue.toStringUtf8)
+      }
+
+      if (!value.getIndexes.isEmpty) {
+        jgen.writeArrayFieldStart("indexes")
+        value.getIndexes.foreach(idx => jgen.writeObject(idx))
+        jgen.writeEndArray()
+      }
+      jgen.writeEndObject()
     }
   }
 
