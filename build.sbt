@@ -83,7 +83,7 @@ lazy val sparkRiakConnector = (project in file("connector"))
       }.filter(_.contains("test-utils")).mkString(":")
       val uberJar = buildDir.relativize((assemblyOutputPath in assembly).value.toPath)
 
-      if(!scalaBinaryVersion.value.equals("2.11")) {
+      if(scalaBinaryVersion.value.equals("2.11")) {
         val rtnCode = s"connector/python/test.sh $uberJar:$cp $pyTestMark" ! streams.value.log
         //val rtnCode = s"docker build -t $namespace ." #&& s"docker run --rm -i -e RIAK_HOSTS=$riakHosts -e SPARK_CLASSPATH=$uberJar:$cp -v ${buildDir.toString}:/usr/src/$namespace -v ${home.toString}/.ivy2:/root/.ivy2 -v /var/run/docker.sock:/var/run/docker.sock -v /usr/bin/docker:/bin/docker -w /usr/src/$namespace $namespace ./connector/python/test.sh" ! streams.value.log
         if (rtnCode != 0) {
