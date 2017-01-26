@@ -1,5 +1,5 @@
 /**
-  * Copyright (c) 2015 Basho Technologies, Inc.
+  * Copyright (c) 2015-2017 Basho Technologies, Inc.
   *
   * This file is provided to you under the Apache License,
   * Version 2.0 (the "License"); you may not use this file
@@ -101,7 +101,8 @@ abstract class AbstractTimeSeriesTest(val createTestData: Boolean = true) extend
     new Cell(f.temperature_k))
   )
 
-  final val sqlWhereClause = s"WHERE time >= $queryFromMillis AND time <= $queryToMillis AND surrogate_key = 1 AND family = 'f'"
+  final val filterExpression = s"time >= $queryFromMillis AND time <= $queryToMillis AND surrogate_key = 1 AND family = 'f'"
+  final val sqlWhereClause = s"WHERE $filterExpression"
 
   final val sqlQuery = s"SELECT surrogate_key, family, time, user_id, temperature_k FROM $bucketName $sqlWhereClause"
 

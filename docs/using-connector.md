@@ -12,6 +12,7 @@ Scroll down or click below for the desired information:
 - [Writing Data To TS Table](./using-connector.md#writing-data-to-ts-table)
 - [Spark Dataframes With KV Bucket](./using-connector.md#spark-dataframes-with-kv-bucket)
 - [Spark Dataframes With TS Table](./using-connector.md#spark-dataframes-with-ts-table)
+- [Spark DataSets With TS Table](./using-connector.md#spark-datasets-with-ts-table)
 - [Partitioning for KV Buckets](./using-connector.md#partitioning-for-kv-buckets)
 - [Working With TS Dates](./using-connector.md#working-with-ts-dates)
 - [Partitioning for Riak TS Table Queries](./using-connector.md#partitioning-for-riak-ts-table-queries)
@@ -419,6 +420,31 @@ inputDF.write \
 So far SaveMode.Append is the only mode available.
 Any of the Spark Connector options can be provided in `.option()` or `.options()`.
 
+## Spark Datasets With TS Table
+Spark Datasets aka strongly typed Dataframes might be created in a very similar manner to the dataframe, there are only two difference: 
+
+* Datasets requires to have an Encoder; builtin encoders for common Scala types and their product types are already available in implicits object, and you only need to import these implicits as follows:      
+```scala
+import spark.implicits._
+```
+
+* the data type should be provided by calling `as()` routine
+
+Here is an example of a Dataset creation:
+```scala
+import spark.implicits._
+
+case class TimeSeriesData(time: Long, user_id: String, temperature_k: Double)
+
+val ds = sparkSession.read
+  .format("org.apache.spark.sql.riak")
+  .option("spark.riakts.bindings.timestamp", "useLong")
+  .load(bucketName)
+  .filter(filterExpression)
+  .as[TimeSeriesData]
+```
+
+NOTE: There is no Datasets support for Python since Spark does not support this. 
 
 ## Partitioning for KV Buckets
 
