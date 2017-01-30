@@ -588,6 +588,22 @@ def test_read_JSON_value_with_not_empty_list (spark_context, riak_client):
 
 	item.store()
 	result = spark_context.riakBucket(bucket.name).queryBucketKeys("test-key").collect()
+
+#
+# if object value is a JSON object that contains an empty  Object, exception raised
+# https://bashoeng.atlassian.net/browse/SPARK-281
+#
+@pytest.mark.regression
+@pytest.mark.riakkv
+def test_read_JSON_value_with_an_empty_map (spark_context, riak_client):
+	bucket = riak_client.bucket("test-bucket-"+str(randint(0,100000)))
+	item = bucket.new("test-key-empty-object")
+	item.data = {u'client_ip': u'35.185.22.50',
+				 u'created_time': 1481562884357,
+				 u'event_keys': {}}
+
+	item.store()
+	result = spark_context.riakBucket(bucket.name).queryBucketKeys("test-key-empty-object").collect()
 ###### TS Tests #######
 
 @pytest.mark.riakts
