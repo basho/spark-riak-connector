@@ -83,6 +83,18 @@ private[riak] class RiakRelation(
       prunedRdd.filter(filters)
   }
 
+
+  // TODO: unhandledFilters() logic should be refactored in 2.x
+  /**
+    *
+    * @param filters
+    * @return always returns an empty array. Filters will be pushed down to the [[com.basho.riak.spark.rdd.RiakRDD]] and
+    *         in case of unsupported/unhandled filter, it will raise an exception.
+    *         It is a legacy behavior which definitely will be changed on 2.x branch of Spark Connector.
+    * @since 1.6.3
+    */
+  override def unhandledFilters(filters: Array[Filter]): Array[Filter] = Array.empty[Filter]
+
   override def insert(data: DataFrame, overwrite: Boolean): Unit = {
     if (overwrite) {
       throw new UnsupportedOperationException("Data truncation is not supported for the moment")
