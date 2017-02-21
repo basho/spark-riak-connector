@@ -481,7 +481,7 @@ There are few requirements/rules to achieve [Spark data locality](https://databr
     
 3. Proper value for spark.riak.input.split.count should be provided [Configuration of Spark Context](./using-connector.md#configuration-of-spark-context). If you are not sure what is that, use the number of Riak KV nodes in the cluster.
 
-**Note** *Spark-Riak Connector* supports NODE_LOCAL and does not support RACK_LOCAL data locality levels/phases. 
+**Note:** Spark-Riak Connector supports NODE_LOCAL and does not support RACK_LOCAL data locality level/phase. 
 
 ## Working With TS Dates
 
