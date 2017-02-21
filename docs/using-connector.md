@@ -13,7 +13,7 @@ Scroll down or click below for the desired information:
 - [Spark Dataframes With KV Bucket](./using-connector.md#spark-dataframes-with-kv-bucket)
 - [Spark Dataframes With TS Table](./using-connector.md#spark-dataframes-with-ts-table)
 - [Partitioning for KV Buckets](./using-connector.md#partitioning-for-kv-buckets)
-- [Utilize Spark data locality for KV](./using-connector.md#utilize-spark-data-locality-for-kv)
+- [Utilize Spark data locality for KV](./using-connector.md#utilize-spark-data-locality-for-riak-kv)
 - [Working With TS Dates](./using-connector.md#working-with-ts-dates)
 - [Partitioning for Riak TS Table Queries](./using-connector.md#partitioning-for-riak-ts-table-queries)
 - [TS Bulk Write](./using-connector.md#ts-bulk-write)
@@ -468,12 +468,12 @@ The coverage plan based partitioner will be used for the following queries:
 
 First, a query for the coverage plan is made to Riak. Then, the returned coverage entries (one for each VNode) are grouped by host and split into a number of partitions (defined by **spark.riak.input.split.count**) in such a way that each partition reads data from a single host. This means that each partition can processes multiple coverage entries but all of the parition will point to single Riak node (if it's possioble). While processing, the coverage entry partition will iteratively read data in portions. The size of a portion is defined by **spark.riak.input.fetch-size**.
 
-##  Utilize Spark Data locality for Riak KV reads
+##  Utilize Spark Data locality for Riak KV
     
 There are few requirements/rules to achieve [Spark data locality](https://databricks.gitbooks.io/databricks-spark-knowledge-base/content/performance_optimization/data_locality.html):
     
 1. Riak KV nodes should be collocated with the Spark Workers
-2. It is required to stick with  the Coverage Plan based  read operations:
+2. It is required to stick with the Coverage Plan based read operations:
     * queryAll()
     * query2iRangeLocal(index, from, to)
    
@@ -481,6 +481,7 @@ There are few requirements/rules to achieve [Spark data locality](https://databr
     
 3. Proper value for spark.riak.input.split.count should be provided [Configuration of Spark Context](./using-connector.md#configuration-of-spark-context). If you are not sure what is that, use the number of Riak KV nodes in the cluster.
 
+**Note** *Spark-Riak Connector* supports NODE_LOCAL and does not support RACK_LOCAL data locality levels/phases. 
 
 ## Working With TS Dates
 
