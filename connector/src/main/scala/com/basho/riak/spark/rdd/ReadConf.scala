@@ -19,19 +19,21 @@ package com.basho.riak.spark.rdd
 
 import java.io.InputStream
 import java.util.Properties
-import org.apache.spark.SparkConf
-import java.time.Duration
-import org.joda.time.Duration
+
+import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.network.util.JavaUtils
+
+import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration._
 
 /** RDD read settings
  *
   * @param fetchSize number of keys to fetch in a single round-trip to Riak
-  * @param splitCount desired minimum number of Spark partitions to divide the data into
+  * @param _splitCount desired minimum number of Spark partitions to divide the data into, or [[None]]
  */
 case class ReadConf (
   val fetchSize: Int = ReadConf.DefaultFetchSize,
-  val splitCount: Int = ReadConf.DefaultSplitCount,
+  private val _splitCount: Option[Int] = None,
   val tsTimestampBinding: TsTimestampBindingType = ReadConf.DefaultTsTimestampBinding,
   /**
    * Used only in ranged partitioner to identify quantized field.
@@ -57,9 +59,39 @@ case class ReadConf (
   useStreamingValuesForFBRead: Boolean = ReadConf.DefaultUseStreamingValues4FBRead
 ) {
 
+
+  def getOrDefaultSplitCount(defaultSplitCount: Int = ReadConf.DefaultSplitCount): Int =
+    _splitCount.getOrElse(defaultSplitCount)
+
+  /**
+    *  If there is no explicitly specified [[ReadConf._splitCount]] it calculates the split count
+    *  in accordance to the in number of available spark workers.
+    *
+    * The docs recommend to have your number of partitions set to 3 or 4 times the number of CPUs in your cluster
+    * so that the work gets distributed more evenly among the CPUs.
+    * Meaning, if you only have 1 partition per core in the cluster you will have to wait for the one longest running
+    * task to complete but if you had broken that down further the workload would be more evenly balanced with fast
+    * and slow running tasks evening out.
+    *
+    * @param sc SparkContext
+    * @param duration to wait while a Spark runtime settled down and all available executors report about their readiness
+    * @return desired number of Spark partitions, explicitly specified or calculated
+    * @see [[ReadConf.smartSplitMultiplier]]
+    */
+  def getOrSmartSplitCount(sc: SparkContext, duration: FiniteDuration = 4 second): Int =
+    this._splitCount match {
+      case Some(split: Int) => split
+      case None =>
+        // sleep to give spark runtime a chance to settle down with the executors pool
+        Thread.sleep(duration.toMillis)
+        val totalNumberOfExecutors = sc.getExecutorMemoryStatus.size
+
+        this.getOrDefaultSplitCount(totalNumberOfExecutors * ReadConf.smartSplitMultiplier)
+      }
+
   def overrideProperties(options: Map[String, String]): ReadConf = {
     val newFetchSize = options.getOrElse(ReadConf.fetchSizePropName, fetchSize.toString).toInt
-    val newSplitCount = options.getOrElse(ReadConf.splitCountPropName, splitCount.toString).toInt
+    val newSplitCount = options.get(ReadConf.splitCountPropName).map(_.toInt)
     val newUseStreamingValuesForFBRead = options.getOrElse(ReadConf.useStreamingValuesPropName, useStreamingValuesForFBRead.toString).toBoolean
     val newTsTimestampBinding = TsTimestampBindingType(options.getOrElse(ReadConf.tsBindingsTimestamp, tsTimestampBinding.value))
     val newTsRangeFieldName = options.getOrElse(ReadConf.tsRangeFieldPropName, tsRangeFieldName)
@@ -76,6 +108,18 @@ object ReadConf {
   final val tsBindingsTimestamp = "spark.riakts.bindings.timestamp"
   final val tsRangeFieldPropName = "spark.riak.partitioning.ts-range-field-name"
   final val tsQuantumPropName = "spark.riak.partitioning.ts-quantum"
+
+  /**
+    * The docs recommend to have your number of partitions set to 3 or 4 times the number of CPUs in your cluster
+    * so that the work gets distributed more evenly among the CPUs.
+    * Meaning, if you only have 1 partition per core in the cluster you will have to wait for the one longest running
+    * task to complete but if you had broken that down further the workload would be more evenly balanced with fast
+    * and slow running tasks evening out.
+    *
+    * Since there is no enough information about available Spark resources such as real number of cores,
+    * 3x multiplier will be used.
+    */
+  final val smartSplitMultiplier = 3
 
   private val defaultProperties: Properties =
      getClass.getResourceAsStream("/ee-default.properties") match {
@@ -106,7 +150,7 @@ object ReadConf {
   def apply(conf: SparkConf): ReadConf = {
     ReadConf(
       fetchSize = conf.getInt(fetchSizePropName, DefaultFetchSize),
-      splitCount = conf.getInt(splitCountPropName, DefaultSplitCount),
+      _splitCount = conf.getOption(splitCountPropName).map(_.toInt),
       tsTimestampBinding = TsTimestampBindingType(conf.get(tsBindingsTimestamp, DefaultTsTimestampBinding.value)),
       tsRangeFieldName = conf.get(tsRangeFieldPropName, null),
       quantum = conf.getOption(tsQuantumPropName).map(JavaUtils.timeStringAsMs),

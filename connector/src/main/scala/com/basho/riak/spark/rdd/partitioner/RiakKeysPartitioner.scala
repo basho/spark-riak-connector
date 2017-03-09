@@ -37,7 +37,7 @@ object RiakKeysPartitioner {
       case Some(Right(ranges: Seq[(K, Option[K])])) =>
         ranges match {
           case (from, to) +: Seq() => {
-            val splitRanges = splitRangeIntoSubranges(from, to, readConf.splitCount)
+            val splitRanges = splitRangeIntoSubranges(from, to, readConf.getOrDefaultSplitCount())
             partitionPerRange(splitRanges, endpoints, riakKeys.index)
           }
           case _ => partitionPerRange(ranges, endpoints, riakKeys.index)

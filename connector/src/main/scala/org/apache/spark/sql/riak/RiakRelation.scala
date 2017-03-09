@@ -73,7 +73,7 @@ private[riak] class RiakRelation(
     }
 
     val tsRangeFieldName = readConf.tsRangeFieldName
-    if (tsRangeFieldName != null && readConf.splitCount > 1) {
+    if (tsRangeFieldName != null && readConf.getOrDefaultSplitCount() > 1) {
       val partitionedRdd = prunedRdd.partitionByTimeRanges(tsRangeFieldName, filters)
       readConf.quantum match {
         case None    => partitionedRdd
