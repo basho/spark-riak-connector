@@ -41,7 +41,7 @@ case class QueryFullBucket(bucket: BucketDef,
           logWarning(s"Node '${primaryHost.get}' is not available. Alternative coverage entry must be requested.")
           logDebug(s"Unable to execute query using current coverage entry: ${coverageEntry.get}.")
           val cmd = new Builder(bucket.asNamespace())
-            .withMinPartitions(readConf.splitCount)
+            .withMinPartitions(1) // <- As soon as we are doing recovery there is no needs to split data
             .withReplaceCoverageEntry(coverageEntry.get)
             .withUnavailableCoverageEntries(unavailableList)
             .build()
