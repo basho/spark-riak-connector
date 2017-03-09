@@ -50,7 +50,7 @@ class RiakRDD[R] private[spark](@transient sc: SparkContext,
       case Some(rk) =>
         rk.coverageEntries match {
           case Some(ce) =>
-            RiakCoveragePlanBasedPartitioner.partitions(connector, BucketDef(bucketType, bucketName), readConf, queryData.get)
+            RiakCoveragePlanBasedPartitioner.partitions(sc, connector, BucketDef(bucketType, bucketName), readConf, queryData.get)
 
           case _ =>
             RiakKeysPartitioner.partitions(connector.hosts, readConf, queryData.get)

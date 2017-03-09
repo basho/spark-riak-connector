@@ -24,7 +24,7 @@ import com.basho.riak.spark.query.QueryData
 import com.basho.riak.spark.rdd.connector.RiakConnector
 import com.basho.riak.spark.rdd.partitioner.PartitioningUtils._
 import com.basho.riak.spark.rdd.{BucketDef, ReadConf, RiakPartition}
-import org.apache.spark.{Logging, Partition}
+import org.apache.spark.{Logging, Partition, SparkContext}
 
 import scala.collection.JavaConversions._
 import scala.util.control.Exception._
@@ -36,9 +36,9 @@ case class RiakLocalCoveragePartition[K](
   queryData: QueryData[K]) extends RiakPartition
 
 object RiakCoveragePlanBasedPartitioner extends Logging {
-  def partitions[K](connector: RiakConnector, bucket: BucketDef, readConf: ReadConf, queryData: QueryData[K]): Array[Partition] = {
+  def partitions[K](sc: SparkContext, connector: RiakConnector, bucket: BucketDef, readConf: ReadConf, queryData: QueryData[K]): Array[Partition] = {
 
-    val partitionsCount = readConf.splitCount
+    val partitionsCount = readConf.getOrSmartSplitCount(sc)
     val coveragePlan = connector.withSessionDo { session =>
 
       val cmd = new Builder(bucket.asNamespace())

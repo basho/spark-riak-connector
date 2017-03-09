@@ -79,7 +79,7 @@ class OptionsTest {
     val riakConf = getRiakConnectorConf(riakConnector)
     val readConf = rel.readConf
     assertEquals(initialFetchSize, readConf.fetchSize)
-    assertEquals(initialSplitCount, readConf.splitCount)
+    assertEquals(initialSplitCount, readConf.getOrDefaultSplitCount())
     assertEquals(hostAndPorts, riakConf.hosts)
     assertEquals(initialConnectionsMin, riakConf.minConnections)
     assertEquals(initialConnectionsMax, riakConf.maxConnections)
@@ -134,7 +134,7 @@ class OptionsTest {
       "spark.riak.input.split.count" -> newSplitCount.toString), dummySchema).asInstanceOf[RiakRelation]
     val readConf = rel.readConf
     assertEquals(newFetchSize, readConf.fetchSize)
-    assertEquals(newSplitCount, readConf.splitCount)
+    assertEquals(newSplitCount, readConf.getOrDefaultSplitCount())
   }
 
   @Test

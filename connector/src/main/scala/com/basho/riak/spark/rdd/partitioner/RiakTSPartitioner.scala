@@ -157,7 +157,7 @@ object SinglePartitionRiakTSPartitioner extends RiakTSPartitioner {
 abstract class RangedRiakTSPartitioner(tableName: String, schema: Option[StructType],
                                        columnNames: Option[Seq[String]], filters: Array[Filter], readConf: ReadConf) extends RiakTSPartitioner {
 
-  protected val splitCount = readConf.splitCount
+  protected val splitCount = readConf.getOrDefaultSplitCount()
 
   protected def getFilterAttribute(filter: Filter) = filter match {
     case EqualTo(a, v)            => a
