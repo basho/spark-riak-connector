@@ -23,7 +23,7 @@ package com.basho.riak.spark.rdd.partitioner
 import com.basho.riak.spark.rdd.{ReadConf, RegressionTests, RiakTSRDD}
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.sources.{Filter, GreaterThanOrEqual, LessThan}
-import org.junit.Test
+import org.junit.{Ignore, Test}
 import org.junit.experimental.categories.Category
 
 class RiakTSCoveragePlanBasedPartitionerTest extends AbstractCoveragePlanBasedPartitionerTest {
@@ -49,7 +49,7 @@ class RiakTSCoveragePlanBasedPartitionerTest extends AbstractCoveragePlanBasedPa
     val partitions = partitioner.partitions()
     assertEqualsUsingJSONIgnoreOrder(
       """[
-        | {index: 0, queryData: {primaryHost: 'h3:0', entry: '[11,12)@h3'}},
+        | {index: 1, queryData: {primaryHost: 'h3:0', entry: '[11,12)@h3'}},
         |
         | {index: 1, queryData:[
         |     {primaryHost: 'h2:0', entry: '[5,6)@h2'},

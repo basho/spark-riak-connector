@@ -107,7 +107,7 @@ class AbstractCoveragePlanBasedPartitionerTest extends JsonTestFunctions {
 
       val ce = new CoveragePlanOperation.Response.CoverageEntry()
       FieldUtils.writeField( ce, "host", host, true)
-      FieldUtils.writeField(ce, "port", -1, true)
+      FieldUtils.writeField(ce, "port", 0, true)
       FieldUtils.writeField(ce, "description", s"${range._1} -> ${range._2}", true)
       FieldUtils.writeField(ce, "coverageContext", ce.getDescription.getBytes, true)
 

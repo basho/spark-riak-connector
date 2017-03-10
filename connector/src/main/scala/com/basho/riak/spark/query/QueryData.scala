@@ -18,21 +18,31 @@
 package com.basho.riak.spark.query
 
 import com.basho.riak.client.core.operations.CoveragePlanOperation.Response.CoverageEntry
+import com.basho.riak.spark.util.{DumpUtils, Dumpable}
 
-case class QueryData[T](
+case class QueryData[T] (
   // Might be None if represents the full bucket read
-    keysOrRange: Option[Either[Seq[T],Seq[(T, Option[T])]]],
+  keysOrRange: Option[Either[Seq[T],Seq[(T, Option[T])]]],
 
   // Might be None if represents the bucket keys
   index: Option[String] = None,
 
   coverageEntries: Option[Seq[CoverageEntry]] = None
-){
+) extends Dumpable {
 
   def copy( keysOrRange: Option[Either[Seq[T],Seq[(T, Option[T])]]] = keysOrRange,
             index: Option[String] = index,
             coverageEntries: Option[Seq[CoverageEntry]] = coverageEntries ): QueryData[T] ={
     new QueryData[T]( keysOrRange, index, coverageEntries)
+  }
+
+  override def dump(lineSep: String): String = {
+    s"index: '${index.getOrElse("")}'${lineSep}" +
+      s"coverageEntries:" +
+      s"${coverageEntries match {
+        case Some(entries: Seq[CoverageEntry]) => s"$lineSep  " + DumpUtils.dumpWithIdx(entries, lineSep + "    ")
+        case None => "[]"
+      }}"
   }
 }
 

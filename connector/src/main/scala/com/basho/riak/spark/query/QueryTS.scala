@@ -39,7 +39,8 @@ case class TSQueryData(sql: String, coverageEntry: Option[CoverageEntry] = None)
   override def dump(lineSep: String = "\n"): String = {
     val optional = coverageEntry match {
       case Some(ce) => lineSep + s"primary-host: ${primaryHost.get.getHost}:${primaryHost.get.getPort}" + lineSep +
-        "coverage-entry:" + DumpUtils.dump(ce, lineSep + "   ")
+        "coverage-entry:" +lineSep + "   " +
+          DumpUtils.dump(ce, lineSep + "   ")
       case None => ""
     }
 
