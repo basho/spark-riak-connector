@@ -350,7 +350,7 @@ class ReadFromRiakRDDTest extends AbstractRiakSparkTest {
     val partitions = sc.riakBucket[UserTS](DEFAULT_NAMESPACE)
       .query2iRangeLocal("creationNo", 1, 1000).getPartitions // scalastyle:ignore
 
-    assertEquals(readConf.getOrDefaultSplitCount(), partitions.length)
+    assertEquals(readConf.getOrSmartSplitCount(sc), partitions.length)
   }
 
   @Test

@@ -30,11 +30,9 @@ import com.fasterxml.jackson.databind.module.SimpleModule
 import org.apache.commons.lang3.reflect.FieldUtils
 import org.apache.spark.SparkContext
 import org.junit.Before
-import org.junit.runner.RunWith
-import org.mockito.Mock
+import org.mockito.{Mock, MockitoAnnotations}
 import org.mockito.Matchers._
 import org.mockito.invocation.InvocationOnMock
-import org.mockito.runners.MockitoJUnitRunner
 import org.mockito.stubbing.Answer
 import org.mockito.Mockito._
 
@@ -43,7 +41,6 @@ import scala.collection.Map
 /**
   * Created by srg on 2/28/17.
   */
-@RunWith(classOf[MockitoJUnitRunner])
 class AbstractCoveragePlanBasedPartitionerTest extends JsonTestFunctions {
 
   @Mock
@@ -74,6 +71,7 @@ class AbstractCoveragePlanBasedPartitionerTest extends JsonTestFunctions {
 
   @Before
   def initializeMocks(): Unit = {
+    MockitoAnnotations.initMocks(this);
     doAnswer(new Answer[timeseries.CoveragePlanResult] {
       override def answer(invocation: InvocationOnMock): timeseries.CoveragePlanResult = {
         tsCoveragePlan
@@ -97,18 +95,18 @@ class AbstractCoveragePlanBasedPartitionerTest extends JsonTestFunctions {
     tsCoveragePlan = new SimpleTSCoveragePlanResult
   }
 
-  protected def mockKVCoveragePlan(entries: Tuple2[String, Tuple2[Int, Int]]*): Unit = {
+  protected def mockKVCoveragePlan(entries: Tuple2[String, Any]*): Unit = {
     val r = new SimpleKVCoveragePlanOperationResponse()
     val m = classOf[CoveragePlanOperation.Response].getDeclaredMethod("addEntry", classOf[CoveragePlanOperation.Response.CoverageEntry])
     m.setAccessible(true)
 
     entries.foreach(e => {
-      val (host, range) = e
+      val (host, d) = e
 
       val ce = new CoveragePlanOperation.Response.CoverageEntry()
-      FieldUtils.writeField( ce, "host", host, true)
+      FieldUtils.writeField(ce, "host", host, true)
       FieldUtils.writeField(ce, "port", 0, true)
-      FieldUtils.writeField(ce, "description", s"${range._1} -> ${range._2}", true)
+      FieldUtils.writeField(ce, "description", d.toString, true)
       FieldUtils.writeField(ce, "coverageContext", ce.getDescription.getBytes, true)
 
       m.invoke(r, ce)
@@ -116,7 +114,7 @@ class AbstractCoveragePlanBasedPartitionerTest extends JsonTestFunctions {
 
     val constructor = classOf[KVCoveragePlan.Response].getDeclaredConstructor(classOf[CoveragePlanOperation.Response])
     constructor.setAccessible(true)
-    kvCoveragePlan  = constructor.newInstance(r)
+    kvCoveragePlan = constructor.newInstance(r)
   }
 
   protected def mockSparkExecutorsNumber(num: Int): Unit = {

@@ -49,15 +49,15 @@ class RiakTSCoveragePlanBasedPartitionerTest extends AbstractCoveragePlanBasedPa
     val partitions = partitioner.partitions()
     assertEqualsUsingJSONIgnoreOrder(
       """[
-        | {index: 1, queryData: {primaryHost: 'h3:0', entry: '[11,12)@h3'}},
+        | {index: '${json-unit.ignore}', queryData: {primaryHost: 'h3:0', entry: '[11,12)@h3'}},
         |
-        | {index: 1, queryData:[
+        | {index: '${json-unit.ignore}', queryData:[
         |     {primaryHost: 'h2:0', entry: '[5,6)@h2'},
         |     {primaryHost: 'h2:0', entry: '[7,8)@h2'}]},
         |
-        | {index: 2, queryData: {primaryHost: 'h1:0', entry: '[1,2)@h1'}},
+        | {index: '${json-unit.ignore}', queryData: {primaryHost: 'h1:0', entry: '[1,2)@h1'}},
         |
-        | {index: 3, queryData: {primaryHost: 'h2:0', entry: '[3,4)@h2'}}
+        | {index: '${json-unit.ignore}', queryData: {primaryHost: 'h2:0', entry: '[3,4)@h2'}}
       ]""".stripMargin, partitions)
   }
 
@@ -80,11 +80,11 @@ class RiakTSCoveragePlanBasedPartitionerTest extends AbstractCoveragePlanBasedPa
 
     assertEqualsUsingJSONIgnoreOrder(
       """[
-        | {index: 0, queryData: {primaryHost: '1:0', entry: '[1,2)@1'}},
-        | {index: 1, queryData: {primaryHost: '1:0', entry: '[3,4)@1'}},
-        | {index: 2, queryData: {primaryHost: '2:0', entry: '[5,6)@2'}},
-        | {index: 3, queryData: {primaryHost: '3:0', entry: '[9,10)@3'}},
-        | {index: 4, queryData: {primaryHost: '2:0', entry: '[7,8)@2'}}
+        | {index: '${json-unit.ignore}', queryData: {primaryHost: '1:0', entry: '[1,2)@1'}},
+        | {index: '${json-unit.ignore}', queryData: {primaryHost: '1:0', entry: '[3,4)@1'}},
+        | {index: '${json-unit.ignore}', queryData: {primaryHost: '2:0', entry: '[5,6)@2'}},
+        | {index: '${json-unit.ignore}', queryData: {primaryHost: '3:0', entry: '[9,10)@3'}},
+        | {index: '${json-unit.ignore}', queryData: {primaryHost: '2:0', entry: '[7,8)@2'}}
       ]""".stripMargin, partitions)
   }
 
@@ -100,9 +100,9 @@ class RiakTSCoveragePlanBasedPartitionerTest extends AbstractCoveragePlanBasedPa
     val partitions = rdd.partitions
       assertEqualsUsingJSONIgnoreOrder(
         """[
-          | {index: 0, queryData: {primaryHost: 'h3:0', entry: '[5,6)@h3'}},
-          | {index: 1, queryData: {primaryHost: 'h1:0', entry: '[1,2)@h1'}},
-          | {index: 2, queryData: {primaryHost: 'h2:0', entry: '[3,4)@h2'}}
+          | {index: '${json-unit.ignore}', queryData: {primaryHost: 'h3:0', entry: '[5,6)@h3'}},
+          | {index: '${json-unit.ignore}', queryData: {primaryHost: 'h1:0', entry: '[1,2)@h1'}},
+          | {index: '${json-unit.ignore}', queryData: {primaryHost: 'h2:0', entry: '[3,4)@h2'}}
         ]""".stripMargin, partitions)
   }
 
@@ -126,18 +126,18 @@ class RiakTSCoveragePlanBasedPartitionerTest extends AbstractCoveragePlanBasedPa
     val partitions = rdd.partitions
 
     assertEqualsUsingJSONIgnoreOrder("""[
-      | {index:0, queryData:[
+      | {index:'${json-unit.ignore}', queryData:[
       |     {primaryHost: 'h3:0', entry: '[14,15)@h3'},
       |     {primaryHost: 'h3:0', entry: '[16,17)@h3'},
       |     {primaryHost: 'h3:0', entry: '[18,19)@h3'}]},
       |
-      | {index:1,queryData:[
+      | {index: '${json-unit.ignore}',queryData:[
       |     {primaryHost: 'h2:0', entry: '[6,7)@h2'},
       |     {primaryHost: 'h2:0', entry: '[8,9)@h2'},
       |     {primaryHost: 'h2:0', entry: '[10,11)@h2'},
       |     {primaryHost: 'h2:0', entry: '[12,13)@h2'}]},
       |
-      | {index:2,queryData:[
+      | {index: '${json-unit.ignore}',queryData:[
       |     {primaryHost: 'h1:0', entry: '[1,2)@h1'},
       |     {primaryHost: 'h1:0', entry: '[3,4)@h1'},
       |     {primaryHost: 'h1:0', entry: '[5,6)@h1'}]}
