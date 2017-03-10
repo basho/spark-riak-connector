@@ -91,7 +91,7 @@ case class ReadConf (
 
   def overrideProperties(options: Map[String, String]): ReadConf = {
     val newFetchSize = options.getOrElse(ReadConf.fetchSizePropName, fetchSize.toString).toInt
-    val newSplitCount = options.get(ReadConf.splitCountPropName).map(_.toInt)
+    val newSplitCount = options.get(ReadConf.splitCountPropName).map(_.toInt).orElse(_splitCount)
     val newUseStreamingValuesForFBRead = options.getOrElse(ReadConf.useStreamingValuesPropName, useStreamingValuesForFBRead.toString).toBoolean
     val newTsTimestampBinding = TsTimestampBindingType(options.getOrElse(ReadConf.tsBindingsTimestamp, tsTimestampBinding.value))
     val newTsRangeFieldName = options.getOrElse(ReadConf.tsRangeFieldPropName, tsRangeFieldName)

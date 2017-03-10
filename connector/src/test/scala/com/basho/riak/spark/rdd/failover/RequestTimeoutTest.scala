@@ -27,7 +27,7 @@ class RequestTimeoutTest extends AbstractFailoverOfflineTest {
             case partitionIndex: Int => RpbCoverageEntry.newBuilder()
               .setIp(ByteString.copyFromUtf8(a.getHost))
               .setPort(a.getPort)
-              .setCoverContext(ByteString.copyFromUtf8(""))
+              .setCoverContext(ByteString.copyFromUtf8(s"StubCoverageEntry-${a.toString}-$partitionIndex"))
               .setKeyspaceDesc(ByteString.copyFromUtf8(s"StubCoverageEntry-${a.toString}-$partitionIndex"))
               .build()
           }

@@ -27,15 +27,15 @@ class RiakCoveragePlanBasedPartitionerTest extends AbstractCoveragePlanBasedPart
   @Test
   def smartSplitShouldBeUsedByDefault(): Unit = {
     mockKVCoveragePlan(
-      ("h1", 1 -> 2),
-      ("h1", 3 -> 4),
-      ("h2", 5 -> 6),
-      ("h2", 7 -> 8),
-      ("h3", 9 -> 10),
-      ("h3", 11 -> 12),
-      ("h3", 13 -> 14),
-      ("h4", 15 -> 16),
-      ("h4", 17 -> 18)
+      ("h1", 1),
+      ("h1", 2),
+      ("h2", 3),
+      ("h2", 4),
+      ("h3", 5),
+      ("h3", 6),
+      ("h3", 7),
+      ("h4", 8),
+      ("h4", 9)
     )
 
     mockSparkExecutorsNumber(defaultNumberOfSparkExecutors)
@@ -46,31 +46,31 @@ class RiakCoveragePlanBasedPartitionerTest extends AbstractCoveragePlanBasedPart
 
     assertEqualsUsingJSONIgnoreOrder("""[
         | {index: '${json-unit.ignore}', primaryHost: 'h4:0', queryData: {entries:[
-        |     {host: 'h4:0', description: '15 -> 16'}]}},
+        |     {host: 'h4:0', description: '8'}]}},
         |
         | {index: '${json-unit.ignore}', primaryHost: 'h3:0', queryData: {entries:[
-        |     {host: 'h3:0', description: '11 -> 12'}]}},
+        |     {host: 'h3:0', description: '6'}]}},
         |
         | {index: '${json-unit.ignore}', primaryHost: 'h1:0', queryData: {entries:[
-        |     {host: 'h1:0', description: '1 -> 2'}]}},
+        |     {host: 'h1:0', description: '1'}]}},
         |
         | {index: '${json-unit.ignore}', primaryHost: 'h3:0', queryData: {entries:[
-        |     {host: 'h3:0', description: '13 -> 14'}]}},
+        |     {host: 'h3:0', description: '7'}]}},
         |
         | {index: '${json-unit.ignore}', primaryHost: 'h2:0', queryData: {entries:[
-        |     {host: 'h2:0', description: '7 -> 8'}]}},
+        |     {host: 'h2:0', description: '4'}]}},
         |
         | {index: '${json-unit.ignore}', primaryHost: 'h1:0', queryData: {entries:[
-        |     {host: 'h1:0', description: '3 -> 4'}]}},
+        |     {host: 'h1:0', description: '2'}]}},
         |
         | {index: '${json-unit.ignore}', primaryHost: "h3:0", queryData: {entries:[
-        |     {host: 'h3:0', description: '9 -> 10'}]}},
+        |     {host: 'h3:0', description: '5'}]}},
         |
         | {index: '${json-unit.ignore}', primaryHost: 'h4:0', queryData: {entries:[
-        |     {host: 'h4:0', description: '17 -> 18'}]}},
+        |     {host: 'h4:0', description: '9'}]}},
         |
         | {index: '${json-unit.ignore}', primaryHost: 'h2:0', queryData:{entries:[
-        |     {host: 'h2:0', description: '5 -> 6'}]}}
+        |     {host: 'h2:0', description: '3'}]}}
         |
       ]""".stripMargin,
       partitions
@@ -81,15 +81,15 @@ class RiakCoveragePlanBasedPartitionerTest extends AbstractCoveragePlanBasedPart
   def explicitlySpecifiedSplitCountShouldOverrideDefaultOne(): Unit = {
 
     mockKVCoveragePlan(
-      ("h1", 1 -> 2),
-      ("h1", 3 -> 4),
-      ("h2", 5 -> 6),
-      ("h2", 7 -> 8),
-      ("h3", 9 -> 10),
-      ("h3", 11 -> 12),
-      ("h3", 13 -> 14),
-      ("h4", 15 -> 16),
-      ("h4", 17 -> 18)
+      ("h1", 1),
+      ("h1", 2),
+      ("h2", 3),
+      ("h2", 4),
+      ("h3", 5),
+      ("h3", 6),
+      ("h3", 7),
+      ("h4", 8),
+      ("h4", 9)
     )
 
     mockSparkExecutorsNumber(defaultNumberOfSparkExecutors)
@@ -100,19 +100,19 @@ class RiakCoveragePlanBasedPartitionerTest extends AbstractCoveragePlanBasedPart
     assertEquals(requestedSplit, partitions.length)
     assertEqualsUsingJSONIgnoreOrder("""[
         | {index: '${json-unit.ignore}', primaryHost: 'h2:0', queryData:{entries:[
-        |     {host: 'h2:0', description: '5 -> 6'},
-        |     {host: 'h2:0', description: '7 -> 8'}]}},
+        |     {host: 'h2:0', description: '3'},
+        |     {host: 'h2:0', description: '4'}]}},
         | {index: '${json-unit.ignore}', primaryHost: 'h3:0', queryData:{entries:[
-        |     {host: 'h3:0', description: '11 -> 12'},
-        |     {host: 'h3:0', description: '13 -> 14'}]}},
+        |     {host: 'h3:0', description: '6'},
+        |     {host: 'h3:0', description: '7'}]}},
         | {index: '${json-unit.ignore}', primaryHost: 'h4:0', queryData:{entries:[
-        |     {host: 'h4:0', description: '15 -> 16'},
-        |     {host: 'h4:0', description: '17 -> 18'}]}},
+        |     {host: 'h4:0', description: '8'},
+        |     {host: 'h4:0', description: '9'}]}},
         | {index:'${json-unit.ignore}', primaryHost: 'h3:0', queryData:{entries:[
-        |     {host: 'h3:0', description: '9 -> 10'}]}},
+        |     {host: 'h3:0', description: '5'}]}},
         | {index:'${json-unit.ignore}', primaryHost: 'h1:0', queryData:{entries:[
-        |     {host: 'h1:0', description: '1 -> 2'},
-        |     {host: 'h1:0', description: '3 -> 4'}]}}]
+        |     {host: 'h1:0', description: '1'},
+        |     {host: 'h1:0', description: '2'}]}}]
         |]""".stripMargin, partitions)
   }
 }

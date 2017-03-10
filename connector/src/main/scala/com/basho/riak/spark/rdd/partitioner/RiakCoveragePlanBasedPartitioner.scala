@@ -67,7 +67,7 @@ object RiakCoveragePlanBasedPartitioner extends Logging {
     if (log.isTraceEnabled()) {
       logTrace("\n----------------------------------------\n" +
         s" [Auto TS Partitioner]  Requested: split up to $splitCount partitions\n" +
-        s"                        Actually: the only $partitionsCount partitions might be created\n" +
+        s"                        Actually: the only $partitionsCount partitions will be created\n" +
         "--\n" +
         s"Coverage plan:\n" +
         DumpUtils.dumpWithIdx(coveragePlan, "\n  ") +
@@ -116,7 +116,22 @@ object RiakCoveragePlanBasedPartitioner extends Logging {
 
     // Double check that all coverage entries were used
     val numberOfUsedCoverageEntries = partitions.foldLeft(0){ (sum, p) => sum + p.queryData.coverageEntries.getOrElse(Seq.empty).size}
-    require( numberOfUsedCoverageEntries == coverageEntriesCount)
+
+    if (numberOfUsedCoverageEntries != coverageEntriesCount) {
+      logError("\n----------------------------------------\n" +
+        "  [ERROR] Some coverage entries do not belongs to the spark partitions\n" +
+        "--\n" +
+        " Coverage Plan:\n  " +
+        DumpUtils.dumpWithIdx(coveragePlan, "\n  ") +
+        "\n--\n" +
+        " Created partitions:" +
+        DumpUtils.dump(result, "\n") +
+        "\n----------------------------------------\n")
+
+      throw new IllegalStateException("Some coverage entries do not belongs to the spark " +
+        "partitions, it wil cause incomplete data load, see log for more datails.")
+    }
+
 
     result.asInstanceOf[Array[Partition]]
   }
