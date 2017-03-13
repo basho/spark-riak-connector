@@ -68,7 +68,7 @@ class RiakRDD[R] private[spark](@transient sc: SparkContext,
   override def getPreferredLocations(split: Partition) : Seq[String] = {
     split match {
       case (lcp: RiakLocalCoveragePartition[_]) => List(lcp.primaryHost.getHost)
-      case _ => Nil
+      case _ => super.getPreferredLocations(split)
     }
   }
 
