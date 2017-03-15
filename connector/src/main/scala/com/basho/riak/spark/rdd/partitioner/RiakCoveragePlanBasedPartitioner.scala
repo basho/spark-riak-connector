@@ -80,28 +80,47 @@ object RiakCoveragePlanBasedPartitioner extends Logging {
     require(partitionsCount <= coveragePlan.size, s"Requires $partitionsCount partitions but coverage plan contains ${coveragePlan.size} partitions")
 
 
-    val evenPartitionDistributionBetweenHosts = distributeEvenly(partitionsCount, hosts.size).sorted.reverse
-    require( partitionsCount == evenPartitionDistributionBetweenHosts.foldLeft(0)(_ + _))
+    /**
+      * Spark Partition distribution across the Riak hosts, sorted in a reverse order to preserve bigger splits on top.
+      * Each value represents a number of partitions that should be created.
+      */
+    val partitionDistribution: Seq[Int] = distributeEvenly(partitionsCount, hosts.size).sorted.reverse
 
-    val sortedCoverageEntries = ListMap(
+    require( partitionsCount == partitionDistribution.foldLeft(0)(_ + _))
+
+    /**
+      * Per host coverage entries, sorted to preserve hosts that have more coverage entries on top
+      */
+    val perHostCoverageEntries = ListMap(
       (for {
         h <- hosts
         perHost = h -> coveragePlan.hostEntries(h)
       } yield perHost)
+        // sort by number of coverage entries, bigger sequence wins
         .toSeq.sortWith(_._2.size() > _._2.size()): _*)
 
-    val numberOfEntriesInPartitionPerHost =
-      (sortedCoverageEntries.keys zip evenPartitionDistributionBetweenHosts) flatMap {
-        case (h, num) =>
-          val spl = splitListEvenly(coveragePlan.hostEntries(h), num)
-          spl map {(h-> _)}
+    /**
+      * Flat sequence of host -> Seq[CoverageEntry] tuples, created according to the partition distribution,
+      * each tuple represents one partition.
+      *
+      * Note: as soon as both perHostCoverageEntries and partitionDistribution are sorted to preserve on top a bigger split
+      * and a bigger coverage entries sequence accordingly, the chances are good to met the distribution and split
+      * the biggest sequence into the biggest number of chunks.
+      */
+    val riakPartitionData =
+      (perHostCoverageEntries.keys zip partitionDistribution) flatMap {
+        case (h: HostAndPort, num: Int) =>
+          /**
+            * split list of host coverage entries into num parts (whereas num is the number of Spark partitions)
+            * and map'em to the host -> Seq[CoverageEntry] tuples
+            */
+          splitListEvenly(perHostCoverageEntries.get(h).get, num) map  {h ->  _}
       }
 
-    val partitions = for {
-      ((host, coverageEntries), partitionIdx) <- numberOfEntriesInPartitionPerHost.zipWithIndex
-      partition = new RiakLocalCoveragePartition(
+    val partitions = riakPartitionData.zipWithIndex.map {
+      case ((host: HostAndPort, coverageEntries: Seq[_]), partitionIdx) => new RiakLocalCoveragePartition(
         partitionIdx, hosts.toSet, host, queryData.copy(coverageEntries = Some(coverageEntries)))
-    } yield partition
+    }
 
     val result = partitions.toArray.sortBy(_.index)
 
@@ -119,7 +138,7 @@ object RiakCoveragePlanBasedPartitioner extends Logging {
 
     if (numberOfUsedCoverageEntries != coverageEntriesCount) {
       logError("\n----------------------------------------\n" +
-        "  [ERROR] Some coverage entries do not belongs to the spark partitions\n" +
+        "  [ERROR] Some coverage entries do not belong to any spark partition\n" +
         "--\n" +
         " Coverage Plan:\n  " +
         DumpUtils.dumpWithIdx(coveragePlan, "\n  ") +
@@ -128,8 +147,8 @@ object RiakCoveragePlanBasedPartitioner extends Logging {
         DumpUtils.dump(result, "\n") +
         "\n----------------------------------------\n")
 
-      throw new IllegalStateException("Some coverage entries do not belongs to the spark " +
-        "partitions, it wil cause incomplete data load, see log for more datails.")
+      throw new IllegalStateException("Some coverage entries do not belong to any of the created spark " +
+        "partition. This will lead to incomplete data load, see log for more datails.")
     }
 
 
