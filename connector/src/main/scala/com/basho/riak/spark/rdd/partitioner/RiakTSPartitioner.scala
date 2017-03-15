@@ -324,7 +324,7 @@ class RiakTSCoveragePlanBasedPartitioner(connector: RiakConnector, tableName: St
     if (log.isTraceEnabled()) {
       logTrace("\n----------------------------------------\n" +
         s" [Auto TS Partitioner]  Requested: split up to $splitCount partitions\n" +
-        s"                        Actually: the only $partitionsCount partitions might be created\n" +
+        s"                        Actual: the only $partitionsCount partitions might be created\n" +
         "--\n" +
         s"Coverage plan ($coverageEntriesCount coverage entries):\n" +
         DumpUtils.dumpWithIdx(coveragePlan, "\n  ") +
@@ -354,7 +354,7 @@ class RiakTSCoveragePlanBasedPartitioner(connector: RiakConnector, tableName: St
     if (log.isDebugEnabled()) {
       logDebug("\n----------------------------------------\n" +
         s" [Auto TS Partitioner]  Requested: split up to $splitCount partitions\n" +
-        s"                        Actually: the created partitions are:\n" +
+        s"                        Actual: the created partitions are:\n" +
         "--\n" +
         DumpUtils.dump(result, "\n") +
         "\n----------------------------------------\n")
