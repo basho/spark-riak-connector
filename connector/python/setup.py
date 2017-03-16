@@ -27,7 +27,7 @@ with open(path.join(basedir, 'README.rst'), encoding='utf-8') as f:
 	
 setup(
 	name='pyspark_riak',
-	version="1.0.0",
+	version="1.6.3",
 	description='Utilities to asssist in working with Riak KV and PySpark.',
 	long_description=long_description,
 	license='Apache License 2.0',	

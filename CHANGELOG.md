@@ -1,5 +1,13 @@
 # Change Log
 
+## [1.6.3](https://github.com/basho/spark-riak-connector/releases/tag/v1.6.3)
+
+* Data locality support for Coverage Plan Based Partitioning [#230](https://github.com/basho/spark-riak-connector/pull/230)
+* Miscellaneous enhancements and bug fixes
+    * Improve Coverage Plan Based Partitioning: smart split calculation and more accurate coverage entry distribution across the partitions [#231](https://github.com/basho/spark-riak-connector/pull/231) 
+    * Critical, Fix Python serialization for empty JSON objects [#226](https://github.com/basho/spark-riak-connector/pull/226)
+    * Fix double filtering for DataFrames [#228](https://github.com/basho/spark-riak-connector/pull/228)
+
 ## [1.6.2](https://github.com/basho/spark-riak-connector/releases/tag/v1.6.2)
 Critical fix Python KV:  if object values are JSON objects with list fields (empty or not) then exception happens (https://github.com/basho/spark-riak-connector/pull/219).
 
